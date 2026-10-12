@@ -142,6 +142,10 @@ endif()
 option(ENABLE_CURSES "Enable ncurses console" ${BUILD_SERVER})
 set(USE_CURSES FALSE)
 
+# NetHack Voxel: header for the nethack.dll API (loaded at runtime)
+set(NHV_NHCORE_DIR "${CMAKE_SOURCE_DIR}/../../nhcore" CACHE PATH "NetHack Voxel nhcore directory")
+include_directories(${NHV_NHCORE_DIR})
+
 if(ENABLE_CURSES)
 	find_package(Ncursesw)
 	if(CURSES_FOUND)

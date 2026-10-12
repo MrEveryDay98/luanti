@@ -18,6 +18,7 @@
 #include "lua_api/l_item.h"
 #include "lua_api/l_itemstackmeta.h"
 #include "lua_api/l_mapgen.h"
+#include "lua_api/l_nethack.h"
 #include "lua_api/l_modchannels.h"
 #include "lua_api/l_nodemeta.h"
 #include "lua_api/l_nodetimer.h"
@@ -166,6 +167,7 @@ void ServerScripting::InitializeModApi(lua_State *L, int top)
 	ModApiStorage::Initialize(L, top);
 	ModApiChannels::Initialize(L, top);
 	ModApiIPC::Initialize(L, top);
+	ModApiNetHack::Initialize(L, top);
 }
 
 void ServerScripting::InitializeAsync(lua_State *L, int top)
