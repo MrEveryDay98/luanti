@@ -53,6 +53,8 @@ struct NhvFuncs {
 	NHV_FN(nhv_set_monstates)
 	NHV_FN(nhv_get_all_monsters)
 	NHV_FN(nhv_move_monster)
+	NHV_FN(nhv_num_monsters)
+	NHV_FN(nhv_mon_info)
 #undef NHV_FN
 };
 
@@ -123,6 +125,8 @@ bool load_library(std::string &err)
 	NHV_FN(nhv_set_monstates)
 	NHV_FN(nhv_get_all_monsters)
 	NHV_FN(nhv_move_monster)
+	NHV_FN(nhv_num_monsters)
+	NHV_FN(nhv_mon_info)
 #undef NHV_FN
 	if (nh.nhv_api_version() != NHV_API_VERSION) {
 		err = "nethack.dll API version mismatch";
@@ -223,6 +227,8 @@ void push_obj(lua_State *L, const nhv_obj &o)
 	set_int(L, "tile", o.tile);
 	set_int(L, "flags", o.flags);
 	set_int(L, "weight", o.weight);
+	set_int(L, "worn", o.worn);
+	set_int(L, "armcat", o.armcat);
 	set_str(L, "name", o.name);
 }
 
@@ -634,6 +640,46 @@ int ModApiNetHack::l_nh_move_monster(lua_State *L)
 	return 1;
 }
 
+// nh_load() -> true | nil, err: load nethack.dll without starting a game
+// (for static data such as monster info)
+int ModApiNetHack::l_nh_load(lua_State *L)
+{
+	std::string err;
+	if (!load_library(err)) {
+		lua_pushnil(L);
+		lua_pushstring(L, err.c_str());
+		return 2;
+	}
+	lua_pushboolean(L, true);
+	return 1;
+}
+
+int ModApiNetHack::l_nh_num_monsters(lua_State *L)
+{
+	REQUIRE_LOADED();
+	lua_pushinteger(L, nh.nhv_num_monsters());
+	return 1;
+}
+
+// nh_mon_info(mndx) -> {name=, size=, tile=, sym=} or nil
+int ModApiNetHack::l_nh_mon_info(lua_State *L)
+{
+	REQUIRE_LOADED();
+	int mndx = luaL_checkinteger(L, 1);
+	nhv_moninfo mi;
+	if (!nh.nhv_mon_info(mndx, &mi)) {
+		lua_pushnil(L);
+		return 1;
+	}
+	lua_createtable(L, 0, 4);
+	set_str(L, "name", nh.nhv_mon_name(mndx));
+	set_int(L, "size", mi.size);
+	set_int(L, "tile", mi.tile);
+	char sym[2] = {(char)mi.sym, 0};
+	set_str(L, "sym", sym);
+	return 1;
+}
+
 void ModApiNetHack::Initialize(lua_State *L, int top)
 {
 	API_FCT(nh_start);
@@ -662,4 +708,7 @@ void ModApiNetHack::Initialize(lua_State *L, int top)
 	API_FCT(nh_set_monstates);
 	API_FCT(nh_get_all_monsters);
 	API_FCT(nh_move_monster);
+	API_FCT(nh_load);
+	API_FCT(nh_num_monsters);
+	API_FCT(nh_mon_info);
 }
