@@ -31,6 +31,10 @@ private:
 	static int l_nh_cmap_name(lua_State *L);
 	static int l_nh_mon_name(lua_State *L);
 	static int l_nh_obj_name(lua_State *L);
+	static int l_nh_set_freemove(lua_State *L);
+	static int l_nh_set_monstates(lua_State *L);
+	static int l_nh_get_all_monsters(lua_State *L);
+	static int l_nh_move_monster(lua_State *L);
 
 public:
 	static void Initialize(lua_State *L, int top);

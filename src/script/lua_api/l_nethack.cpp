@@ -49,6 +49,10 @@ struct NhvFuncs {
 	NHV_FN(nhv_cmap_name)
 	NHV_FN(nhv_mon_name)
 	NHV_FN(nhv_obj_name)
+	NHV_FN(nhv_set_freemove)
+	NHV_FN(nhv_set_monstates)
+	NHV_FN(nhv_get_all_monsters)
+	NHV_FN(nhv_move_monster)
 #undef NHV_FN
 };
 
@@ -115,6 +119,10 @@ bool load_library(std::string &err)
 	NHV_FN(nhv_cmap_name)
 	NHV_FN(nhv_mon_name)
 	NHV_FN(nhv_obj_name)
+	NHV_FN(nhv_set_freemove)
+	NHV_FN(nhv_set_monstates)
+	NHV_FN(nhv_get_all_monsters)
+	NHV_FN(nhv_move_monster)
 #undef NHV_FN
 	if (nh.nhv_api_version() != NHV_API_VERSION) {
 		err = "nethack.dll API version mismatch";
@@ -555,6 +563,77 @@ int ModApiNetHack::l_nh_obj_name(lua_State *L)
 	return 1;
 }
 
+int ModApiNetHack::l_nh_set_freemove(lua_State *L)
+{
+	if (loaded())
+		nh.nhv_set_freemove(lua_toboolean(L, 1));
+	return 0;
+}
+
+// nh_set_monstates({{id=, in_reach=bool, target=id}, ...})
+int ModApiNetHack::l_nh_set_monstates(lua_State *L)
+{
+	if (!loaded())
+		return 0;
+	luaL_checktype(L, 1, LUA_TTABLE);
+	std::vector<nhv_monstate> st;
+	size_t n = lua_objlen(L, 1);
+	for (size_t i = 1; i <= n; i++) {
+		lua_rawgeti(L, 1, i);
+		if (lua_istable(L, -1)) {
+			nhv_monstate s{};
+			lua_getfield(L, -1, "id");
+			s.id = (unsigned)lua_tointeger(L, -1);
+			lua_getfield(L, -2, "in_reach");
+			s.in_reach = lua_toboolean(L, -1);
+			lua_getfield(L, -3, "target");
+			s.melee_target = (unsigned)lua_tointeger(L, -1);
+			lua_pop(L, 3);
+			st.push_back(s);
+		}
+		lua_pop(L, 1);
+	}
+	nh.nhv_set_monstates(st.data(), (int)st.size());
+	return 0;
+}
+
+int ModApiNetHack::l_nh_get_all_monsters(lua_State *L)
+{
+	REQUIRE_LOADED();
+	static std::vector<nhv_monfull> buf(512);
+	int n = nh.nhv_get_all_monsters(buf.data(), (int)buf.size());
+	if (n > (int)buf.size())
+		n = (int)buf.size();
+	lua_createtable(L, n, 0);
+	for (int i = 0; i < n; i++) {
+		const nhv_monfull &m = buf[i];
+		lua_createtable(L, 0, 9);
+		set_int(L, "id", m.id);
+		set_int(L, "x", m.x);
+		set_int(L, "y", m.y);
+		set_int(L, "mndx", m.mndx);
+		set_int(L, "speed", m.speed);
+		set_int(L, "size", m.size);
+		set_int(L, "mux", m.mux);
+		set_int(L, "muy", m.muy);
+		set_int(L, "flags", m.flags);
+		lua_rawseti(L, -2, i + 1);
+	}
+	return 1;
+}
+
+// nh_move_monster(id, x, y) -> 1 moved, 0 refused, -1 gone
+int ModApiNetHack::l_nh_move_monster(lua_State *L)
+{
+	if (!loaded()) {
+		lua_pushinteger(L, -1);
+		return 1;
+	}
+	lua_pushinteger(L, nh.nhv_move_monster((unsigned)luaL_checkinteger(L, 1),
+		luaL_checkinteger(L, 2), luaL_checkinteger(L, 3)));
+	return 1;
+}
+
 void ModApiNetHack::Initialize(lua_State *L, int top)
 {
 	API_FCT(nh_start);
@@ -579,4 +658,8 @@ void ModApiNetHack::Initialize(lua_State *L, int top)
 	API_FCT(nh_cmap_name);
 	API_FCT(nh_mon_name);
 	API_FCT(nh_obj_name);
+	API_FCT(nh_set_freemove);
+	API_FCT(nh_set_monstates);
+	API_FCT(nh_get_all_monsters);
+	API_FCT(nh_move_monster);
 }
