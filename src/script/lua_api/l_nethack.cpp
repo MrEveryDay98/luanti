@@ -55,6 +55,8 @@ struct NhvFuncs {
 	NHV_FN(nhv_move_monster)
 	NHV_FN(nhv_num_monsters)
 	NHV_FN(nhv_mon_info)
+	NHV_FN(nhv_get_missiles)
+	NHV_FN(nhv_clear_missiles)
 #undef NHV_FN
 };
 
@@ -127,6 +129,8 @@ bool load_library(std::string &err)
 	NHV_FN(nhv_move_monster)
 	NHV_FN(nhv_num_monsters)
 	NHV_FN(nhv_mon_info)
+	NHV_FN(nhv_get_missiles)
+	NHV_FN(nhv_clear_missiles)
 #undef NHV_FN
 	if (nh.nhv_api_version() != NHV_API_VERSION) {
 		err = "nethack.dll API version mismatch";
@@ -188,6 +192,7 @@ const char *event_kind_name(int k)
 	case NHV_EV_LEVEL_CHANGE: return "level_change";
 	case NHV_EV_BELL: return "bell";
 	case NHV_EV_DELAY: return "delay";
+	case NHV_EV_MISSILE: return "missile";
 	default: return "unknown";
 	}
 }
@@ -680,6 +685,36 @@ int ModApiNetHack::l_nh_mon_info(lua_State *L)
 	return 1;
 }
 
+// nh_get_missiles() -> list of {pid, mon_id, x, y, range, otyp, glyph, tile}
+int ModApiNetHack::l_nh_get_missiles(lua_State *L)
+{
+	REQUIRE_LOADED();
+	nhv_missile buf[64];
+	int n = nh.nhv_get_missiles(buf, 64);
+	lua_createtable(L, n, 0);
+	for (int i = 0; i < n; i++) {
+		const nhv_missile &m = buf[i];
+		lua_createtable(L, 0, 8);
+		set_int(L, "pid", m.pid);
+		set_int(L, "mon_id", m.mon_id);
+		set_int(L, "x", m.x);
+		set_int(L, "y", m.y);
+		set_int(L, "range", m.range);
+		set_int(L, "otyp", m.otyp);
+		set_int(L, "glyph", m.glyph);
+		set_int(L, "tile", m.tile);
+		lua_rawseti(L, -2, i + 1);
+	}
+	return 1;
+}
+
+int ModApiNetHack::l_nh_clear_missiles(lua_State *L)
+{
+	if (loaded())
+		nh.nhv_clear_missiles();
+	return 0;
+}
+
 void ModApiNetHack::Initialize(lua_State *L, int top)
 {
 	API_FCT(nh_start);
@@ -711,4 +746,6 @@ void ModApiNetHack::Initialize(lua_State *L, int top)
 	API_FCT(nh_load);
 	API_FCT(nh_num_monsters);
 	API_FCT(nh_mon_info);
+	API_FCT(nh_get_missiles);
+	API_FCT(nh_clear_missiles);
 }
