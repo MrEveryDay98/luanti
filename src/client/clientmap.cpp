@@ -150,6 +150,7 @@ static const std::string ClientMap_settings[] = {
 	"trilinear_filter",
 	"bilinear_filter",
 	"anisotropic_filter",
+	"mip_map",
 	"transparency_sorting_group_by_buffers",
 	"transparency_sorting_distance",
 	"occlusion_culler",
@@ -192,6 +193,10 @@ void ClientMap::onSettingChanged(std::string_view name, bool all)
 		m_cache_bilinear_filter   = g_settings->getBool("bilinear_filter");
 	if (all || name == "anisotropic_filter")
 		m_cache_anistropic_filter = g_settings->getBool("anisotropic_filter");
+	// NetHack Voxel: mipmaps (smoothed, blurrier textures in the distance)
+	// can be switched off while playing
+	if (all || name == "mip_map")
+		m_cache_mip_map = g_settings->getBool("mip_map");
 	if (all || name == "transparency_sorting_group_by_buffers")
 		m_cache_transparency_sorting_group_by_buffers =
 				g_settings->getBool("transparency_sorting_group_by_buffers");
@@ -1124,6 +1129,7 @@ void ClientMap::renderMap(video::IVideoDriver* driver, s32 pass)
 				setMaterialFilters(tex, m_cache_bilinear_filter, m_cache_trilinear_filter,
 						m_cache_anistropic_filter);
 			});
+			material.UseMipMaps = m_cache_mip_map;
 			material.Wireframe = m_control.show_wireframe;
 
 			// pass the shadow map texture to the buffer texture

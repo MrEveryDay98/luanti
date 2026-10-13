@@ -161,6 +161,7 @@ static bool setMaterialTextureAndFilters(video::SMaterial &material,
 		return false;
 
 	material.setTexture(0, texture);
+	material.UseMipMaps = g_settings->getBool("mip_map");
 
 	// don't filter low-res textures, makes them look blurry
 	const core::dimension2d<u32> &size = texture->getOriginalSize();
