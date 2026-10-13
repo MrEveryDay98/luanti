@@ -193,6 +193,8 @@ const char *event_kind_name(int k)
 	case NHV_EV_BELL: return "bell";
 	case NHV_EV_DELAY: return "delay";
 	case NHV_EV_MISSILE: return "missile";
+	case NHV_EV_COMBAT: return "combat";
+	case NHV_EV_SOUND: return "sound";
 	default: return "unknown";
 	}
 }
@@ -628,6 +630,8 @@ int ModApiNetHack::l_nh_get_all_monsters(lua_State *L)
 		set_int(L, "mux", m.mux);
 		set_int(L, "muy", m.muy);
 		set_int(L, "flags", m.flags);
+		set_int(L, "hp", m.hp);
+		set_int(L, "hpmax", m.hpmax);
 		lua_rawseti(L, -2, i + 1);
 	}
 	return 1;
