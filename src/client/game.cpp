@@ -1408,6 +1408,16 @@ void Game::processUserInput(f32 dtime)
 		gui_chat_console->closeConsoleAtOnce();
 	}
 
+	// NetHack Voxel: the server pauses the game while the chat prompt is open
+	{
+		static bool was_open = false;
+		bool open = gui_chat_console->isOpen();
+		LocalPlayer *lp = client->getEnv().getLocalPlayer();
+		if (open != was_open && lp && (lp->hud_flags & HUD_FLAG_NHV_CHAT_EVENTS))
+			client->sendChatMessage(open ? L"/nhvchat open" : L"/nhvchat close");
+		was_open = open;
+	}
+
 	// Input handler step() (used by the random input generator)
 	input->step(dtime);
 
@@ -1545,6 +1555,18 @@ void Game::processItemSelection(u16 *new_playeritem)
 	LocalPlayer *player = client->getEnv().getLocalPlayer();
 
 	*new_playeritem = player->getWieldIndex();
+
+	// NetHack Voxel: no hotbar selection at all; the number keys are action
+	// keys, sent to the server as "/nhvkey <n>"
+	if (player->hud_flags & HUD_FLAG_NHV_ACTION_KEYS) {
+		for (u16 i = 0; i < 9; i++) {
+			if (wasKeyDown((GameKeyType) (KeyType::SLOT_1 + i))) {
+				client->sendChatMessage(L"/nhvkey " + std::to_wstring(i + 1));
+				break;
+			}
+		}
+		return;
+	}
 	u16 max_item = player->getMaxHotbarItemcount();
 	if (max_item == 0)
 		return;
@@ -1565,6 +1587,7 @@ void Game::processItemSelection(u16 *new_playeritem)
 
 	if (wasKeyDown(KeyType::HOTBAR_PREV))
 		dir = 1;
+
 
 	if (dir < 0)
 		*new_playeritem = *new_playeritem < max_item ? *new_playeritem + 1 : 0;

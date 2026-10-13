@@ -40,6 +40,12 @@
 #define HUD_FLAG_NHV_CAMERA_LOCK       (1 << 9)
 #define HUD_FLAG_NHV_NO_PLACE_SWING    (1 << 10)
 #define HUD_FLAG_NHV_SWING             (1 << 11)
+// nothing selects hotbar slots; the number keys are sent to the server as
+// "/nhvkey <n>" (the game's action keys)
+#define HUD_FLAG_NHV_ACTION_KEYS       (1 << 12)
+// tell the server when the chat prompt opens and closes ("/nhvchat open",
+// "/nhvchat close"), so it can pause while a command is typed
+#define HUD_FLAG_NHV_CHAT_EVENTS       (1 << 13)
 
 #define HUD_PARAM_HOTBAR_ITEMCOUNT 1
 #define HUD_PARAM_HOTBAR_IMAGE 2
