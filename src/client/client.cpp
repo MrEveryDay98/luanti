@@ -1368,6 +1368,14 @@ bool Client::canSendChatMessage() const
 void Client::sendChatMessage(const std::wstring &message)
 {
 	const s16 max_queue_size = g_settings->getS16("max_out_chat_queue_size");
+	// NetHack Voxel: the game's own "/nhv..." commands (menu opened, action
+	// key pressed, ...) go at once, outside the chat rate limit
+	if (message.compare(0, 4, L"/nhv") == 0) {
+		NetworkPacket pkt(TOSERVER_CHAT_MESSAGE, 2 + message.size() * sizeof(u16));
+		pkt << message;
+		Send(&pkt);
+		return;
+	}
 	if (canSendChatMessage()) {
 		u32 now = time(NULL);
 		float time_passed = now - m_last_chat_message_sent;

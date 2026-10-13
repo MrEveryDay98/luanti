@@ -3243,7 +3243,10 @@ std::wstring Server::handleChat(const std::string &name,
 
 	wmessage = trim(wmessage);
 
-	if (player) {
+	// NetHack Voxel: the game's own "/nhv..." commands (menu opened, action
+	// key pressed, ...) aren't chat: never limited, delayed or dropped
+	bool nhv_internal = wmessage.compare(0, 4, L"/nhv") == 0;
+	if (player && !nhv_internal) {
 		switch (player->canSendChatMessage()) {
 		case RPLAYER_CHATRESULT_FLOODING: {
 			std::wstringstream ws;
