@@ -396,12 +396,15 @@ void Hud::drawLuaElements(const v3s16 &camera_offset, bool only_unhidable)
 				{
 					f32 menu = std::max(0.1f, g_settings->getFloat("gui_scaling")) *
 							RenderingEngine::getDisplayDensity();
-					f32 px = font_size * m_scale_factor; // wanted height in pixels
 					// a pixel font only stays sharp at multiples of its height:
-					// round down to one, so text never outgrows its HUD box
+					// then the text size setting alone picks the multiple (the
+					// HUD size can't scale it by 1.5 etc.); the game sizes the
+					// HUD's boxes to fit it
 					u16 step = g_settings->getU16("font_size_divisible_by");
+					f32 px = font_size * (step > 1 ? RenderingEngine::getDisplayDensity()
+							: m_scale_factor); // wanted height in pixels
 					if (step > 1)
-						px = std::max<f32>(step, std::floor(px / step + 0.01f) * step);
+						px = std::max<f32>(step, std::round(px / step) * step);
 					font_size = std::max(1.0f, std::round(px / menu));
 				}
 
