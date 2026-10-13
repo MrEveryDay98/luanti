@@ -741,7 +741,7 @@ bool Game::initSound()
 
 bool Game::createServer(GameStartData &start_data)
 {
-	showOverlayMessage(N_("Creating server..."), 0, 5);
+	showOverlayMessage(N_("Loading..."), 0, 5);
 
 	std::string bind_str;
 	if (simple_singleplayer_mode) {
@@ -795,7 +795,7 @@ bool Game::createServer(GameStartData &start_data)
 		fps_control.limit(device, &dtime);
 
 		if (success)
-			showOverlayMessage(N_("Creating server..."), dtime, 5);
+			showOverlayMessage(N_("Loading..."), dtime, 5);
 		else
 			showOverlayMessage(N_("Shutting down..."), dtime, 0, &m_shutdown_progress);
 	}
@@ -829,7 +829,7 @@ bool Game::createClient(const GameStartData &start_data)
 {
 	std::string *error_message = &(errordata->message);
 
-	showOverlayMessage(N_("Creating client..."), 0, 10);
+	showOverlayMessage(N_("Loading..."), 0, 10);
 
 	draw_control = new MapDrawControl();
 	if (!draw_control)
@@ -902,15 +902,9 @@ bool Game::createClient(const GameStartData &start_data)
 
 	/* Set window caption
 	 */
-	auto driver_name = driver->getName();
-	std::string str = std::string(PROJECT_NAME_C) +
-			" " + g_version_hash + " [";
-	str += simple_singleplayer_mode ? gettext("Singleplayer")
-			: gettext("Multiplayer");
-	str += "] [";
-	str += driver_name;
-	str += "]";
-
+	// NetHack Voxel: the game's title, nothing about servers or versions
+	std::string str = start_data.game_spec.title.empty() ?
+			std::string(PROJECT_NAME_C) : start_data.game_spec.title;
 	device->setWindowCaption(utf8_to_wide(str).c_str());
 
 	LocalPlayer *player = client->getEnv().getLocalPlayer();
@@ -1093,7 +1087,7 @@ bool Game::connectToServer(const GameStartData &start_data,
 			}
 
 			// Update status
-			showOverlayMessage(N_("Connecting to server..."), dtime, 20);
+			showOverlayMessage(N_("Loading..."), dtime, 20);
 		}
 		framemarker.end();
 	} catch (con::PeerNotFoundException &e) {

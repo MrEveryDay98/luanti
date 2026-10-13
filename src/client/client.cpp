@@ -414,8 +414,15 @@ void Client::connect(const Address &address, const std::string &address_name)
 	}
 
 	m_address_name = address_name;
-	m_con.reset(con::createMTP(/*is_server=*/false,
-			UDPSocket::CreateEphemeral(address.isIPv6()), this));
+	// NetHack Voxel: talking to the built-in local server, the socket only
+	// exists on this computer (127.0.0.1), never on the network
+	if (address.isLocalhost() && !address.isIPv6()) {
+		m_con.reset(con::createMTP(/*is_server=*/false,
+				UDPSocket::Create(Address(127, 0, 0, 1, 0)), this));
+	} else {
+		m_con.reset(con::createMTP(/*is_server=*/false,
+				UDPSocket::CreateEphemeral(address.isIPv6()), this));
+	}
 
 	infostream << "Connecting to server at ";
 	address.print(infostream);

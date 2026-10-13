@@ -412,18 +412,16 @@ void GameFormSpec::showPauseMenu()
 #endif
 #endif
 
-	os << "button_exit[0," << (ypos += button_height + spacing) << ";3.5," << button_height << ";btn_exit_menu;"
-		// TRANSLATORS: Pause menu button, try to keep the translation short
-		<< strgettext("Exit to Menu") << "]";
-
+	// NetHack Voxel: no main menu to go back to
 	os << "button_exit[0," << (ypos += button_height + spacing) << ";3.5," << button_height << ";btn_exit_os;"
-		// TRANSLATORS: Pause menu button, try to keep the translation short (OS = Operating System)
-		<< strgettext("Exit to OS") << "]";
+		<< strgettext("Quit") << "]";
 
 	os << "container_end[]";
 	if (!control_text.empty()) {
 		os << "textarea[9.25,0.8;4.625,6.1;;" << control_text << ";]";
 	}
+	// NetHack Voxel: no version / server information
+	if (false) {
 	os << "textarea[0.375,0.8;4.625,6.075;;" << PROJECT_NAME_C " " VERSION_STRING "\n"
 		<< "\n" <<  strgettext("Game info:") << "\n";
 
@@ -462,6 +460,7 @@ void GameFormSpec::showPauseMenu()
 		}
 	}
 	os << ";]";
+	}
 
 	/* Create menu */
 	/* Note: FormspecFormSource and LocalFormspecHandler  *

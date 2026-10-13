@@ -297,10 +297,9 @@ void ClientLauncher::init_args(GameStartData &start_data, const Settings &cmd_ar
 		start_data.name = cmd_args.get("name");
 
 	// If a world was commanded, select it
+	// (NetHack Voxel: always singleplayer - a local game, never a server
+	// others can join - even when --name is given)
 	if (!start_data.world_path.empty()) {
-		if (!start_data.name.empty())
-			start_data.mode = GameClientData::GM_HOST_AND_JOIN;
-
 		auto &spec = start_data.world_spec;
 
 		spec.path = start_data.world_path;
@@ -467,7 +466,8 @@ bool ClientLauncher::launch_game(GameErrorData &errordata, GameStartData &start_
 
 	// If using simple singleplayer mode, override
 	if (start_data.isSinglePlayer()) {
-		start_data.name = "singleplayer";
+		if (start_data.name.empty())
+			start_data.name = "singleplayer";
 		start_data.password = "";
 		// let the OS pick one for us
 		start_data.socket_port = 0;
