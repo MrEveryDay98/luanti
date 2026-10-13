@@ -12,6 +12,7 @@
 #include "client/content_cao.h"
 #include "settings.h"
 #include "wieldmesh.h"
+#include "hud_element.h"
 #include "noise.h"         // easeCurve
 #include "mtevent.h"
 #include "nodedef.h"
@@ -318,6 +319,20 @@ void Camera::update(LocalPlayer* player, f32 frametime, f32 tool_reload_ratio)
 
 	f32 yaw = player->getYaw();
 	f32 pitch = player->getPitch();
+
+	// NetHack Voxel: while locked the view keeps the angles it had, though
+	// the mouse goes on turning the player (the server reads that)
+	if (player->hud_flags & HUD_FLAG_NHV_CAMERA_LOCK) {
+		if (!m_nhv_locked) {
+			m_nhv_locked = true;
+			m_nhv_locked_yaw = yaw;
+			m_nhv_locked_pitch = pitch;
+		}
+		yaw = m_nhv_locked_yaw;
+		pitch = m_nhv_locked_pitch;
+	} else {
+		m_nhv_locked = false;
+	}
 
 	// This is worse than `LocalPlayer::getPosition()` but
 	// mods expect the player head to be at the parent's position

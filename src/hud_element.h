@@ -34,6 +34,12 @@
 #define HUD_FLAG_MINIMAP_RADAR_VISIBLE (1 << 6)
 #define HUD_FLAG_BASIC_DEBUG           (1 << 7)
 #define HUD_FLAG_CHAT_VISIBLE          (1 << 8)
+// NetHack Voxel: the camera stays put while the mouse still turns the player
+// (for the action wheel), right-click doesn't swing the arm by itself, and
+// toggling nhv_swing plays one swing (when an action really happens)
+#define HUD_FLAG_NHV_CAMERA_LOCK       (1 << 9)
+#define HUD_FLAG_NHV_NO_PLACE_SWING    (1 << 10)
+#define HUD_FLAG_NHV_SWING             (1 << 11)
 
 #define HUD_PARAM_HOTBAR_ITEMCOUNT 1
 #define HUD_PARAM_HOTBAR_IMAGE 2

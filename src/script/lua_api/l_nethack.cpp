@@ -43,6 +43,7 @@ struct NhvFuncs {
 	NHV_FN(nhv_get_hero)
 	NHV_FN(nhv_get_inventory)
 	NHV_FN(nhv_get_floor_objects)
+	NHV_FN(nhv_get_container)
 	NHV_FN(nhv_get_glyph_info)
 	NHV_FN(nhv_max_glyph)
 	NHV_FN(nhv_tile_count)
@@ -119,6 +120,7 @@ bool load_library(std::string &err)
 	NHV_FN(nhv_get_hero)
 	NHV_FN(nhv_get_inventory)
 	NHV_FN(nhv_get_floor_objects)
+	NHV_FN(nhv_get_container)
 	NHV_FN(nhv_get_glyph_info)
 	NHV_FN(nhv_max_glyph)
 	NHV_FN(nhv_tile_count)
@@ -200,6 +202,7 @@ const char *event_kind_name(int k)
 	case NHV_EV_COMBAT: return "combat";
 	case NHV_EV_SOUND: return "sound";
 	case NHV_EV_RAY: return "ray";
+	case NHV_EV_CONTAINER: return "container";
 	default: return "unknown";
 	}
 }
@@ -532,6 +535,27 @@ int ModApiNetHack::l_nh_get_floor_objects(lua_State *L)
 	return 1;
 }
 
+// nh_get_container(id) -> list of objects, or nil if it isn't reachable
+int ModApiNetHack::l_nh_get_container(lua_State *L)
+{
+	REQUIRE_LOADED();
+	unsigned id = (unsigned)luaL_checkinteger(L, 1);
+	static std::vector<nhv_obj> buf(256);
+	int n = nh.nhv_get_container(id, buf.data(), (int)buf.size());
+	if (n < 0) {
+		lua_pushnil(L);
+		return 1;
+	}
+	if (n > (int)buf.size())
+		n = (int)buf.size();
+	lua_createtable(L, n, 0);
+	for (int i = 0; i < n; i++) {
+		push_obj(L, buf[i]);
+		lua_rawseti(L, -2, i + 1);
+	}
+	return 1;
+}
+
 int ModApiNetHack::l_nh_glyph_info(lua_State *L)
 {
 	REQUIRE_LOADED();
@@ -775,6 +799,7 @@ void ModApiNetHack::Initialize(lua_State *L, int top)
 	API_FCT(nh_get_hero);
 	API_FCT(nh_get_inventory);
 	API_FCT(nh_get_floor_objects);
+	API_FCT(nh_get_container);
 	API_FCT(nh_glyph_info);
 	API_FCT(nh_max_glyph);
 	API_FCT(nh_tile_count);

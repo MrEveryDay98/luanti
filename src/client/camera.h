@@ -248,6 +248,11 @@ private:
 	// If 1, right-click digging animation
 	s32 m_digging_button = -1;
 
+	// NetHack Voxel camera lock
+	bool m_nhv_locked = false;
+	f32 m_nhv_locked_yaw = 0.0f;
+	f32 m_nhv_locked_pitch = 0.0f;
+
 	// Animation when changing wielded item
 	f32 m_wield_change_timer = 0.125f;
 	ItemStack m_wield_item_next;

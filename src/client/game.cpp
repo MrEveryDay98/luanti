@@ -2671,6 +2671,16 @@ void Game::processPlayerInteraction(f32 dtime, bool show_hud)
 {
 	LocalPlayer *player = client->getEnv().getLocalPlayer();
 
+	// NetHack Voxel: the server toggles nhv_swing to play one arm swing
+	{
+		static bool last_swing = false;
+		bool swing = player->hud_flags & HUD_FLAG_NHV_SWING;
+		if (swing != last_swing) {
+			last_swing = swing;
+			camera->setDigging(1);
+		}
+	}
+
 	const v3f camera_direction = camera->getDirection();
 	const v3s16 camera_offset  = camera->getOffset();
 
@@ -2971,7 +2981,8 @@ void Game::handlePointingAtNode(const PointedThing &pointed,
 		infostream << "Place button pressed while looking at ground" << std::endl;
 
 		// Placing animation (always shown for feedback)
-		camera->setDigging(1);
+		if (!(client->getEnv().getLocalPlayer()->hud_flags & HUD_FLAG_NHV_NO_PLACE_SWING))
+			camera->setDigging(1);
 
 		soundmaker->m_player_rightpunch_sound = SoundSpec();
 

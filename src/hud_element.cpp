@@ -51,5 +51,8 @@ const struct EnumString es_HudBuiltinElement[] =
 	{HUD_FLAG_MINIMAP_RADAR_VISIBLE, "minimap_radar"},
 	{HUD_FLAG_BASIC_DEBUG,           "basic_debug"},
 	{HUD_FLAG_CHAT_VISIBLE,          "chat"},
+	{HUD_FLAG_NHV_CAMERA_LOCK,       "nhv_camera_lock"},
+	{HUD_FLAG_NHV_NO_PLACE_SWING,    "nhv_no_place_swing"},
+	{HUD_FLAG_NHV_SWING,             "nhv_swing"},
 	{0, NULL},
 };
