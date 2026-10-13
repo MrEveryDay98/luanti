@@ -390,6 +390,21 @@ void Hud::drawLuaElements(const v3s16 &camera_offset, bool only_unhidable)
 				if (e->size.X > 0)
 					font_size *= e->size.X;
 
+				// NetHack Voxel: HUD text follows the HUD size ("hud_scaling"),
+				// like the HUD's images, instead of the menu size: so labels
+				// stay lined up with what they label at any HUD size
+				{
+					f32 menu = std::max(0.1f, g_settings->getFloat("gui_scaling")) *
+							RenderingEngine::getDisplayDensity();
+					f32 px = font_size * m_scale_factor; // wanted height in pixels
+					// a pixel font only stays sharp at multiples of its height:
+					// round down to one, so text never outgrows its HUD box
+					u16 step = g_settings->getU16("font_size_divisible_by");
+					if (step > 1)
+						px = std::max<f32>(step, std::floor(px / step + 0.01f) * step);
+					font_size = std::max(1.0f, std::round(px / menu));
+				}
+
 #ifdef __ANDROID__
 				// The text size on Android is not proportional with the actual scaling
 				// FIXME: why do we have such a weird unportable hack??
