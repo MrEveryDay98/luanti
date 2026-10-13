@@ -57,6 +57,8 @@ struct NhvFuncs {
 	NHV_FN(nhv_mon_info)
 	NHV_FN(nhv_get_missiles)
 	NHV_FN(nhv_clear_missiles)
+	NHV_FN(nhv_get_rays)
+	NHV_FN(nhv_clear_rays)
 #undef NHV_FN
 };
 
@@ -131,6 +133,8 @@ bool load_library(std::string &err)
 	NHV_FN(nhv_mon_info)
 	NHV_FN(nhv_get_missiles)
 	NHV_FN(nhv_clear_missiles)
+	NHV_FN(nhv_get_rays)
+	NHV_FN(nhv_clear_rays)
 #undef NHV_FN
 	if (nh.nhv_api_version() != NHV_API_VERSION) {
 		err = "nethack.dll API version mismatch";
@@ -195,6 +199,7 @@ const char *event_kind_name(int k)
 	case NHV_EV_MISSILE: return "missile";
 	case NHV_EV_COMBAT: return "combat";
 	case NHV_EV_SOUND: return "sound";
+	case NHV_EV_RAY: return "ray";
 	default: return "unknown";
 	}
 }
@@ -712,6 +717,39 @@ int ModApiNetHack::l_nh_get_missiles(lua_State *L)
 	return 1;
 }
 
+// nh_get_rays() -> list of {rid, type, kind, x, y, dx, dy, range, from_hero, caster}
+int ModApiNetHack::l_nh_get_rays(lua_State *L)
+{
+	REQUIRE_LOADED();
+	nhv_ray buf[32];
+	int n = nh.nhv_get_rays(buf, 32);
+	lua_createtable(L, n, 0);
+	for (int i = 0; i < n; i++) {
+		const nhv_ray &r = buf[i];
+		lua_createtable(L, 0, 10);
+		set_int(L, "rid", r.rid);
+		set_int(L, "type", r.type);
+		set_int(L, "kind", r.kind);
+		set_int(L, "x", r.x);
+		set_int(L, "y", r.y);
+		set_int(L, "dx", r.dx);
+		set_int(L, "dy", r.dy);
+		set_int(L, "range", r.range);
+		lua_pushboolean(L, r.from_hero);
+		lua_setfield(L, -2, "from_hero");
+		set_int(L, "caster", r.caster);
+		lua_rawseti(L, -2, i + 1);
+	}
+	return 1;
+}
+
+int ModApiNetHack::l_nh_clear_rays(lua_State *L)
+{
+	if (loaded())
+		nh.nhv_clear_rays();
+	return 0;
+}
+
 int ModApiNetHack::l_nh_clear_missiles(lua_State *L)
 {
 	if (loaded())
@@ -752,4 +790,6 @@ void ModApiNetHack::Initialize(lua_State *L, int top)
 	API_FCT(nh_mon_info);
 	API_FCT(nh_get_missiles);
 	API_FCT(nh_clear_missiles);
+	API_FCT(nh_get_rays);
+	API_FCT(nh_clear_rays);
 }
