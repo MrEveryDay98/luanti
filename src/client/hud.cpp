@@ -401,7 +401,13 @@ void Hud::drawLuaElements(const v3s16 &camera_offset, bool only_unhidable)
 					// HUD size can't scale it by 1.5 etc.); the game sizes the
 					// HUD's boxes to fit it
 					u16 step = g_settings->getU16("font_size_divisible_by");
-					f32 px = font_size * (step > 1 ? RenderingEngine::getDisplayDensity()
+					// the game's Text size (HUD text only; menus use the menu size)
+					f32 text = 1.0f;
+					if (g_settings->exists("nhv_text_scale"))
+						text = rangelim(g_settings->getFloat("nhv_text_scale"), 0.5f, 8.0f);
+					if (step > 1)
+						text = std::max(1.0f, std::floor(text + 0.01f)); // (whole steps)
+					f32 px = font_size * text * (step > 1 ? RenderingEngine::getDisplayDensity()
 							: m_scale_factor); // wanted height in pixels
 					if (step > 1)
 						px = std::max<f32>(step, std::round(px / step) * step);
