@@ -219,6 +219,7 @@ RenderingEngine::RenderingEngine(MyEventReceiver *receiver)
 
 	g_settings->registerChangedCallback("fullscreen", settingChangedCallback, this);
 	g_settings->registerChangedCallback("window_maximized", settingChangedCallback, this);
+	g_settings->registerChangedCallback("undersampling", settingChangedCallback, this);
 }
 
 RenderingEngine::~RenderingEngine()
@@ -236,7 +237,9 @@ RenderingEngine::~RenderingEngine()
 void RenderingEngine::settingChangedCallback(const std::string &name, void *data)
 {
 	IrrlichtDevice *device = static_cast<RenderingEngine*>(data)->m_device;
-	if (name == "fullscreen") {
+	if (name == "undersampling") {
+		static_cast<RenderingEngine*>(data)->m_rebuild_core = true;
+	} else if (name == "fullscreen") {
 		device->setFullscreen(g_settings->getBool("fullscreen"));
 
 	} else if (name == "window_maximized") {
@@ -410,17 +413,26 @@ std::vector<video::E_DRIVER_TYPE> RenderingEngine::getSupportedVideoDrivers()
 void RenderingEngine::initialize(Client *client, Hud *hud)
 {
 	const std::string &draw_mode = g_settings->get("3d_mode");
+	m_client = client;
+	m_hud = hud;
+	m_rebuild_core = false;
 	core.reset(createRenderingCore(draw_mode, m_device, client, hud));
 }
 
 void RenderingEngine::finalize()
 {
 	core.reset();
+	m_client = nullptr;
+	m_hud = nullptr;
 }
 
 void RenderingEngine::draw_scene(video::SColor skycolor, bool show_hud,
 		bool draw_wield_tool, bool draw_crosshair)
 {
+	if (m_rebuild_core.exchange(false) && m_client) {
+		core.reset();
+		core.reset(createRenderingCore(g_settings->get("3d_mode"), m_device, m_client, m_hud));
+	}
 	core->draw(skycolor, show_hud, draw_wield_tool, draw_crosshair);
 }
 

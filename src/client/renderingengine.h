@@ -7,6 +7,7 @@
 
 #include <vector>
 #include <memory>
+#include <atomic>
 #include <string>
 #include "client/inputhandler.h"
 #include "debug.h"
@@ -166,6 +167,11 @@ private:
 	v2u32 _getWindowSize() const;
 
 	std::unique_ptr<RenderingCore> core;
+	// NetHack Voxel: rebuild the render pipeline when "undersampling" changes
+	// (set from any thread; done on the next frame)
+	std::atomic<bool> m_rebuild_core{false};
+	Client *m_client = nullptr;
+	Hud *m_hud = nullptr;
 	IrrlichtDevice *m_device = nullptr;
 	video::IVideoDriver *driver;
 	MyEventReceiver *m_receiver = nullptr;
