@@ -2115,6 +2115,17 @@ void Game::updatePlayerControl(const CameraOrientation &cam)
 		control.aux1 = control.aux1 ^ true;
 	}
 
+	// NetHack Voxel: the game is paused while a menu, prompt or the command
+	// line is open, so a key held down from before (walking forward, ...)
+	// doesn't keep moving the hero
+	if ((player->hud_flags & HUD_FLAG_NHV_CHAT_EVENTS) &&
+			(g_menumgr.menuCount() > 0 || gui_chat_console->isOpen())) {
+		PlayerControl still;
+		still.pitch = control.pitch;
+		still.yaw = control.yaw;
+		control = still;
+	}
+
 	client->setPlayerControl(control);
 
 	//tt.stop();
