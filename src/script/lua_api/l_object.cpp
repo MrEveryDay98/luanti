@@ -1833,6 +1833,10 @@ int ObjectRef::l_get_player_control(lua_State *L)
 	lua_setfield(L, -2, "dig");
 	lua_pushboolean(L, control.place);
 	lua_setfield(L, -2, "place");
+	lua_pushboolean(L, control.nhv_alt);
+	lua_setfield(L, -2, "nhv_alt");
+	lua_pushboolean(L, control.nhv_ctrl);
+	lua_setfield(L, -2, "nhv_ctrl");
 
 	v2f movement = control.getMovement();
 	lua_pushnumber(L, movement.X);

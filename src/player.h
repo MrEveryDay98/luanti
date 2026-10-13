@@ -88,6 +88,9 @@ struct PlayerControl
 	bool aux1 = false;
 	bool sneak = false;
 	bool zoom = false;
+	// NetHack Voxel: Alt / Ctrl held (they pick the action wheel's set)
+	bool nhv_alt = false;
+	bool nhv_ctrl = false;
 	bool dig = false;
 	bool place = false;
 	// Note: These two are NOT available on the server

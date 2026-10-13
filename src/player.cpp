@@ -183,7 +183,9 @@ u32 PlayerControl::getKeysPressed() const
 		( (u32)(sneak & 1) << 6) |
 		( (u32)(dig   & 1) << 7) |
 		( (u32)(place & 1) << 8) |
-		( (u32)(zoom  & 1) << 9)
+		( (u32)(zoom  & 1) << 9) |
+		( (u32)(nhv_alt  & 1) << 10) |
+		( (u32)(nhv_ctrl & 1) << 11)
 	;
 
 	if (isMoving()) {
@@ -210,6 +212,8 @@ void PlayerControl::unpackKeysPressed(u32 keypress_bits)
 	dig   = keypress_bits & (1 << 7);
 	place = keypress_bits & (1 << 8);
 	zoom  = keypress_bits & (1 << 9);
+	nhv_alt  = keypress_bits & (1 << 10);
+	nhv_ctrl = keypress_bits & (1 << 11);
 }
 
 v2f PlayerControl::getMovement() const

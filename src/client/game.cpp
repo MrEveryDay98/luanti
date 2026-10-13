@@ -2105,6 +2105,13 @@ void Game::updatePlayerControl(const CameraOrientation &cam)
 		cam.camera_yaw
 	);
 	control.setMovementFromKeys();
+#ifdef _WIN32
+	// NetHack Voxel: Alt and Ctrl pick the action wheel's set of options
+	if (m_game_focused) {
+		control.nhv_alt = (GetAsyncKeyState(VK_MENU) & 0x8000) != 0;
+		control.nhv_ctrl = (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0;
+	}
+#endif
 
 	/* For touch, simulate holding down AUX1 (fast move) if the user has
 	 * the fast_move setting toggled on. If there is an aux1 key defined for
