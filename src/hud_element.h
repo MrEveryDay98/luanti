@@ -44,7 +44,8 @@
 // "/nhvkey <n>" (the game's action keys)
 #define HUD_FLAG_NHV_ACTION_KEYS       (1 << 12)
 // tell the server when the chat prompt opens and closes ("/nhvchat open",
-// "/nhvchat close"), so it can pause while a command is typed
+// "/nhvchat close") and when any menu does ("/nhvmenu open" / "close"), so
+// the game can pause meanwhile
 #define HUD_FLAG_NHV_CHAT_EVENTS       (1 << 13)
 
 #define HUD_PARAM_HOTBAR_ITEMCOUNT 1

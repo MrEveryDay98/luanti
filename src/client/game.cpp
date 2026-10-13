@@ -1410,6 +1410,13 @@ void Game::processUserInput(f32 dtime)
 		if (open != was_open && lp && (lp->hud_flags & HUD_FLAG_NHV_CHAT_EVENTS))
 			client->sendChatMessage(open ? L"/nhvchat open" : L"/nhvchat close");
 		was_open = open;
+
+		// ... and while any menu (inventory, a NetHack question, ...) is open
+		static bool menu_was_open = false;
+		bool menu_open = g_menumgr.menuCount() > 0;
+		if (menu_open != menu_was_open && lp && (lp->hud_flags & HUD_FLAG_NHV_CHAT_EVENTS))
+			client->sendChatMessage(menu_open ? L"/nhvmenu open" : L"/nhvmenu close");
+		menu_was_open = menu_open;
 	}
 
 	// Input handler step() (used by the random input generator)
