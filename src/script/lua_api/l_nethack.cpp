@@ -421,7 +421,7 @@ int ModApiNetHack::l_nh_poll_events(lua_State *L)
 }
 
 // nh_get_map() -> {glyph={}, mem={}, tile={}, mem_tile={}, typ={},
-//                   flags={}, door={}} with index x*21 + y + 1
+//                   flags={}, door={}, back={}} with index x*21 + y + 1
 int ModApiNetHack::l_nh_get_map(lua_State *L)
 {
 	REQUIRE_LOADED();
@@ -446,6 +446,7 @@ int ModApiNetHack::l_nh_get_map(lua_State *L)
 	FIELD_ARRAY("typ", l.typ)
 	FIELD_ARRAY("flags", l.flags)
 	FIELD_ARRAY("door", l.door)
+	FIELD_ARRAY("back", l.back)
 #undef FIELD_ARRAY
 	return 1;
 }
