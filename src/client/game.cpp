@@ -2043,7 +2043,11 @@ void Game::updateCameraOrientation(CameraOrientation *cam, float dtime)
 		}
 
 		cam->camera_yaw   -= dist.X * m_cache_mouse_sensitivity * sens_scale;
-		cam->camera_pitch += dist.Y * m_cache_mouse_sensitivity * sens_scale;
+		// NetHack Voxel: confused or stunned, looking up and down is inverted
+		LocalPlayer *nhv_lp = client->getEnv().getLocalPlayer();
+		f32 nhv_flip = (nhv_lp && (nhv_lp->hud_flags &
+				(HUD_FLAG_NHV_CONFUSED | HUD_FLAG_NHV_STUNNED))) ? -1.0f : 1.0f;
+		cam->camera_pitch += nhv_flip * dist.Y * m_cache_mouse_sensitivity * sens_scale;
 
 		// Keep the cursor centered so that it appears in the middle of
 		// the screen when a menu opens.
@@ -2112,6 +2116,16 @@ void Game::updatePlayerControl(const CameraOrientation &cam)
 		cam.camera_yaw
 	);
 	control.setMovementFromKeys();
+	// NetHack Voxel: stunned, walking goes the opposite way; confused, it's
+	// turned by an angle that slowly swings back and forth (up to ~100°)
+	if (control.isMoving()) {
+		if (player->hud_flags & HUD_FLAG_NHV_STUNNED) {
+			control.movement_direction += M_PI;
+		} else if (player->hud_flags & HUD_FLAG_NHV_CONFUSED) {
+			f32 t = porting::getTimeMs() / 1000.0f;
+			control.movement_direction += 0.9f + 0.85f * std::sin(t * 0.6f);
+		}
+	}
 #ifdef _WIN32
 	// NetHack Voxel: Alt and Ctrl pick the action wheel's set of options
 	if (m_game_focused) {

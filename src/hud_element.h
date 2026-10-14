@@ -47,6 +47,10 @@
 // "/nhvchat close") and when any menu does ("/nhvmenu open" / "close"), so
 // the game can pause meanwhile
 #define HUD_FLAG_NHV_CHAT_EVENTS       (1 << 13)
+// the hero is confused / stunned: walking is rotated (a slow drift) /
+// reversed, and looking up and down is inverted
+#define HUD_FLAG_NHV_CONFUSED          (1 << 14)
+#define HUD_FLAG_NHV_STUNNED           (1 << 15)
 
 #define HUD_PARAM_HOTBAR_ITEMCOUNT 1
 #define HUD_PARAM_HOTBAR_IMAGE 2
