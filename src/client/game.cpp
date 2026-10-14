@@ -1242,6 +1242,11 @@ bool Game::checkConnection()
 		const std::string reason = wide_to_utf8(
 			unescape_translate(utf8_to_wide(client->accessDeniedReason())));
 
+		// NetHack Voxel: "Quit" on the game's title screen closes the game
+		// without an error message
+		if (reason == "nhv:quit")
+			return false;
+
 		errordata->setError(
 			fmtgettext("Access denied. Reason: %s", reason.c_str()),
 			client->reconnectRequested()
