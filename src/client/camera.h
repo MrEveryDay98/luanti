@@ -256,6 +256,10 @@ private:
 	// Animation when changing wielded item
 	f32 m_wield_change_timer = 0.125f;
 	ItemStack m_wield_item_next;
+	// NetHack Voxel: the same item, drawn differently (hallucination...):
+	// fades out and back in instead of being put away and taken out
+	f32 m_nhv_fade = 0.0f; // time left of the fade (0: none)
+	bool m_nhv_fade_swapped = false;
 
 	CameraMode m_camera_mode;
 

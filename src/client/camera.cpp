@@ -135,10 +135,22 @@ inline f32 my_modf(f32 x)
 	return std::modf(x, &dummy);
 }
 
+// NetHack Voxel: how long a held item's picture takes to fade over (seconds)
+static constexpr f32 NHV_FADE = 0.3f;
+
 void Camera::step(f32 dtime)
 {
 	bool was_under_zero = m_wield_change_timer < 0;
 	m_wield_change_timer = MYMIN(m_wield_change_timer + dtime, 0.125);
+
+	// NetHack Voxel: halfway through a fade, the new picture goes in
+	if (m_nhv_fade > 0.0f) {
+		m_nhv_fade = std::max(0.0f, m_nhv_fade - dtime);
+		if (!m_nhv_fade_swapped && m_nhv_fade <= NHV_FADE / 2) {
+			m_nhv_fade_swapped = true;
+			updateWieldedTool();
+		}
+	}
 
 	if (m_wield_change_timer >= 0 && was_under_zero) {
 		updateWieldedTool();
@@ -559,7 +571,15 @@ void Camera::update(LocalPlayer* player, f32 frametime, f32 tool_reload_ratio)
 	m_wieldnode->setRotation(wield_rotation);
 
 	m_player_light_color = player->light_color;
-	m_wieldnode->setLightColorAndAnimation(m_player_light_color,
+	video::SColor wield_light = m_player_light_color;
+	if (m_nhv_fade > 0.0f) {
+		// dark at the middle of the fade, back to normal at its ends
+		f32 k = std::fabs(m_nhv_fade - NHV_FADE / 2) / (NHV_FADE / 2);
+		wield_light.setRed(wield_light.getRed() * k);
+		wield_light.setGreen(wield_light.getGreen() * k);
+		wield_light.setBlue(wield_light.getBlue() * k);
+	}
+	m_wieldnode->setLightColorAndAnimation(wield_light,
 			m_client->getAnimationTime());
 
 	// Set render distance
@@ -618,7 +638,17 @@ void Camera::wield(const ItemStack &item, bool animate)
 {
 	if (item.name != m_wield_item_next.name ||
 			item.metadata != m_wield_item_next.metadata) {
+		// NetHack Voxel: the same inventory item (letter) with a new
+		// picture fades over instead of being put away and taken out
+		const std::string invlet = item.metadata.getString("nhv_invlet");
+		bool same = animate && !invlet.empty() && m_wield_change_timer >= 0
+				&& invlet == m_wield_item_next.metadata.getString("nhv_invlet");
 		m_wield_item_next = item;
+		if (same) {
+			m_nhv_fade = NHV_FADE;
+			m_nhv_fade_swapped = false;
+			return;
+		}
 
 		if (!animate) {
 			updateWieldedTool();
