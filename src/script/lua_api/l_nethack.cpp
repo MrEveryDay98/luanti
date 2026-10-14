@@ -667,7 +667,8 @@ int ModApiNetHack::l_nh_get_all_monsters(lua_State *L)
 	return 1;
 }
 
-// nh_move_monster(id, x, y) -> 1 moved, 0 refused, -1 gone
+// nh_move_monster(id, x, y) -> 1 moved, 0 refused, -1 gone, -2 busy (try
+// again), -3 occupied (the hero or a monster is there)
 int ModApiNetHack::l_nh_move_monster(lua_State *L)
 {
 	if (!loaded()) {
