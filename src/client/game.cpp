@@ -2138,6 +2138,10 @@ void Game::updatePlayerControl(const CameraOrientation &cam)
 		still.pitch = control.pitch;
 		still.yaw = control.yaw;
 		control = still;
+		// ... and stops at once instead of sliding to a halt (walking
+		// momentum takes over a second to die down); falling goes on
+		v3f v = player->getSpeed();
+		player->setSpeed(v3f(0.0f, v.Y, 0.0f));
 	}
 
 	client->setPlayerControl(control);
