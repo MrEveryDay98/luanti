@@ -58,5 +58,6 @@ const struct EnumString es_HudBuiltinElement[] =
 	{HUD_FLAG_NHV_CHAT_EVENTS,       "nhv_chat_events"},
 	{HUD_FLAG_NHV_CONFUSED,          "nhv_confused"},
 	{HUD_FLAG_NHV_STUNNED,           "nhv_stunned"},
+	{HUD_FLAG_NHV_HALLU,             "nhv_hallu"},
 	{0, NULL},
 };

@@ -51,6 +51,9 @@
 // reversed, and looking up and down is inverted
 #define HUD_FLAG_NHV_CONFUSED          (1 << 14)
 #define HUD_FLAG_NHV_STUNNED           (1 << 15)
+// the hero is hallucinating: the screen waves and its colours drift (the
+// confused / stunned flags add a gentler wave)
+#define HUD_FLAG_NHV_HALLU             (1 << 16)
 
 #define HUD_PARAM_HOTBAR_ITEMCOUNT 1
 #define HUD_PARAM_HOTBAR_IMAGE 2

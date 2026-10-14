@@ -20,6 +20,8 @@ uniform vec2 texelSize0;
 uniform ExposureParams exposureParams;
 uniform lowp float bloomIntensity;
 uniform lowp float saturation;
+// NetHack Voxel: x = wave strength, y = hallucination, z = time (seconds)
+uniform vec3 nhvFx;
 
 CENTROID_ VARYING_ mediump vec2 varTexCoord;
 
@@ -85,6 +87,14 @@ vec3 applySaturation(vec3 color, float factor)
 	return mix(vec3(brightness), color, factor);
 }
 
+// NetHack Voxel: turn a colour's hue by angle a (radians)
+vec3 nhvHueShift(vec3 c, float a)
+{
+	const vec3 k = vec3(0.57735);
+	float ca = cos(a);
+	return c * ca + cross(k, c) * sin(a) + k * dot(k, c) * (1.0 - ca);
+}
+
 #ifdef ENABLE_DITHERING
 // From http://alex.vlachos.com/graphics/Alex_Vlachos_Advanced_VR_Rendering_GDC2015.pdf
 // and https://www.shadertoy.com/view/MslGR8 (5th one starting from the bottom)
@@ -102,6 +112,12 @@ vec3 screen_space_dither(highp vec2 frag_coord) {
 void main(void)
 {
 	vec2 uv = varTexCoord.st;
+	// NetHack Voxel: confused / stunned / hallucinating, the picture waves
+	if (nhvFx.x > 0.0) {
+		float t = nhvFx.z;
+		uv += nhvFx.x * 0.006 * vec2(sin(uv.y * 17.0 + t * 1.9), cos(uv.x * 13.0 + t * 1.4));
+		uv = clamp(uv, vec2(0.001), vec2(0.999));
+	}
 #ifdef ENABLE_SSAA
 	vec4 color = vec4(0.);
 	for (float dx = 1.; dx < SSAA_SCALE; dx += 2.)
@@ -144,6 +160,14 @@ void main(void)
 #endif
 
 		color.rgb = applySaturation(color.rgb, saturation);
+	}
+
+	// NetHack Voxel: hallucinating, the colours slowly drift round the hue
+	// circle (and get a little more vivid)
+	if (nhvFx.y > 0.0) {
+		vec3 shifted = clamp(nhvHueShift(color.rgb, nhvFx.z * 0.35 + varTexCoord.x * 0.6), 0.0, 1.0);
+		shifted = applySaturation(shifted, 1.35);
+		color.rgb = mix(color.rgb, clamp(shifted, 0.0, 1.0), nhvFx.y);
 	}
 
 #ifdef ENABLE_DITHERING

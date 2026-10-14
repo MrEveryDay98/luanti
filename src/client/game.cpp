@@ -99,6 +99,10 @@ class GameGlobalShaderUniformSetter : public IShaderUniformSetter
 	CachedPixelShaderSetting<float> m_bloom_strength_pixel{"bloomStrength"};
 	CachedPixelShaderSetting<float> m_bloom_radius_pixel{"bloomRadius"};
 	CachedPixelShaderSetting<float> m_saturation_pixel{"saturation"};
+	// NetHack Voxel screen effects (second stage shader): wave strength,
+	// hallucination strength, time in seconds
+	CachedPixelShaderSetting<float, 3> m_nhv_fx_pixel{"nhvFx"};
+	float m_nhv_wave = 0.0f, m_nhv_hallu = 0.0f;
 	bool m_volumetric_light_enabled;
 	CachedPixelShaderSetting<float, 3>
 		m_sun_position_pixel{"sunPositionScreen"};
@@ -156,6 +160,26 @@ public:
 		float animation_timer_f = (float)animation_timer / 100000.f;
 		m_animation_timer_vertex.set(&animation_timer_f, services);
 		m_animation_timer_pixel.set(&animation_timer_f, services);
+
+		// NetHack Voxel: wave (confused / stunned / hallucinating) and colour
+		// drift (hallucinating), easing in and out over about a second
+		{
+			LocalPlayer *lp = m_client->getEnv().getLocalPlayer();
+			u32 f = lp ? lp->hud_flags : 0;
+			float want_hallu = (f & HUD_FLAG_NHV_HALLU) ? 1.0f : 0.0f;
+			float want_wave = want_hallu > 0 ? 1.0f
+					: (f & (HUD_FLAG_NHV_CONFUSED | HUD_FLAG_NHV_STUNNED)) ? 0.45f : 0.0f;
+			float dt = std::min(0.1f, m_client->getEnv().getFrameTimeDelta() / 1000.0f);
+			auto ease = [dt](float cur, float want) {
+				float step = dt * 1.2f;
+				return cur < want ? std::min(want, cur + step) : std::max(want, cur - step);
+			};
+			m_nhv_wave = ease(m_nhv_wave, want_wave);
+			m_nhv_hallu = ease(m_nhv_hallu, want_hallu);
+			float fx[3] = {m_nhv_wave, m_nhv_hallu,
+					(float)(m_client->getEnv().getFrameTime() % 1000000) / 1000.0f};
+			m_nhv_fx_pixel.set(fx, services);
+		}
 
 		float animation_timer_delta_f = (float)m_client->getEnv().getFrameTimeDelta() / 100000.f;
 		m_animation_timer_delta_vertex.set(&animation_timer_delta_f, services);
