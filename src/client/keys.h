@@ -61,6 +61,7 @@ public:
 		RANGESELECT,
 		ZOOM,
 		NHV_SEARCH, // NetHack Voxel: the search key (X)
+		NHV_PAY, // NetHack Voxel: the pay key (P)
 
 		QUICKTUNE_NEXT,
 		QUICKTUNE_PREV,
