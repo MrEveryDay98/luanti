@@ -1602,6 +1602,9 @@ void Game::processItemSelection(u16 *new_playeritem)
 				break;
 			}
 		}
+		// ... and X searches ("/nhvkey search")
+		if (wasKeyDown(KeyType::NHV_SEARCH))
+			client->sendChatMessage(L"/nhvkey search");
 		return;
 	}
 	u16 max_item = player->getMaxHotbarItemcount();

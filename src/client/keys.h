@@ -60,6 +60,7 @@ public:
 		DECREASE_VIEWING_RANGE,
 		RANGESELECT,
 		ZOOM,
+		NHV_SEARCH, // NetHack Voxel: the search key (X)
 
 		QUICKTUNE_NEXT,
 		QUICKTUNE_PREV,
