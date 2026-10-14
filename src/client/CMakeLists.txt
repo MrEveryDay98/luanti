@@ -4,6 +4,7 @@ if(USE_SOUND)
 	list(APPEND sound_SRCS
 		${CMAKE_CURRENT_SOURCE_DIR}/sound/al_extensions.cpp
 		${CMAKE_CURRENT_SOURCE_DIR}/sound/al_helpers.cpp
+		${CMAKE_CURRENT_SOURCE_DIR}/sound/midi_render.cpp
 		${CMAKE_CURRENT_SOURCE_DIR}/sound/ogg_file.cpp
 		${CMAKE_CURRENT_SOURCE_DIR}/sound/playing_sound.cpp
 		${CMAKE_CURRENT_SOURCE_DIR}/sound/proxy_sound_manager.cpp

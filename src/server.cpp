@@ -2667,7 +2667,7 @@ bool Server::addMediaFile(const std::string &filename,
 	// If name is not in a supported format, ignore it
 	const char *supported_ext[] = {
 		".png", ".jpg", ".tga",
-		".ogg",
+		".ogg", ".mid", ".midi", // (NetHack Voxel: MIDI music)
 		".x", ".b3d", ".obj", ".gltf", ".glb",
 		// Translation file formats
 		".tr", ".po", ".mo",

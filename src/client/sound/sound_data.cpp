@@ -9,7 +9,10 @@
 #include "sound_data.h"
 
 #include "sound_constants.h"
+#include "midi_render.h"
 #include <algorithm>
+#include <fstream>
+#include <sstream>
 
 namespace sound {
 
@@ -42,6 +45,10 @@ std::shared_ptr<ISoundDataOpen> ISoundDataOpen::fromOggFile(std::unique_ptr<RAII
 
 std::shared_ptr<ISoundDataOpen> SoundDataUnopenBuffer::open(const std::string &sound_name) &&
 {
+	// NetHack Voxel: MIDI music (midi_render.h)
+	if (isMidiData(m_buffer))
+		return openMidi(m_buffer, sound_name);
+
 	// load from m_buffer
 
 	auto oggfile = std::make_unique<RAIIOggFile>();
@@ -66,6 +73,18 @@ std::shared_ptr<ISoundDataOpen> SoundDataUnopenBuffer::open(const std::string &s
 
 std::shared_ptr<ISoundDataOpen> SoundDataUnopenFile::open(const std::string &sound_name) &&
 {
+	// NetHack Voxel: MIDI music (midi_render.h)
+	{
+		std::ifstream f(m_path, std::ios::binary);
+		char magic[4] = {};
+		if (f.read(magic, 4) && std::string(magic, 4) == "MThd") {
+			std::ostringstream ss;
+			f.seekg(0);
+			ss << f.rdbuf();
+			return openMidi(ss.str(), sound_name);
+		}
+	}
+
 	// load from file at m_path
 
 	auto oggfile = std::make_unique<RAIIOggFile>();

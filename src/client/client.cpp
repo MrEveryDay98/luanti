@@ -865,7 +865,9 @@ bool Client::loadMedia(const std::string &data, const std::string &filename,
 	const char *sound_ext[] = {
 		".0.ogg", ".1.ogg", ".2.ogg", ".3.ogg", ".4.ogg",
 		".5.ogg", ".6.ogg", ".7.ogg", ".8.ogg", ".9.ogg",
-		".ogg", NULL
+		".ogg",
+		// NetHack Voxel: MIDI music (rendered with a SoundFont when played)
+		".mid", ".midi", NULL
 	};
 	name = removeStringEnd(filename, sound_ext);
 	if (!name.empty()) {
