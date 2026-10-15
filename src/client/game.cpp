@@ -1493,7 +1493,9 @@ void Game::processKeyInput()
 			m_game_formspec.showPauseMenu();
 		}
 	} else if (wasKeyDown(KeyType::CHAT)) {
-		openConsole(0.2, L"");
+		// NetHack Voxel: a taller console, to read back the message log
+		openConsole((client->getEnv().getLocalPlayer()->hud_flags & HUD_FLAG_NHV_CHAT_EVENTS)
+				? 0.5f : 0.2f, L"");
 	} else if (wasKeyDown(KeyType::CMD)) {
 		openConsole(0.2, L"/");
 	} else if (wasKeyDown(KeyType::CMD_LOCAL)) {

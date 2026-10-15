@@ -96,7 +96,11 @@ public:
 
 	bool hasElementOfType(HudElementType type);
 
-	void drawLuaElements(const v3s16 &camera_offset, bool only_unhidable);
+	// NetHack Voxel: elements with z_index >= NHV_ABOVE_GUI_Z are drawn
+	// after menus (above_gui = true), the rest before them
+	static constexpr s16 NHV_ABOVE_GUI_Z = 1000;
+	void drawLuaElements(const v3s16 &camera_offset, bool only_unhidable,
+			bool above_gui = false);
 
 private:
 	bool calculateScreenPos(const v3s16 &camera_offset, HudElement *e, v2s32 *pos);

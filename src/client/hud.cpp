@@ -339,7 +339,8 @@ bool Hud::calculateScreenPos(const v3s16 &camera_offset, HudElement *e, v2s32 *p
 	return true;
 }
 
-void Hud::drawLuaElements(const v3s16 &camera_offset, bool only_unhidable)
+void Hud::drawLuaElements(const v3s16 &camera_offset, bool only_unhidable,
+		bool above_gui)
 {
 	const u32 text_height = g_fontengine->getTextHeight();
 	gui::IGUIFont *const font = g_fontengine->getFont();
@@ -379,6 +380,8 @@ void Hud::drawLuaElements(const v3s16 &camera_offset, bool only_unhidable)
 
 	for (HudElement *e : elems) {
 		if (only_unhidable && e->hideable)
+			continue;
+		if ((e->z_index >= NHV_ABOVE_GUI_Z) != above_gui)
 			continue;
 
 		v2s32 pos(floor(e->pos.X * (float) m_screensize.X + 0.5),

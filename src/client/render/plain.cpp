@@ -56,6 +56,9 @@ void DrawHUD::run(PipelineContext &context)
 	}
 
 	context.device->getGUIEnvironment()->drawAll();
+
+	// NetHack Voxel: HUD elements that stay readable above menus
+	context.hud->drawLuaElements(context.client->getCamera()->getOffset(), !context.show_hud, true);
 }
 
 
