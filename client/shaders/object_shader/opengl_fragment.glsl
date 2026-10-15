@@ -42,6 +42,8 @@ VARYING_ vec3 vNormal;
 // precision must be considered).
 VARYING_ vec3 worldPosition;
 VARYING_ lowp vec4 varColor;
+// NetHack Voxel: 1 = full brightness (no light or shadow)
+uniform float nhvFullbright;
 CENTROID_ VARYING_ mediump vec2 varTexCoord;
 #ifdef USE_ARRAY_TEXTURE
 flat VARYING_ uint varTexLayer;
@@ -461,6 +463,7 @@ void main(void)
 	// For high clarity (light fog) we tint the fog color.
 	// For this to not make the fog color artificially dark we need to normalize using the
 	// fog color's brightest value. We then blend our base color with this to make the fog.
+	col.rgb = mix(col.rgb, base.rgb, nhvFullbright);
 	col = mix(fogColor * pow(fogColor / fogColorMax, vec4(2.0 * clarity)), col, clarity);
 	col = vec4(col.rgb, base.a);
 

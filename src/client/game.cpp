@@ -102,6 +102,8 @@ class GameGlobalShaderUniformSetter : public IShaderUniformSetter
 	// NetHack Voxel screen effects (second stage shader): wave strength,
 	// hallucination strength, time in seconds
 	CachedPixelShaderSetting<float, 3> m_nhv_fx_pixel{"nhvFx"};
+	// NetHack Voxel full brightness (nodes and objects shaders): 0 or 1
+	CachedPixelShaderSetting<float> m_nhv_fullbright_pixel{"nhvFullbright"};
 	float m_nhv_wave = 0.0f, m_nhv_hallu = 0.0f;
 	bool m_volumetric_light_enabled;
 	CachedPixelShaderSetting<float, 3>
@@ -179,6 +181,8 @@ public:
 			float fx[3] = {m_nhv_wave, m_nhv_hallu,
 					(float)(m_client->getEnv().getFrameTime() % 1000000) / 1000.0f};
 			m_nhv_fx_pixel.set(fx, services);
+			float fullbright = (f & HUD_FLAG_NHV_FULLBRIGHT) ? 1.0f : 0.0f;
+			m_nhv_fullbright_pixel.set(&fullbright, services);
 		}
 
 		float animation_timer_delta_f = (float)m_client->getEnv().getFrameTimeDelta() / 100000.f;

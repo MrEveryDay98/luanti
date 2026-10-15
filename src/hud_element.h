@@ -57,6 +57,8 @@
 // left-click doesn't swing the arm by itself either: the server swings it
 // (nhv_swing) only when an attack really happens
 #define HUD_FLAG_NHV_NO_DIG_SWING      (1 << 17)
+// everything drawn at full brightness, ignoring light (the prefab editor)
+#define HUD_FLAG_NHV_FULLBRIGHT        (1 << 18)
 
 #define HUD_PARAM_HOTBAR_ITEMCOUNT 1
 #define HUD_PARAM_HOTBAR_IMAGE 2
