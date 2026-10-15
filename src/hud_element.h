@@ -54,6 +54,9 @@
 // the hero is hallucinating: the screen waves and its colours drift (the
 // confused / stunned flags add a gentler wave)
 #define HUD_FLAG_NHV_HALLU             (1 << 16)
+// left-click doesn't swing the arm by itself either: the server swings it
+// (nhv_swing) only when an attack really happens
+#define HUD_FLAG_NHV_NO_DIG_SWING      (1 << 17)
 
 #define HUD_PARAM_HOTBAR_ITEMCOUNT 1
 #define HUD_PARAM_HOTBAR_IMAGE 2

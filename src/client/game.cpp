@@ -2928,7 +2928,8 @@ void Game::processPlayerInteraction(f32 dtime, bool show_hud)
 
 	runData.pointed_old = pointed;
 
-	if (runData.punching || wasKeyPressed(KeyType::DIG))
+	if ((runData.punching || wasKeyPressed(KeyType::DIG))
+			&& !(player->hud_flags & HUD_FLAG_NHV_NO_DIG_SWING))
 		camera->setDigging(0); // dig animation
 
 	input->clearWasKeyPressed();
@@ -3506,7 +3507,8 @@ void Game::handleDigging(const PointedThing &pointed, const v3s16 &nodepos,
 		client->setCrack(-1, nodepos);
 	}
 
-	camera->setDigging(0);  // Dig animation
+	if (!(client->getEnv().getLocalPlayer()->hud_flags & HUD_FLAG_NHV_NO_DIG_SWING))
+		camera->setDigging(0);  // Dig animation
 }
 
 void Game::updateFrame(ProfilerGraph *graph, RunStats *stats, f32 dtime,
