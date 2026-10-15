@@ -18,6 +18,8 @@ VARYING_ vec3 worldPosition;
 // This fixes the stripes problem with nearest-neighbor textures and MSAA.
 CENTROID_ VARYING_ lowp vec4 varColor;
 CENTROID_ VARYING_ mediump vec2 varTexCoord;
+// NetHack Voxel: for affine (PS1 style, unwarped by perspective) textures
+VARYING_ highp vec3 nhvAffine;
 // Conditional because 'flat' is not available on old GLSL
 #ifdef USE_ARRAY_TEXTURE
 flat VARYING_ uint varTexLayer;
@@ -197,6 +199,10 @@ void main(void)
 
 	worldPosition = (mWorld * pos).xyz;
 	gl_Position = mWorldViewProj * pos;
+	// (corners right at or behind the eye would warp wildly: not closer
+	// than a node, as PS1 games split up big polygons to tame it)
+	float nhvW = max(gl_Position.w, 10.0);
+	nhvAffine = vec3(varTexCoord * nhvW, nhvW);
 
 	eyeVec = -(mWorldView * pos).xyz;
 #ifdef SECONDSTAGE

@@ -142,6 +142,11 @@ void set_default_settings()
 	settings->setDefault("keymap_place", "MOUSE_BUTTON_3|GAMEPAD_AXIS_PLUS_4"); // RMB|Gamepad LT
 	settings->setDefault("keymap_drop", "SYSTEM_SCANCODE_20|GAMEPAD_BUTTON_12"); // KEY_KEY_Q|D-Pad Down
 	settings->setDefault("keymap_zoom", "SYSTEM_SCANCODE_29|GAMEPAD_BUTTON_11"); // KEY_KEY_Z|D-Pad Up
+	// NetHack Voxel retro look (Options): palette 0 off / 1 VGA / 2 EGA,
+	// light bands (0 = smooth), affine (warped) textures
+	settings->setDefault("nhv_palette", "0");
+	settings->setDefault("nhv_light_bands", "0");
+	settings->setDefault("nhv_affine", "false");
 	settings->setDefault("keymap_nhv_search", "SYSTEM_SCANCODE_27"); // KEY_KEY_X (NetHack Voxel: search)
 	settings->setDefault("keymap_nhv_pay", "SYSTEM_SCANCODE_19"); // KEY_KEY_P (NetHack Voxel: pay)
 	settings->setDefault("keymap_nhv_look", "MOUSE_BUTTON_2"); // MMB (NetHack Voxel: look at)
