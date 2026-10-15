@@ -62,6 +62,7 @@ struct NhvFuncs {
 	NHV_FN(nhv_get_rays)
 	NHV_FN(nhv_clear_rays)
 	NHV_FN(nhv_get_spells)
+	NHV_FN(nhv_game_id)
 #undef NHV_FN
 };
 
@@ -140,6 +141,7 @@ bool load_library(std::string &err)
 	NHV_FN(nhv_get_rays)
 	NHV_FN(nhv_clear_rays)
 	NHV_FN(nhv_get_spells)
+	NHV_FN(nhv_game_id)
 #undef NHV_FN
 	if (nh.nhv_api_version() != NHV_API_VERSION) {
 		err = "nethack.dll API version mismatch";
@@ -206,6 +208,7 @@ const char *event_kind_name(int k)
 	case NHV_EV_SOUND: return "sound";
 	case NHV_EV_RAY: return "ray";
 	case NHV_EV_CONTAINER: return "container";
+	case NHV_EV_SPLEV: return "splev";
 	default: return "unknown";
 	}
 }
@@ -772,6 +775,13 @@ int ModApiNetHack::l_nh_get_rays(lua_State *L)
 	return 1;
 }
 
+int ModApiNetHack::l_nh_game_id(lua_State *L)
+{
+	REQUIRE_LOADED();
+	lua_pushnumber(L, (double) nh.nhv_game_id());
+	return 1;
+}
+
 int ModApiNetHack::l_nh_get_spells(lua_State *L)
 {
 	REQUIRE_LOADED();
@@ -830,6 +840,7 @@ void ModApiNetHack::Initialize(lua_State *L, int top)
 	API_FCT(nh_mon_name);
 	API_FCT(nh_obj_name);
 	API_FCT(nh_get_spells);
+	API_FCT(nh_game_id);
 	API_FCT(nh_set_freemove);
 	API_FCT(nh_set_monstates);
 	API_FCT(nh_get_all_monsters);
