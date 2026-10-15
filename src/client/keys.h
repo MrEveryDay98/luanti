@@ -62,6 +62,7 @@ public:
 		ZOOM,
 		NHV_SEARCH, // NetHack Voxel: the search key (X)
 		NHV_PAY, // NetHack Voxel: the pay key (P)
+		NHV_LOOK, // NetHack Voxel: look at something (middle mouse)
 
 		QUICKTUNE_NEXT,
 		QUICKTUNE_PREV,
