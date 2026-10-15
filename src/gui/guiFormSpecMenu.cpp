@@ -4415,6 +4415,27 @@ bool GUIFormSpecMenu::preprocessEvent(const SEvent& event)
 	if (GUIModalMenu::preprocessEvent(event))
 		return true;
 
+	// NetHack Voxel: right-clicking a button clicks it too (e.g. an item in
+	// the inventory brings up what you can do with it)
+	if (event.EventType == EET_MOUSE_INPUT_EVENT
+			&& event.MouseInput.Event == EMIE_RMOUSE_LEFT_UP) {
+		gui::IGUIElement *hovered = Environment->getRootGUIElement()->getElementFromPoint(
+				core::position2d<s32>(event.MouseInput.X, event.MouseInput.Y));
+		if (hovered && hovered->getType() == gui::EGUIET_BUTTON && hovered->isEnabled()) {
+			for (const FieldSpec &s : m_fields) {
+				if (s.fid != hovered->getID() || s.ftype != f_Button)
+					continue;
+				SEvent click{};
+				click.EventType = EET_GUI_EVENT;
+				click.GUIEvent.Caller = hovered;
+				click.GUIEvent.Element = nullptr;
+				click.GUIEvent.EventType = gui::EGET_BUTTON_CLICKED;
+				OnEvent(click);
+				return true;
+			}
+		}
+	}
+
 	// Handle keyboard and touch input to show/hide focus outline
 	switch (event.EventType) {
 	case EET_KEY_INPUT_EVENT:
