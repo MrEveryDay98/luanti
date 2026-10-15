@@ -104,9 +104,6 @@ class GameGlobalShaderUniformSetter : public IShaderUniformSetter
 	CachedPixelShaderSetting<float, 3> m_nhv_fx_pixel{"nhvFx"};
 	// NetHack Voxel full brightness (nodes and objects shaders): 0 or 1
 	CachedPixelShaderSetting<float> m_nhv_fullbright_pixel{"nhvFullbright"};
-	// NetHack Voxel retro look: palette (0 off, 1 VGA, 2 EGA), light bands
-	// (0 = smooth), affine textures (0/1), render pixel size (undersampling)
-	CachedPixelShaderSetting<float, 4> m_nhv_retro_pixel{"nhvRetro"};
 	float m_nhv_wave = 0.0f, m_nhv_hallu = 0.0f;
 	bool m_volumetric_light_enabled;
 	CachedPixelShaderSetting<float, 3>
@@ -186,13 +183,6 @@ public:
 			m_nhv_fx_pixel.set(fx, services);
 			float fullbright = (f & HUD_FLAG_NHV_FULLBRIGHT) ? 1.0f : 0.0f;
 			m_nhv_fullbright_pixel.set(&fullbright, services);
-			float retro[4] = {
-				(float)g_settings->getU16("nhv_palette"),
-				(float)g_settings->getU16("nhv_light_bands"),
-				g_settings->getBool("nhv_affine") ? 1.0f : 0.0f,
-				(float)MYMAX(g_settings->getU16("undersampling"), 1),
-			};
-			m_nhv_retro_pixel.set(retro, services);
 		}
 
 		float animation_timer_delta_f = (float)m_client->getEnv().getFrameTimeDelta() / 100000.f;

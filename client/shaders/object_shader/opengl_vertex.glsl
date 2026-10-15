@@ -7,8 +7,6 @@ VARYING_ vec3 vNormal;
 VARYING_ vec3 worldPosition;
 VARYING_ lowp vec4 varColor;
 CENTROID_ VARYING_ mediump vec2 varTexCoord;
-// NetHack Voxel: for affine (PS1 style, unwarped by perspective) textures
-VARYING_ highp vec3 nhvAffine;
 #ifdef USE_ARRAY_TEXTURE
 flat VARYING_ uint varTexLayer;
 #endif
@@ -125,10 +123,6 @@ void main(void)
 	varTexCoord = (mTexture * vec4(inTexCoord0.xy, 1.0, 1.0)).st;
 
 	gl_Position = mWorldViewProj * skinPos;
-	// (corners right at or behind the eye would warp wildly: not closer
-	// than a node, as PS1 games split up big polygons to tame it)
-	float nhvW = max(gl_Position.w, 10.0);
-	nhvAffine = vec3(varTexCoord * nhvW, nhvW);
 
 	vNormal = (mWorld * vec4(skinNormal, 0.0)).xyz;
 	worldPosition = (mWorld * skinPos).xyz;

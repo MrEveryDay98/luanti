@@ -52,9 +52,6 @@ CENTROID_ VARYING_ lowp vec4 varColor;
 // NetHack Voxel: 1 = full brightness (no light or shadow)
 uniform float nhvFullbright;
 CENTROID_ VARYING_ mediump vec2 varTexCoord;
-VARYING_ highp vec3 nhvAffine;
-// NetHack Voxel retro look: palette, light bands, affine, pixel size
-uniform vec4 nhvRetro;
 // Conditional because 'flat' is not available on old GLSL
 #ifdef USE_ARRAY_TEXTURE
 flat VARYING_ uint varTexLayer;
@@ -443,8 +440,6 @@ vec2 uv_repeat(vec2 v)
 void main(void)
 {
 	vec2 uv = varTexCoord.st;
-	if (nhvRetro.z > 0.5 && nhvAffine.z > 0.0001)
-		uv = nhvAffine.xy / nhvAffine.z; // (PS1 style: warps with the view)
 
 #ifdef USE_ARRAY_TEXTURE
 	vec4 base = texture(baseTexture, vec3(uv, float(varTexLayer))).rgba;
@@ -474,14 +469,7 @@ void main(void)
 		base = mix(base, crack, crack.a);
 	}
 
-	// NetHack Voxel: light in a few steps (the retro look's light bands)
-	vec3 nhvLight = varColor.rgb;
-	if (nhvRetro.y > 0.5) {
-		float m = max(max(nhvLight.r, nhvLight.g), nhvLight.b);
-		if (m > 0.001)
-			nhvLight *= (floor(m * nhvRetro.y + 0.5) / nhvRetro.y) / m;
-	}
-	vec4 col = vec4(base.rgb * nhvLight, 1.0);
+	vec4 col = vec4(base.rgb * varColor.rgb, 1.0);
 
 #ifdef ENABLE_DYNAMIC_SHADOWS
 	// Fragment normal, can differ from vNormal which is derived from vertex normals.

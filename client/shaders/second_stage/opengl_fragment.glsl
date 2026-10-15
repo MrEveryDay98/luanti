@@ -22,65 +22,6 @@ uniform lowp float bloomIntensity;
 uniform lowp float saturation;
 // NetHack Voxel: x = wave strength, y = hallucination, z = time (seconds)
 uniform vec3 nhvFx;
-// NetHack Voxel retro look: x palette (0 off, 1 VGA 256, 2 EGA 16),
-// w render pixel size (dither in render pixels, not screen pixels)
-uniform vec4 nhvRetro;
-
-// ordered (Bayer 4x4) dither, 0..1
-float nhvBayer2(vec2 a)
-{
-	a = floor(a);
-	return fract(dot(a, vec2(0.5, a.y * 0.75)));
-}
-float nhvBayer4(vec2 a)
-{
-	return nhvBayer2(0.5 * a) * 0.25 + nhvBayer2(a);
-}
-
-// the 16 EGA colours
-vec3 nhvEga(int i)
-{
-	if (i == 0) return vec3(0.0, 0.0, 0.0);
-	if (i == 1) return vec3(0.0, 0.0, 0.667);
-	if (i == 2) return vec3(0.0, 0.667, 0.0);
-	if (i == 3) return vec3(0.0, 0.667, 0.667);
-	if (i == 4) return vec3(0.667, 0.0, 0.0);
-	if (i == 5) return vec3(0.667, 0.0, 0.667);
-	if (i == 6) return vec3(0.667, 0.333, 0.0);
-	if (i == 7) return vec3(0.667, 0.667, 0.667);
-	if (i == 8) return vec3(0.333, 0.333, 0.333);
-	if (i == 9) return vec3(0.333, 0.333, 1.0);
-	if (i == 10) return vec3(0.333, 1.0, 0.333);
-	if (i == 11) return vec3(0.333, 1.0, 1.0);
-	if (i == 12) return vec3(1.0, 0.333, 0.333);
-	if (i == 13) return vec3(1.0, 0.333, 1.0);
-	if (i == 14) return vec3(1.0, 1.0, 0.333);
-	return vec3(1.0, 1.0, 1.0);
-}
-
-vec3 nhvPalette(vec3 c, vec2 fragCoord)
-{
-	float d = nhvBayer4(floor(fragCoord / max(nhvRetro.w, 1.0))) - 0.5;
-	if (nhvRetro.x < 1.5) {
-		// VGA-style 256 colours: 3 bits red, 3 green, 2 blue
-		vec3 levels = vec3(7.0, 7.0, 3.0);
-		return clamp(floor(c * levels + 0.5 + d) / levels, 0.0, 1.0);
-	}
-	// EGA: the nearest of the 16 colours, dithered
-	vec3 t = clamp(c + d * 0.3, 0.0, 1.0);
-	vec3 best = vec3(0.0);
-	float bd = 100.0;
-	for (int i = 0; i < 16; i++) {
-		vec3 e = nhvEga(i);
-		vec3 diff = (t - e) * vec3(0.30, 0.59, 0.11);
-		float dist = dot(diff, diff);
-		if (dist < bd) {
-			bd = dist;
-			best = e;
-		}
-	}
-	return best;
-}
 
 CENTROID_ VARYING_ mediump vec2 varTexCoord;
 
@@ -233,10 +174,6 @@ void main(void)
 	// Apply dithering just before quantisation
 	color.rgb += screen_space_dither(gl_FragCoord.xy);
 #endif
-
-	// NetHack Voxel: a retro colour palette, dithered
-	if (nhvRetro.x > 0.5)
-		color.rgb = nhvPalette(clamp(color.rgb, 0.0, 1.0), gl_FragCoord.xy);
 
 	gl_FragColor = vec4(color.rgb, 1.0); // force full alpha to avoid holes in the image.
 }
