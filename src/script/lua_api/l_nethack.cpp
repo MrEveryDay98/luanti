@@ -14,6 +14,7 @@
 #include <windows.h>
 #endif
 
+#include <algorithm>
 #include <string>
 #include <vector>
 
@@ -60,6 +61,7 @@ struct NhvFuncs {
 	NHV_FN(nhv_clear_missiles)
 	NHV_FN(nhv_get_rays)
 	NHV_FN(nhv_clear_rays)
+	NHV_FN(nhv_get_spells)
 #undef NHV_FN
 };
 
@@ -137,6 +139,7 @@ bool load_library(std::string &err)
 	NHV_FN(nhv_clear_missiles)
 	NHV_FN(nhv_get_rays)
 	NHV_FN(nhv_clear_rays)
+	NHV_FN(nhv_get_spells)
 #undef NHV_FN
 	if (nh.nhv_api_version() != NHV_API_VERSION) {
 		err = "nethack.dll API version mismatch";
@@ -769,6 +772,24 @@ int ModApiNetHack::l_nh_get_rays(lua_State *L)
 	return 1;
 }
 
+int ModApiNetHack::l_nh_get_spells(lua_State *L)
+{
+	REQUIRE_LOADED();
+	nhv_spell buf[64];
+	int n = std::min(nh.nhv_get_spells(buf, 64), 64);
+	lua_createtable(L, n, 0);
+	for (int i = 0; i < n; i++) {
+		lua_createtable(L, 0, 3);
+		lua_pushstring(L, buf[i].name);
+		lua_setfield(L, -2, "name");
+		set_int(L, "tile", buf[i].tile);
+		lua_pushboolean(L, buf[i].directional);
+		lua_setfield(L, -2, "directional");
+		lua_rawseti(L, -2, i + 1);
+	}
+	return 1;
+}
+
 int ModApiNetHack::l_nh_clear_rays(lua_State *L)
 {
 	if (loaded())
@@ -808,6 +829,7 @@ void ModApiNetHack::Initialize(lua_State *L, int top)
 	API_FCT(nh_cmap_name);
 	API_FCT(nh_mon_name);
 	API_FCT(nh_obj_name);
+	API_FCT(nh_get_spells);
 	API_FCT(nh_set_freemove);
 	API_FCT(nh_set_monstates);
 	API_FCT(nh_get_all_monsters);
