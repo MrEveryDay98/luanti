@@ -13,6 +13,8 @@
 #include "client/minimap.h"
 #include "client/shadows/dynamicshadowsrender.h"
 #include <IGUIEnvironment.h>
+#include "gui/guiFormSpecMenu.h"
+#include "gui/mainmenumanager.h"
 
 /// Draw3D pipeline step
 void Draw3D::run(PipelineContext &context)
@@ -57,8 +59,11 @@ void DrawHUD::run(PipelineContext &context)
 
 	context.device->getGUIEnvironment()->drawAll();
 
-	// NetHack Voxel: HUD elements that stay readable above menus
-	context.hud->drawLuaElements(context.client->getCamera()->getOffset(), !context.show_hud, true);
+	// NetHack Voxel: HUD elements that stay readable above menus (not above
+	// the pause menu: the game is paused then and can't hide them)
+	auto *top = dynamic_cast<GUIFormSpecMenu *>(g_menumgr.tryGetTopMenu());
+	if (!(top && top->doPause))
+		context.hud->drawLuaElements(context.client->getCamera()->getOffset(), !context.show_hud, true);
 }
 
 

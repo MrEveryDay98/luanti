@@ -79,10 +79,12 @@ struct LocalScriptingFormspecHandler : public TextDest
 
 struct HardcodedPauseFormspecHandler : public TextDest
 {
-	HardcodedPauseFormspecHandler()
+	HardcodedPauseFormspecHandler(Client *client = nullptr) : m_client(client)
 	{
 		m_formname = "MT_PAUSE_MENU";
 	}
+
+	Client *m_client = nullptr;
 
 	void gotText(const StringMap &fields)
 	{
@@ -98,6 +100,13 @@ struct HardcodedPauseFormspecHandler : public TextDest
 
 		if (fields.find("btn_exit_menu") != fields.end()) {
 			g_gamecallback->disconnect();
+			return;
+		}
+
+		// NetHack Voxel: Quit saves and goes back to the game's title screen
+		if (fields.find("btn_nhv_title") != fields.end()) {
+			if (m_client)
+				m_client->sendChatMessage(L"/nhvtitle");
 			return;
 		}
 
@@ -412,8 +421,9 @@ void GameFormSpec::showPauseMenu()
 #endif
 #endif
 
-	// NetHack Voxel: no main menu to go back to
-	os << "button_exit[0," << (ypos += button_height + spacing) << ";3.5," << button_height << ";btn_exit_os;"
+	// NetHack Voxel: no main menu to go back to; Quit saves and goes back to
+	// the game's title screen (Quit there leaves the game)
+	os << "button_exit[0," << (ypos += button_height + spacing) << ";3.5," << button_height << ";btn_nhv_title;"
 		<< strgettext("Quit") << "]";
 
 	os << "container_end[]";
@@ -466,7 +476,7 @@ void GameFormSpec::showPauseMenu()
 	/* Note: FormspecFormSource and LocalFormspecHandler  *
 	 * are deleted by guiFormSpecMenu                     */
 	FormspecFormSource *fs_src = new FormspecFormSource(os.str());
-	HardcodedPauseFormspecHandler *txt_dst = new HardcodedPauseFormspecHandler();
+	HardcodedPauseFormspecHandler *txt_dst = new HardcodedPauseFormspecHandler(m_client);
 
 	GUIFormSpecMenu::create(m_formspec, m_client, m_rendering_engine->get_gui_env(),
 			fs_src, txt_dst, m_client->getFormspecPrepend(),
