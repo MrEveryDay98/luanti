@@ -18,6 +18,7 @@
 #include "client/texturesource.h"
 #include "util/numeric.h"
 #include <map>
+#include <unordered_map>
 #include <IMeshManipulator.h>
 #include "client/renderingengine.h"
 #include <SMesh.h>
@@ -117,6 +118,122 @@ static scene::IMesh *createExtrusionMesh(int resolution_x, int resolution_y)
 	mesh->addMeshBuffer(buf);
 	buf->drop();
 	scaleMesh(mesh, scale);  // also recalculates bounding box
+	return mesh;
+}
+
+/*
+	NetHack Voxel: an extrusion built from the texture's own pixels. The
+	usual extrusion has one long wall per row and column of pixels, which
+	samples the texture right on pixel boundaries along its length: where
+	an outline steps diagonally a hairline of the next pixel shows past the
+	edge. Here there's a small wall only along each edge between an opaque
+	and a see-through pixel, sampling the middle of its own pixel. Built
+	once per texture (nullptr: couldn't read it, or it's too big - the
+	usual extrusion is used then).
+*/
+static std::unordered_map<video::ITexture *, scene::IMesh *> g_nhv_extrusions;
+
+static scene::IMesh *nhvExtrusionMesh(video::ITexture *texture)
+{
+	auto it = g_nhv_extrusions.find(texture);
+	if (it != g_nhv_extrusions.end())
+		return it->second;
+	g_nhv_extrusions[texture] = nullptr;
+
+	const core::dimension2d<u32> dim = texture->getSize();
+	const u32 w = dim.Width, h = dim.Height;
+	if (w == 0 || h == 0 || w * h > 64 * 64)
+		return nullptr;
+	void *data = texture->lock(video::ETLM_READ_ONLY);
+	if (!data)
+		return nullptr;
+	video::IVideoDriver *driver = RenderingEngine::get_video_driver();
+	video::IImage *img = driver->createImageFromData(texture->getColorFormat(),
+			dim, data, false, false); // (a copy)
+	texture->unlock();
+	if (!img)
+		return nullptr;
+	std::vector<bool> solid(w * h);
+	for (u32 y = 0; y < h; y++)
+		for (u32 x = 0; x < w; x++)
+			solid[y * w + x] = img->getPixel(x, y).getAlpha() >= 128;
+	img->drop();
+	auto at = [&](int x, int y) {
+		return x >= 0 && y >= 0 && x < (int)w && y < (int)h && solid[y * w + x];
+	};
+
+	const f32 r = 0.5;
+	video::SColor c(255, 255, 255, 255);
+	scene::IMeshBuffer *buf = new scene::SMeshBuffer();
+	{
+		video::S3DVertex vertices[8] = {
+			// z-
+			video::S3DVertex(-r,+r,-r, 0,0,-1, c, 0,0),
+			video::S3DVertex(+r,+r,-r, 0,0,-1, c, 1,0),
+			video::S3DVertex(+r,-r,-r, 0,0,-1, c, 1,1),
+			video::S3DVertex(-r,-r,-r, 0,0,-1, c, 0,1),
+			// z+
+			video::S3DVertex(-r,+r,+r, 0,0,+1, c, 0,0),
+			video::S3DVertex(-r,-r,+r, 0,0,+1, c, 0,1),
+			video::S3DVertex(+r,-r,+r, 0,0,+1, c, 1,1),
+			video::S3DVertex(+r,+r,+r, 0,0,+1, c, 1,0),
+		};
+		u16 indices[12] = {0,1,2,2,3,0,4,5,6,6,7,4};
+		buf->append(vertices, 8, indices, 12);
+	}
+	const f32 px = 1.0f / w, py = 1.0f / h;
+	for (int y = 0; y < (int)h; y++)
+		for (int x = 0; x < (int)w; x++) {
+			if (!at(x, y))
+				continue;
+			// the pixel's square, and the middle of its texel
+			const f32 x0 = x * px - r, x1 = x0 + px;
+			const f32 y1 = r - y * py, y0 = y1 - py;
+			const f32 u0 = (x + 0.25f) * px, u1 = (x + 0.75f) * px;
+			const f32 v0 = (y + 0.25f) * py, v1 = (y + 0.75f) * py;
+			u16 indices[6] = {0,1,2,2,3,0};
+			if (!at(x - 1, y)) {
+				video::S3DVertex v[4] = {
+					video::S3DVertex(x0,y0,-r, -1,0,0, c, u0,v1),
+					video::S3DVertex(x0,y0,+r, -1,0,0, c, u1,v1),
+					video::S3DVertex(x0,y1,+r, -1,0,0, c, u1,v0),
+					video::S3DVertex(x0,y1,-r, -1,0,0, c, u0,v0),
+				};
+				buf->append(v, 4, indices, 6);
+			}
+			if (!at(x + 1, y)) {
+				video::S3DVertex v[4] = {
+					video::S3DVertex(x1,y0,-r, +1,0,0, c, u0,v1),
+					video::S3DVertex(x1,y1,-r, +1,0,0, c, u0,v0),
+					video::S3DVertex(x1,y1,+r, +1,0,0, c, u1,v0),
+					video::S3DVertex(x1,y0,+r, +1,0,0, c, u1,v1),
+				};
+				buf->append(v, 4, indices, 6);
+			}
+			if (!at(x, y + 1)) { // (below it: y grows downwards in the picture)
+				video::S3DVertex v[4] = {
+					video::S3DVertex(x0,y0,-r, 0,-1,0, c, u0,v0),
+					video::S3DVertex(x1,y0,-r, 0,-1,0, c, u1,v0),
+					video::S3DVertex(x1,y0,+r, 0,-1,0, c, u1,v1),
+					video::S3DVertex(x0,y0,+r, 0,-1,0, c, u0,v1),
+				};
+				buf->append(v, 4, indices, 6);
+			}
+			if (!at(x, y - 1)) {
+				video::S3DVertex v[4] = {
+					video::S3DVertex(x0,y1,-r, 0,+1,0, c, u0,v0),
+					video::S3DVertex(x0,y1,+r, 0,+1,0, c, u0,v1),
+					video::S3DVertex(x1,y1,+r, 0,+1,0, c, u1,v1),
+					video::S3DVertex(x1,y1,-r, 0,+1,0, c, u1,v0),
+				};
+				buf->append(v, 4, indices, 6);
+			}
+		}
+	scene::SMesh *mesh = new scene::SMesh();
+	mesh->addMeshBuffer(buf);
+	buf->drop();
+	scaleMesh(mesh, v3f(1.0, 1.0, 0.1)); // (as thick as the usual extrusion)
+	g_nhv_extrusions[texture] = mesh;
 	return mesh;
 }
 
@@ -294,11 +411,17 @@ void WieldMeshSceneNode::setExtruded(video::ITexture *texture,
 		return;
 	}
 
-	// Get mesh from cache
-	core::dimension2d<u32> dim = texture->getSize();
-	scene::IMesh *original = g_extrusion_mesh_cache->create(dim);
-	scene::SMesh *mesh = cloneStaticMesh(original);
-	original->drop();
+	// Get mesh from cache (NetHack Voxel: one fitted to its pixels)
+	scene::IMesh *fitted = nhvExtrusionMesh(texture);
+	scene::SMesh *mesh;
+	if (fitted) {
+		mesh = cloneStaticMesh(fitted);
+	} else {
+		core::dimension2d<u32> dim = texture->getSize();
+		scene::IMesh *original = g_extrusion_mesh_cache->create(dim);
+		mesh = cloneStaticMesh(original);
+		original->drop();
+	}
 
 	// Set texture
 	mesh->getMeshBuffer(0)->getMaterial().setTexture(0, texture);
