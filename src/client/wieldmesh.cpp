@@ -313,7 +313,10 @@ void WieldMeshSceneNode::setExtruded(video::ITexture *texture,
 	changeToMesh(mesh);
 	mesh->drop();
 
-	m_meshnode->setScale(wield_scale * WIELD_SCALE_FACTOR_EXTRUDED);
+	v3f scale = wield_scale * WIELD_SCALE_FACTOR_EXTRUDED;
+	if (m_flat)
+		scale.Z *= 0.04f; // NetHack Voxel: a flat sprite, not a voxel model
+	m_meshnode->setScale(scale);
 
 	// Customize materials
 	for (u32 layer = 0; layer < m_meshnode->getMaterialCount(); layer++) {

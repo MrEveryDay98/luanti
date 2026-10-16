@@ -140,6 +140,16 @@ static constexpr f32 NHV_FADE = 0.3f;
 
 void Camera::step(f32 dtime)
 {
+	// NetHack Voxel: flat sprites (Graphics) apply to the held item too;
+	// switching it redraws the item at once
+	const bool flat = g_settings->getBool("nhv_flat_sprites");
+	if (flat != m_nhv_flat) {
+		m_nhv_flat = flat;
+		m_wieldnode->setFlat(flat);
+		m_wieldnode->setItem(m_wield_item_next, m_client);
+		m_wieldnode->setLightColorAndAnimation(m_player_light_color, m_client->getAnimationTime());
+	}
+
 	bool was_under_zero = m_wield_change_timer < 0;
 	m_wield_change_timer = MYMIN(m_wield_change_timer + dtime, 0.125);
 

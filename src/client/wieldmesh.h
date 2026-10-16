@@ -122,6 +122,10 @@ public:
 			const TileDef &d1, const TileLayer &l1,
 			v3f wield_scale, ITextureSource *tsrc);
 
+	// NetHack Voxel: flat sprites (the setting nhv_flat_sprites): extruded
+	// items are squashed into a thin card (takes effect at the next setItem)
+	void setFlat(bool flat) { m_flat = flat; }
+
 	void setItem(const ItemStack &item, Client *client,
 			bool check_wield_image = true);
 
@@ -147,6 +151,8 @@ private:
 	scene::IMeshSceneNode *m_meshnode = nullptr;
 	// Material types used as fallback
 	video::E_MATERIAL_TYPE m_material_type;
+
+	bool m_flat = false; // NetHack Voxel: see setFlat
 
 	bool m_anisotropic_filter;
 	bool m_bilinear_filter;
