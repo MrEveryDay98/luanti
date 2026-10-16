@@ -1608,14 +1608,17 @@ void Game::processItemSelection(u16 *new_playeritem)
 				break;
 			}
 		}
-		// ... X searches ("/nhvkey search"), P pays ("/nhvkey pay") and
-		// the middle mouse button looks at something ("/nhvkey look")
+		// ... X searches ("/nhvkey search"), P pays ("/nhvkey pay"), G
+		// enhances skills ("/nhvkey enhance") and the middle mouse button
+		// looks at something ("/nhvkey look")
 		if (wasKeyDown(KeyType::NHV_SEARCH))
 			client->sendChatMessage(L"/nhvkey search");
 		if (wasKeyDown(KeyType::NHV_PAY))
 			client->sendChatMessage(L"/nhvkey pay");
 		if (wasKeyDown(KeyType::NHV_LOOK))
 			client->sendChatMessage(L"/nhvkey look");
+		if (wasKeyDown(KeyType::NHV_ENHANCE))
+			client->sendChatMessage(L"/nhvkey enhance");
 		return;
 	}
 	u16 max_item = player->getMaxHotbarItemcount();
