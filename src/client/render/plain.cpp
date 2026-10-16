@@ -24,10 +24,12 @@ void Draw3D::run(PipelineContext &context)
 
 	context.device->getSceneManager()->drawAll();
 	context.device->getVideoDriver()->setTransform(video::ETS_WORLD, core::IdentityMatrix);
-	if (!context.show_hud)
-		return;
-	context.hud->drawBlockBounds();
-	context.hud->drawSelectionMesh();
+	if (context.show_hud) {
+		context.hud->drawBlockBounds();
+		context.hud->drawSelectionMesh();
+	}
+	if (m_with_wield && context.draw_wield_tool)
+		context.client->getCamera()->drawWieldedTool();
 }
 
 void DrawWield::run(PipelineContext &context)
@@ -98,9 +100,9 @@ void UpscaleStep::run(PipelineContext &context)
 			core::rect<s32>(0, 0, lowres->getSize().Width, lowres->getSize().Height));
 }
 
-std::unique_ptr<RenderStep> create3DStage(Client *client, v2f scale)
+std::unique_ptr<RenderStep> create3DStage(Client *client, v2f scale, bool with_wield)
 {
-	RenderStep *step = new Draw3D();
+	RenderStep *step = new Draw3D(with_wield);
 	if (g_settings->getBool("enable_post_processing")) {
 		RenderPipeline *pipeline = new RenderPipeline();
 		pipeline->addStep(pipeline->own(std::unique_ptr<RenderStep>(step)));
@@ -155,9 +157,11 @@ RenderStep* addUpscaling(RenderPipeline *pipeline, RenderStep *previousStep, v2f
 void populatePlainPipeline(RenderPipeline *pipeline, Client *client)
 {
 	auto downscale_factor = getDownscaleFactor();
-	auto step3D = pipeline->own(create3DStage(client, downscale_factor));
+	// NetHack Voxel: the wielded item is drawn with the world (not after it,
+	// at full resolution over the scaled-up picture): the render resolution
+	// setting applies to it too
+	auto step3D = pipeline->own(create3DStage(client, downscale_factor, true));
 	pipeline->addStep(step3D);
-	pipeline->addStep<DrawWield>();
 	pipeline->addStep<MapPostFxStep>();
 
 	step3D = addUpscaling(pipeline, step3D, downscale_factor, client);

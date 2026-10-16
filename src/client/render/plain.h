@@ -13,6 +13,10 @@
 class Draw3D : public RenderStep
 {
 public:
+	// NetHack Voxel: with_wield also draws the item in your hand, into the
+	// same picture as the world (so a lower render resolution applies to it)
+	Draw3D(bool with_wield = false) : m_with_wield(with_wield) {}
+
 	virtual void setRenderSource(RenderSource *) override {}
 	virtual void setRenderTarget(RenderTarget *target) override { m_target = target; }
 
@@ -21,6 +25,7 @@ public:
 
 private:
 	RenderTarget *m_target {nullptr};
+	bool m_with_wield;
 };
 
 class DrawWield : public RenderStep
@@ -81,7 +86,7 @@ private:
 	RenderTarget *m_target;
 };
 
-std::unique_ptr<RenderStep> create3DStage(Client *client, v2f scale);
+std::unique_ptr<RenderStep> create3DStage(Client *client, v2f scale, bool with_wield = false);
 RenderStep* addUpscaling(RenderPipeline *pipeline, RenderStep *previousStep, v2f downscale_factor, Client *client);
 
 void populatePlainPipeline(RenderPipeline *pipeline, Client *client);
