@@ -15,6 +15,7 @@
 #include "clientmap.h"
 #include "clientmedia.h" // For clientMediaUpdateCacheCopy
 #include "config.h"
+#include "daynightratio.h"
 #include "content_cao.h"
 #include "content/subgames.h"
 #include "client/event_manager.h"
@@ -3585,6 +3586,15 @@ void Game::updateFrame(ProfilerGraph *graph, RunStats *stats, f32 dtime,
 
 	float time_of_day_smooth = runData.time_of_day_smooth;
 	float time_of_day = client->getEnv().getTimeOfDayF();
+
+	// NetHack Voxel: the game's day and night sky gets its brightness from
+	// the time of day (the world's own light is the game's to set)
+	if (sky->nhvDayNight()) {
+		time_brightness = decode_light_f(
+				(float)time_to_daynight_ratio(time_of_day * 24000.0f, true) / 1000.0f);
+		direct_brightness = time_brightness;
+		sunlight_seen = true;
+	}
 
 	static const float maxsm = 0.05f;
 	static const float todsm = 0.05f;

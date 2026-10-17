@@ -1,10 +1,9 @@
-// NetHack Voxel: Quake-style sky - see opengl_fragment.glsl
-VARYING_ highp vec3 vDir;
+// NetHack Voxel: Quake-style sky clouds - see opengl_fragment.glsl
+VARYING_ highp vec3 vPos;
 
 void main(void)
 {
-	// (the sky box is centred on the camera: a corner's position is the
-	// direction you're looking in)
-	vDir = inVertexPosition.xyz;
+	// (a flat plane overhead, centred on the camera)
+	vPos = inVertexPosition.xyz;
 	gl_Position = mWorldViewProj * inVertexPosition;
 }

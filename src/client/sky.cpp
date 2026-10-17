@@ -24,6 +24,7 @@
 #include <S3DVertex.h>
 
 #include <cmath>
+#include <map>
 
 using namespace core;
 
@@ -49,35 +50,49 @@ static inline void disableTextureFiltering(video::SMaterial &mat)
 }
 
 /*
-	NetHack Voxel: a Quake-style sky. The game sets "nhv_sky" (empty: none):
-		layer;layer;horizon
-	a layer:   texture|scroll x|scroll y|scale|opacity|r|g|b|black see-through
-	           (scroll in repeats per second; r g b a 0..1 tint)
-	horizon:   r|g|b|fade|smooth
-	Drawn behind everything, even with a "plain" sky (whose colour is then
-	only the fog's). Its shader is nhv_sky_shader.
+	NetHack Voxel: Quake-style sky clouds. The game sets "nhv_sky" (empty:
+	none) to three parts separated by ";": the back layer, the front layer
+	and the rest, each a list of key=value separated by ",":
+	  a layer:  kind (gen: generated clouds, tex: a picture), tex (picture),
+	            sx, sy (scroll, repeats per second), scale, alpha,
+	            r, g, b (colour 0..1), key (black is see-through: 1),
+	            cover, soft, detail (generated: coverage, softness, octaves),
+	            shr, shg, shb (generated: the shadowed parts' colour)
+	  the rest: hr, hg, hb, fade (horizon colour, how much it fades in),
+	            px (pixels per repeat; 0: smooth), dn (1: day and night)
+	The clouds are one flat plane overhead (nhv_sky_shader), drawn over
+	whatever sky is behind: a plain colour, or the day and night sky.
 */
 namespace {
 struct NhvSkyUniforms {
-	f32 layer0[4] = {0, 0, 1, 0}, layer1[4] = {0, 0, 1, 0};
-	f32 tint0[4] = {1, 1, 1, 0}, tint1[4] = {1, 1, 1, 0};
+	f32 layer[2][4] = {{0, 0, 3, 0}, {0, 0, 3, 0}};
+	f32 tint[2][4] = {{1, 1, 1, 0}, {1, 1, 1, 0}};
+	f32 gen[2][4] = {{0, 0.5, 0.15, 4}, {0, 0.5, 0.15, 4}};
+	f32 shade[2][4] = {{0.4f, 0.4f, 0.45f, 1}, {0.4f, 0.4f, 0.45f, 1}};
 	f32 horizon[4] = {0, 0, 0, 0};
+	f32 misc[4] = {0, 1, 0, 0};
 } g_nhv_sky;
 
 class NhvSkyUniformSetter : public IShaderUniformSetter {
-	CachedPixelShaderSetting<f32, 4> m_layer0{"nhvSkyLayer0"};
-	CachedPixelShaderSetting<f32, 4> m_layer1{"nhvSkyLayer1"};
-	CachedPixelShaderSetting<f32, 4> m_tint0{"nhvSkyTint0"};
-	CachedPixelShaderSetting<f32, 4> m_tint1{"nhvSkyTint1"};
+	CachedPixelShaderSetting<f32, 4> m_layer0{"nhvSkyLayer0"}, m_layer1{"nhvSkyLayer1"};
+	CachedPixelShaderSetting<f32, 4> m_tint0{"nhvSkyTint0"}, m_tint1{"nhvSkyTint1"};
+	CachedPixelShaderSetting<f32, 4> m_gen0{"nhvSkyGen0"}, m_gen1{"nhvSkyGen1"};
+	CachedPixelShaderSetting<f32, 4> m_shade0{"nhvSkyShade0"}, m_shade1{"nhvSkyShade1"};
 	CachedPixelShaderSetting<f32, 4> m_horizon{"nhvSkyHorizon"};
+	CachedPixelShaderSetting<f32, 4> m_misc{"nhvSkyMisc"};
 public:
 	void onSetUniforms(video::IMaterialRendererServices *services) override
 	{
-		m_layer0.set(g_nhv_sky.layer0, services);
-		m_layer1.set(g_nhv_sky.layer1, services);
-		m_tint0.set(g_nhv_sky.tint0, services);
-		m_tint1.set(g_nhv_sky.tint1, services);
+		m_layer0.set(g_nhv_sky.layer[0], services);
+		m_layer1.set(g_nhv_sky.layer[1], services);
+		m_tint0.set(g_nhv_sky.tint[0], services);
+		m_tint1.set(g_nhv_sky.tint[1], services);
+		m_gen0.set(g_nhv_sky.gen[0], services);
+		m_gen1.set(g_nhv_sky.gen[1], services);
+		m_shade0.set(g_nhv_sky.shade[0], services);
+		m_shade1.set(g_nhv_sky.shade[1], services);
 		m_horizon.set(g_nhv_sky.horizon, services);
+		m_misc.set(g_nhv_sky.misc, services);
 	}
 };
 
@@ -88,6 +103,24 @@ public:
 		return name == "nhv_sky_shader" ? new NhvSkyUniformSetter() : nullptr;
 	}
 };
+
+// "a=1,b=2" -> {a: "1", b: "2"}
+std::map<std::string, std::string> nhvPairs(const std::string &part)
+{
+	std::map<std::string, std::string> out;
+	for (const std::string &kv : str_split(part, ',')) {
+		size_t eq = kv.find('=');
+		if (eq != std::string::npos)
+			out[kv.substr(0, eq)] = kv.substr(eq + 1);
+	}
+	return out;
+}
+
+f32 nhvNum(const std::map<std::string, std::string> &m, const char *key, f32 dflt)
+{
+	auto it = m.find(key);
+	return it == m.end() || it->second.empty() ? dflt : mystof(it->second);
+}
 }
 
 std::unique_ptr<IShaderUniformSetterFactory> nhvSkyUniformSetterFactory()
@@ -141,7 +174,7 @@ Sky::Sky(s32 id, RenderingEngine *rendering_engine, ITextureSource *tsrc, IShade
 	m_nhv_tsrc = tsrc;
 	m_nhv_material = baseMaterial();
 	m_nhv_material.MaterialType =
-			ssrc->getShaderInfo(ssrc->getShaderRaw("nhv_sky_shader", false)).material;
+			ssrc->getShaderInfo(ssrc->getShaderRaw("nhv_sky_shader", true)).material;
 	m_nhv_material.BackfaceCulling = false;
 	for (u32 i = 0; i < 2; i++) {
 		m_nhv_material.TextureLayers[i].TextureWrapU = video::ETC_REPEAT;
@@ -162,77 +195,84 @@ void Sky::nhvUpdate()
 	std::vector<std::string> parts = str_split(cfg, ';');
 	if (parts.size() < 3)
 		return;
-	bool smooth = false;
-	{
-		std::vector<std::string> h = str_split(parts[2], '|');
-		for (size_t k = 0; k < 4 && k < h.size(); k++)
-			m_nhv_horizon[k] = mystof(h[k]);
-		smooth = h.size() > 4 && h[4] == "1";
-	}
+	auto rest = nhvPairs(parts[2]);
+	m_nhv_horizon[0] = nhvNum(rest, "hr", 0);
+	m_nhv_horizon[1] = nhvNum(rest, "hg", 0);
+	m_nhv_horizon[2] = nhvNum(rest, "hb", 0);
+	m_nhv_horizon[3] = nhvNum(rest, "fade", 0);
+	m_nhv_pixels = nhvNum(rest, "px", 0);
+	m_nhv_daynight = nhvNum(rest, "dn", 0) > 0.5f;
 	for (int i = 0; i < 2; i++) {
-		std::vector<std::string> f = str_split(parts[i], '|');
+		auto m = nhvPairs(parts[i]);
 		NhvLayer &L = m_nhv_layer[i];
 		L = NhvLayer();
+		L.generated = m["kind"] == "gen";
 		video::ITexture *tex = nullptr;
-		if (!f.empty() && !f[0].empty())
-			tex = m_nhv_tsrc->getTextureForMesh(f[0]);
-		if (f.size() >= 9) {
-			L.speed_x = mystof(f[1]);
-			L.speed_y = mystof(f[2]);
-			L.scale = mystof(f[3]);
-			L.alpha = mystof(f[4]);
-			L.r = mystof(f[5]);
-			L.g = mystof(f[6]);
-			L.b = mystof(f[7]);
-			L.key_black = f[8] == "1";
-		}
-		if (!tex)
+		if (!L.generated && !m["tex"].empty())
+			tex = m_nhv_tsrc->getTextureForMesh(m["tex"]);
+		L.speed_x = nhvNum(m, "sx", 0);
+		L.speed_y = nhvNum(m, "sy", 0);
+		L.scale = nhvNum(m, "scale", 3);
+		L.alpha = nhvNum(m, "alpha", 0);
+		L.tint[0] = nhvNum(m, "r", 1), L.tint[1] = nhvNum(m, "g", 1), L.tint[2] = nhvNum(m, "b", 1);
+		L.key_black = nhvNum(m, "key", 0) > 0.5f;
+		L.coverage = nhvNum(m, "cover", 0.5);
+		L.softness = nhvNum(m, "soft", 0.15);
+		L.detail = nhvNum(m, "detail", 4);
+		L.shade[0] = nhvNum(m, "shr", 0.4), L.shade[1] = nhvNum(m, "shg", 0.4), L.shade[2] = nhvNum(m, "shb", 0.45);
+		if (!L.generated && !tex)
 			L.alpha = 0;
 		m_nhv_material.setTexture(i, tex);
 		auto &tl = m_nhv_material.TextureLayers[i];
+		const bool smooth = m_nhv_pixels <= 0;
 		tl.MinFilter = smooth ? video::ETMINF_LINEAR_MIPMAP_LINEAR : video::ETMINF_NEAREST_MIPMAP_NEAREST;
 		tl.MagFilter = smooth ? video::ETMAGF_LINEAR : video::ETMAGF_NEAREST;
 	}
-	m_nhv_on = m_nhv_layer[0].alpha > 0 || m_nhv_layer[1].alpha > 0 || m_nhv_horizon[3] > 0;
+	m_nhv_on = m_nhv_layer[0].alpha > 0 || m_nhv_layer[1].alpha > 0 || m_nhv_daynight;
 }
 
-// the sky dome: a box around the camera (the shader does the rest)
+// the clouds: one flat plane high overhead (the shader does the rest)
 void Sky::nhvDraw(video::IVideoDriver *driver)
 {
-	// (scroll offsets worked out here, precisely, wrapped to one repeat)
+	// (scroll offsets worked out here, precisely: a picture repeats, so it
+	// wraps at 1; generated clouds don't, so they wrap rarely)
 	const double t = porting::getTimeMs() / 1000.0;
-	f32 *dst[2] = {g_nhv_sky.layer0, g_nhv_sky.layer1};
-	f32 *tint[2] = {g_nhv_sky.tint0, g_nhv_sky.tint1};
 	for (int i = 0; i < 2; i++) {
 		const NhvLayer &L = m_nhv_layer[i];
-		dst[i][0] = (f32)std::fmod(t * L.speed_x, 1.0);
-		dst[i][1] = (f32)std::fmod(t * L.speed_y, 1.0);
-		dst[i][2] = L.scale;
-		dst[i][3] = L.alpha;
-		tint[i][0] = L.r, tint[i][1] = L.g, tint[i][2] = L.b;
-		tint[i][3] = L.key_black ? 1.0f : 0.0f;
+		const double wrap = L.generated ? 1000.0 : 1.0;
+		g_nhv_sky.layer[i][0] = (f32)std::fmod(t * L.speed_x, wrap);
+		g_nhv_sky.layer[i][1] = (f32)std::fmod(t * L.speed_y, wrap);
+		g_nhv_sky.layer[i][2] = L.scale;
+		g_nhv_sky.layer[i][3] = L.alpha;
+		for (int k = 0; k < 3; k++) {
+			g_nhv_sky.tint[i][k] = L.tint[k];
+			g_nhv_sky.shade[i][k] = L.shade[k];
+		}
+		g_nhv_sky.tint[i][3] = L.key_black ? 1.0f : 0.0f;
+		g_nhv_sky.gen[i][0] = L.generated ? 1.0f : 0.0f;
+		g_nhv_sky.gen[i][1] = L.coverage;
+		g_nhv_sky.gen[i][2] = L.softness;
+		g_nhv_sky.gen[i][3] = L.detail;
 	}
 	for (int k = 0; k < 4; k++)
 		g_nhv_sky.horizon[k] = m_nhv_horizon[k];
+	g_nhv_sky.misc[0] = m_nhv_pixels;
+	// (by night the clouds are dark too)
+	g_nhv_sky.misc[1] = m_nhv_daynight ? MYMAX(0.12f, m_time_brightness) : 1.0f;
 
 	driver->setMaterial(m_nhv_material);
 	const video::SColor c(255, 255, 255, 255);
 	const u16 indices[] = {0, 1, 2, 0, 2, 3};
-	// (each face: four corners of the cube)
-	static const f32 faces[6][4][3] = {
-		{{-1, 1, -1}, {1, 1, -1}, {1, 1, 1}, {-1, 1, 1}},       // top
-		{{-1, -1, -1}, {-1, -1, 1}, {1, -1, 1}, {1, -1, -1}},   // bottom
-		{{-1, -1, -1}, {1, -1, -1}, {1, 1, -1}, {-1, 1, -1}},   // -z
-		{{-1, -1, 1}, {-1, 1, 1}, {1, 1, 1}, {1, -1, 1}},       // +z
-		{{-1, -1, -1}, {-1, 1, -1}, {-1, 1, 1}, {-1, -1, 1}},   // -x
-		{{1, -1, -1}, {1, -1, 1}, {1, 1, 1}, {1, 1, -1}},       // +x
+	// (wide and low: its edge is low over the horizon, where the clouds fade
+	// out - and it all stays within the sky box, inside the far clip plane)
+	const f32 H = 1.0f / 16;
+	video::S3DVertex v[4] = {
+		video::S3DVertex(-1, H, -1, 0, -1, 0, c, 0, 0),
+		video::S3DVertex(1, H, -1, 0, -1, 0, c, 0, 0),
+		video::S3DVertex(1, H, 1, 0, -1, 0, c, 0, 0),
+		video::S3DVertex(-1, H, 1, 0, -1, 0, c, 0, 0),
 	};
-	for (const auto &face : faces) {
-		video::S3DVertex v[4];
-		for (int k = 0; k < 4; k++)
-			v[k] = video::S3DVertex(face[k][0], face[k][1], face[k][2], 0, 0, 0, c, 0, 0);
-		driver->drawIndexedTriangleList(v, 4, indices, 2);
-	}
+	driver->drawIndexedTriangleList(v, 4, indices, 2);
 }
 
 void Sky::OnRegisterSceneNode()
@@ -266,11 +306,11 @@ void Sky::render()
 
 	driver->setTransform(video::ETS_WORLD, translate * scale);
 
-	// NetHack Voxel: the Quake-style sky (with a plain sky, all there is)
-	if (m_nhv_on) {
+	// NetHack Voxel: the clouds (with a plain sky, all there is; over the
+	// day and night sky, they're drawn last, below)
+	if (m_nhv_on && !IsVisible) {
 		nhvDraw(driver);
-		if (!IsVisible)
-			return;
+		return;
 	}
 
 	if (m_sunlight_seen) {
@@ -462,6 +502,12 @@ void Sky::render()
 			vertices[3] = video::S3DVertex(-1, -1.0, 1, 0, 1, 0, c, t, o);
 			driver->drawIndexedTriangleList(&vertices[0], 4, indices, 2);
 		}
+	}
+
+	// NetHack Voxel: the clouds, over the day and night sky
+	if (m_nhv_on) {
+		driver->setTransform(video::ETS_WORLD, translate * scale);
+		nhvDraw(driver);
 	}
 }
 

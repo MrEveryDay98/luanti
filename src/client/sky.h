@@ -137,18 +137,27 @@ public:
 		return m_sky_params.auto_dim_skybox;
 	}
 
+	// NetHack Voxel: the game's sky follows the time of day (its
+	// brightness then comes from the time, not the world's light)
+	bool nhvDayNight() const { return m_nhv_on && m_nhv_daynight; }
+
 private:
-	// NetHack Voxel: a Quake-style sky (see nhvUpdate in sky.cpp)
+	// NetHack Voxel: Quake-style sky clouds (see nhvUpdate in sky.cpp)
 	void nhvUpdate();
 	void nhvDraw(video::IVideoDriver *driver);
 	ITextureSource *m_nhv_tsrc = nullptr;
 	video::SMaterial m_nhv_material;
 	std::string m_nhv_cfg;
 	bool m_nhv_on = false;
+	bool m_nhv_daynight = false;
+	f32 m_nhv_pixels = 0;
 	struct NhvLayer {
-		f32 speed_x = 0, speed_y = 0, scale = 1, alpha = 1;
-		f32 r = 1, g = 1, b = 1;
+		bool generated = false;
+		f32 speed_x = 0, speed_y = 0, scale = 3, alpha = 0;
+		f32 tint[3] = {1, 1, 1};
 		bool key_black = false;
+		f32 coverage = 0.5, softness = 0.15, detail = 4;
+		f32 shade[3] = {0.4f, 0.4f, 0.45f};
 	} m_nhv_layer[2];
 	f32 m_nhv_horizon[4] = {0, 0, 0, 0};
 
