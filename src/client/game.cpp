@@ -902,6 +902,9 @@ bool Game::createClient(const GameStartData &start_data)
 	shader_src->addShaderUniformSetterFactory(
 		std::make_unique<FogShaderUniformSetterFactory>());
 
+	// NetHack Voxel: the Quake-style sky's uniforms (sky.cpp)
+	shader_src->addShaderUniformSetterFactory(nhvSkyUniformSetterFactory());
+
 	ShadowRenderer::preInit(shader_src);
 
 	// Update cached textures, meshes and materials

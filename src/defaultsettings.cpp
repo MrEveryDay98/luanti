@@ -146,6 +146,7 @@ void set_default_settings()
 	settings->setDefault("keymap_nhv_pay", "SYSTEM_SCANCODE_19"); // KEY_KEY_P (NetHack Voxel: pay)
 	settings->setDefault("keymap_nhv_look", "MOUSE_BUTTON_2"); // MMB (NetHack Voxel: look at)
 	settings->setDefault("nhv_flat_sprites", "false"); // NetHack Voxel: sprites as flat cards, not voxel models
+	settings->setDefault("nhv_sky", ""); // NetHack Voxel: the Quake-style sky shown now (set by the game)
 	settings->setDefault("keymap_nhv_enhance", "SYSTEM_SCANCODE_10"); // KEY_KEY_G (NetHack Voxel: enhance skills)
 	settings->setDefault("keymap_inventory", "SYSTEM_SCANCODE_12|GAMEPAD_BUTTON_3"); // KEY_KEY_I|Gamepad North
 	settings->setDefault("keymap_pause", "GAMEPAD_BUTTON_6"); // Gamepad Start

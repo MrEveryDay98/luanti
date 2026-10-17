@@ -8,6 +8,7 @@
 #include <ISceneNode.h>
 #include <CMeshBuffer.h>
 #include <array>
+#include <memory>
 #include "camera.h" // CameraMode
 #include "irr_ptr.h"
 #include "skyparams.h"
@@ -22,6 +23,11 @@ namespace video
 
 class IShaderSource;
 class ITextureSource;
+class IShaderUniformSetterFactory;
+
+// NetHack Voxel: uniforms for the Quake-style sky's shader (the game adds it
+// to its shader source)
+std::unique_ptr<IShaderUniformSetterFactory> nhvSkyUniformSetterFactory();
 
 // Skybox, rendered with zbuffer turned off, before all other nodes.
 class Sky : public scene::ISceneNode
@@ -132,6 +138,20 @@ public:
 	}
 
 private:
+	// NetHack Voxel: a Quake-style sky (see nhvUpdate in sky.cpp)
+	void nhvUpdate();
+	void nhvDraw(video::IVideoDriver *driver);
+	ITextureSource *m_nhv_tsrc = nullptr;
+	video::SMaterial m_nhv_material;
+	std::string m_nhv_cfg;
+	bool m_nhv_on = false;
+	struct NhvLayer {
+		f32 speed_x = 0, speed_y = 0, scale = 1, alpha = 1;
+		f32 r = 1, g = 1, b = 1;
+		bool key_black = false;
+	} m_nhv_layer[2];
+	f32 m_nhv_horizon[4] = {0, 0, 0, 0};
+
 	aabb3f m_box{{0.0f, 0.0f, 0.0f}};
 	video::SMaterial m_materials[SKY_MATERIAL_COUNT];
 	// How much sun & moon transition should affect horizon color

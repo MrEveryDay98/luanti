@@ -12,6 +12,9 @@
 #include "player.h" // CameraMode
 #include "profiler.h"
 #include "settings.h"
+#include "porting.h"
+#include "client/shader.h"
+#include "util/string.h"
 #include "util/numeric.h"
 
 #include <ICameraSceneNode.h>
@@ -43,6 +46,53 @@ static inline void disableTextureFiltering(video::SMaterial &mat)
 		tex.MagFilter = video::ETMAGF_NEAREST;
 		tex.AnisotropicFilter = 0;
 	});
+}
+
+/*
+	NetHack Voxel: a Quake-style sky. The game sets "nhv_sky" (empty: none):
+		layer;layer;horizon
+	a layer:   texture|scroll x|scroll y|scale|opacity|r|g|b|black see-through
+	           (scroll in repeats per second; r g b a 0..1 tint)
+	horizon:   r|g|b|fade|smooth
+	Drawn behind everything, even with a "plain" sky (whose colour is then
+	only the fog's). Its shader is nhv_sky_shader.
+*/
+namespace {
+struct NhvSkyUniforms {
+	f32 layer0[4] = {0, 0, 1, 0}, layer1[4] = {0, 0, 1, 0};
+	f32 tint0[4] = {1, 1, 1, 0}, tint1[4] = {1, 1, 1, 0};
+	f32 horizon[4] = {0, 0, 0, 0};
+} g_nhv_sky;
+
+class NhvSkyUniformSetter : public IShaderUniformSetter {
+	CachedPixelShaderSetting<f32, 4> m_layer0{"nhvSkyLayer0"};
+	CachedPixelShaderSetting<f32, 4> m_layer1{"nhvSkyLayer1"};
+	CachedPixelShaderSetting<f32, 4> m_tint0{"nhvSkyTint0"};
+	CachedPixelShaderSetting<f32, 4> m_tint1{"nhvSkyTint1"};
+	CachedPixelShaderSetting<f32, 4> m_horizon{"nhvSkyHorizon"};
+public:
+	void onSetUniforms(video::IMaterialRendererServices *services) override
+	{
+		m_layer0.set(g_nhv_sky.layer0, services);
+		m_layer1.set(g_nhv_sky.layer1, services);
+		m_tint0.set(g_nhv_sky.tint0, services);
+		m_tint1.set(g_nhv_sky.tint1, services);
+		m_horizon.set(g_nhv_sky.horizon, services);
+	}
+};
+
+class NhvSkyUniformSetterFactory : public IShaderUniformSetterFactory {
+public:
+	IShaderUniformSetter *create(const std::string &name) override
+	{
+		return name == "nhv_sky_shader" ? new NhvSkyUniformSetter() : nullptr;
+	}
+};
+}
+
+std::unique_ptr<IShaderUniformSetterFactory> nhvSkyUniformSetterFactory()
+{
+	return std::make_unique<NhvSkyUniformSetterFactory>();
 }
 
 Sky::Sky(s32 id, RenderingEngine *rendering_engine, ITextureSource *tsrc, IShaderSource *ssrc) :
@@ -85,11 +135,110 @@ Sky::Sky(s32 id, RenderingEngine *rendering_engine, ITextureSource *tsrc, IShade
 	m_sky_params.fog_start = rangelim(g_settings->getFloat("fog_start"), 0.0f, 0.99f);
 
 	setStarCount(1000);
+
+	// NetHack Voxel: the Quake-style sky's material (its uniforms come from
+	// nhvSkyUniformSetterFactory, added by the game)
+	m_nhv_tsrc = tsrc;
+	m_nhv_material = baseMaterial();
+	m_nhv_material.MaterialType =
+			ssrc->getShaderInfo(ssrc->getShaderRaw("nhv_sky_shader", false)).material;
+	m_nhv_material.BackfaceCulling = false;
+	for (u32 i = 0; i < 2; i++) {
+		m_nhv_material.TextureLayers[i].TextureWrapU = video::ETC_REPEAT;
+		m_nhv_material.TextureLayers[i].TextureWrapV = video::ETC_REPEAT;
+	}
+}
+
+// (re-read "nhv_sky" when it changed)
+void Sky::nhvUpdate()
+{
+	const std::string cfg = g_settings->get("nhv_sky");
+	if (cfg == m_nhv_cfg)
+		return;
+	m_nhv_cfg = cfg;
+	m_nhv_on = false;
+	if (cfg.empty() || !m_nhv_tsrc)
+		return;
+	std::vector<std::string> parts = str_split(cfg, ';');
+	if (parts.size() < 3)
+		return;
+	bool smooth = false;
+	{
+		std::vector<std::string> h = str_split(parts[2], '|');
+		for (size_t k = 0; k < 4 && k < h.size(); k++)
+			m_nhv_horizon[k] = mystof(h[k]);
+		smooth = h.size() > 4 && h[4] == "1";
+	}
+	for (int i = 0; i < 2; i++) {
+		std::vector<std::string> f = str_split(parts[i], '|');
+		NhvLayer &L = m_nhv_layer[i];
+		L = NhvLayer();
+		video::ITexture *tex = nullptr;
+		if (!f.empty() && !f[0].empty())
+			tex = m_nhv_tsrc->getTextureForMesh(f[0]);
+		if (f.size() >= 9) {
+			L.speed_x = mystof(f[1]);
+			L.speed_y = mystof(f[2]);
+			L.scale = mystof(f[3]);
+			L.alpha = mystof(f[4]);
+			L.r = mystof(f[5]);
+			L.g = mystof(f[6]);
+			L.b = mystof(f[7]);
+			L.key_black = f[8] == "1";
+		}
+		if (!tex)
+			L.alpha = 0;
+		m_nhv_material.setTexture(i, tex);
+		auto &tl = m_nhv_material.TextureLayers[i];
+		tl.MinFilter = smooth ? video::ETMINF_LINEAR_MIPMAP_LINEAR : video::ETMINF_NEAREST_MIPMAP_NEAREST;
+		tl.MagFilter = smooth ? video::ETMAGF_LINEAR : video::ETMAGF_NEAREST;
+	}
+	m_nhv_on = m_nhv_layer[0].alpha > 0 || m_nhv_layer[1].alpha > 0 || m_nhv_horizon[3] > 0;
+}
+
+// the sky dome: a box around the camera (the shader does the rest)
+void Sky::nhvDraw(video::IVideoDriver *driver)
+{
+	// (scroll offsets worked out here, precisely, wrapped to one repeat)
+	const double t = porting::getTimeMs() / 1000.0;
+	f32 *dst[2] = {g_nhv_sky.layer0, g_nhv_sky.layer1};
+	f32 *tint[2] = {g_nhv_sky.tint0, g_nhv_sky.tint1};
+	for (int i = 0; i < 2; i++) {
+		const NhvLayer &L = m_nhv_layer[i];
+		dst[i][0] = (f32)std::fmod(t * L.speed_x, 1.0);
+		dst[i][1] = (f32)std::fmod(t * L.speed_y, 1.0);
+		dst[i][2] = L.scale;
+		dst[i][3] = L.alpha;
+		tint[i][0] = L.r, tint[i][1] = L.g, tint[i][2] = L.b;
+		tint[i][3] = L.key_black ? 1.0f : 0.0f;
+	}
+	for (int k = 0; k < 4; k++)
+		g_nhv_sky.horizon[k] = m_nhv_horizon[k];
+
+	driver->setMaterial(m_nhv_material);
+	const video::SColor c(255, 255, 255, 255);
+	const u16 indices[] = {0, 1, 2, 0, 2, 3};
+	// (each face: four corners of the cube)
+	static const f32 faces[6][4][3] = {
+		{{-1, 1, -1}, {1, 1, -1}, {1, 1, 1}, {-1, 1, 1}},       // top
+		{{-1, -1, -1}, {-1, -1, 1}, {1, -1, 1}, {1, -1, -1}},   // bottom
+		{{-1, -1, -1}, {1, -1, -1}, {1, 1, -1}, {-1, 1, -1}},   // -z
+		{{-1, -1, 1}, {-1, 1, 1}, {1, 1, 1}, {1, -1, 1}},       // +z
+		{{-1, -1, -1}, {-1, 1, -1}, {-1, 1, 1}, {-1, -1, 1}},   // -x
+		{{1, -1, -1}, {1, -1, 1}, {1, 1, 1}, {1, 1, -1}},       // +x
+	};
+	for (const auto &face : faces) {
+		video::S3DVertex v[4];
+		for (int k = 0; k < 4; k++)
+			v[k] = video::S3DVertex(face[k][0], face[k][1], face[k][2], 0, 0, 0, c, 0, 0);
+		driver->drawIndexedTriangleList(v, 4, indices, 2);
+	}
 }
 
 void Sky::OnRegisterSceneNode()
 {
-	if (IsVisible)
+	nhvUpdate();
+	if (IsVisible || m_nhv_on)
 		SceneManager->registerNodeForRendering(this, scene::ESNRP_SKY_BOX);
 
 	scene::ISceneNode::OnRegisterSceneNode();
@@ -116,6 +265,13 @@ void Sky::render()
 	scale.setScale(core::vector3df(viewDistance, viewDistance, viewDistance));
 
 	driver->setTransform(video::ETS_WORLD, translate * scale);
+
+	// NetHack Voxel: the Quake-style sky (with a plain sky, all there is)
+	if (m_nhv_on) {
+		nhvDraw(driver);
+		if (!IsVisible)
+			return;
+	}
 
 	if (m_sunlight_seen) {
 		video::SColorf suncolor_f(1, 1, 0, 1);
