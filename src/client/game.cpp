@@ -1611,8 +1611,18 @@ void Game::processItemSelection(u16 *new_playeritem)
 		// ... X searches ("/nhvkey search"), P pays ("/nhvkey pay"), G
 		// enhances skills ("/nhvkey enhance") and the middle mouse button
 		// looks at something ("/nhvkey look")
-		if (wasKeyDown(KeyType::NHV_SEARCH))
-			client->sendChatMessage(L"/nhvkey search");
+		// (searching: held it repeats until let go - "/nhvkey searchup";
+		// with Ctrl, it asks how many turns to search)
+		if (wasKeyDown(KeyType::NHV_SEARCH)) {
+#ifdef _WIN32
+			if (GetAsyncKeyState(VK_CONTROL) & 0x8000)
+				client->sendChatMessage(L"/nhvkey searchcount");
+			else
+#endif
+				client->sendChatMessage(L"/nhvkey search");
+		}
+		if (input->wasKeyReleased(KeyType::NHV_SEARCH))
+			client->sendChatMessage(L"/nhvkey searchup");
 		if (wasKeyDown(KeyType::NHV_PAY))
 			client->sendChatMessage(L"/nhvkey pay");
 		if (wasKeyDown(KeyType::NHV_LOOK))
