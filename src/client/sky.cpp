@@ -59,7 +59,8 @@ static inline void disableTextureFiltering(video::SMaterial &mat)
 	            cover, soft, detail (generated: coverage, softness, octaves),
 	            shr, shg, shb (generated: the shadowed parts' colour)
 	  the rest: hr, hg, hb, fade (horizon colour, how much it fades in),
-	            px (pixels per repeat; 0: smooth), dn (1: day and night)
+	            px (pixels per repeat; 0: smooth), dn (1: day and night),
+	            bright (the clouds' brightness: 1 as drawn, 2 twice as bright)
 	The clouds are one flat plane overhead (nhv_sky_shader), drawn over
 	whatever sky is behind: a plain colour, or the day and night sky.
 */
@@ -202,6 +203,7 @@ void Sky::nhvUpdate()
 	m_nhv_horizon[3] = nhvNum(rest, "fade", 0);
 	m_nhv_pixels = nhvNum(rest, "px", 0);
 	m_nhv_daynight = nhvNum(rest, "dn", 0) > 0.5f;
+	m_nhv_bright = MYMAX(0.0f, nhvNum(rest, "bright", 1));
 	for (int i = 0; i < 2; i++) {
 		auto m = nhvPairs(parts[i]);
 		NhvLayer &L = m_nhv_layer[i];
@@ -258,7 +260,7 @@ void Sky::nhvDraw(video::IVideoDriver *driver)
 		g_nhv_sky.horizon[k] = m_nhv_horizon[k];
 	g_nhv_sky.misc[0] = m_nhv_pixels;
 	// (by night the clouds are dark too)
-	g_nhv_sky.misc[1] = m_nhv_daynight ? MYMAX(0.12f, m_time_brightness) : 1.0f;
+	g_nhv_sky.misc[1] = (m_nhv_daynight ? MYMAX(0.12f, m_time_brightness) : 1.0f) * m_nhv_bright;
 
 	driver->setMaterial(m_nhv_material);
 	const video::SColor c(255, 255, 255, 255);
