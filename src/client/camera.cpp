@@ -61,6 +61,10 @@ Camera::Camera(MapDrawControl &draw_control, Client *client, RenderingEngine *re
 	m_wieldnode = new WieldMeshSceneNode(m_wieldmgr, -1);
 	m_wieldnode->setItem(ItemStack(), m_client);
 	m_wieldnode->drop(); // m_wieldmgr grabbed it
+	m_nhv_offnode = new WieldMeshSceneNode(m_wieldmgr, -1);
+	m_nhv_offnode->setItem(ItemStack(), m_client);
+	m_nhv_offnode->setVisible(false);
+	m_nhv_offnode->drop();
 
 	m_nametags.clear();
 
@@ -148,6 +152,14 @@ void Camera::step(f32 dtime)
 		m_wieldnode->setFlat(flat);
 		m_wieldnode->setItem(m_wield_item_next, m_client);
 		m_wieldnode->setLightColorAndAnimation(m_player_light_color, m_client->getAnimationTime());
+		m_nhv_offnode->setFlat(flat);
+		m_nhv_off_item.clear(); // (redrawn below)
+	}
+	// NetHack Voxel: the left hand's swing
+	if (m_nhv_off_anim >= 0.0f) {
+		m_nhv_off_anim += dtime * 3.5f;
+		if (m_nhv_off_anim >= 1.0f)
+			m_nhv_off_anim = -1.0f;
 	}
 
 	bool was_under_zero = m_wield_change_timer < 0;
@@ -580,6 +592,31 @@ void Camera::update(LocalPlayer* player, f32 frametime, f32 tool_reload_ratio)
 	m_wieldnode->setPosition(wield_position);
 	m_wieldnode->setRotation(wield_rotation);
 
+	// NetHack Voxel: the left hand, mirrored across the middle of the view,
+	// with its own swing (as the right hand's)
+	if (m_nhv_offnode->isVisible()) {
+		v3f off_pos = v3f(-m_wieldmesh_offset.X, m_wieldmesh_offset.Y, 65);
+		v3f off_rot = v3f(-100, -120, 100);
+		if (m_nhv_off_anim >= 0.0f) {
+			f32 frac = m_nhv_off_anim;
+			off_pos.X += 50 * std::sin(std::pow(frac, 0.8f) * M_PI);
+			off_pos.Y += 24 * std::sin(frac * 1.8 * M_PI);
+			off_pos.Z += 25 * 0.5;
+			core::quaternion q_begin(off_rot * core::DEGTORAD);
+			core::quaternion q_end(v3f(80, -30, -100) * core::DEGTORAD);
+			core::quaternion q;
+			q.slerp(q_begin, q_end, std::sin(frac * M_PI));
+			q.toEuler(off_rot);
+			off_rot *= core::RADTODEG;
+		} else {
+			f32 bobfrac = my_modf(m_view_bobbing_anim);
+			off_pos.X += std::sin(bobfrac * M_PI * 2.0) * 3.0;
+			off_pos.Y += std::sin(my_modf(bobfrac * 2.0) * M_PI) * 3.0;
+		}
+		m_nhv_offnode->setPosition(off_pos);
+		m_nhv_offnode->setRotation(off_rot);
+	}
+
 	m_player_light_color = player->light_color;
 	video::SColor wield_light = m_player_light_color;
 	if (m_nhv_fade > 0.0f) {
@@ -591,6 +628,9 @@ void Camera::update(LocalPlayer* player, f32 frametime, f32 tool_reload_ratio)
 	}
 	m_wieldnode->setLightColorAndAnimation(wield_light,
 			m_client->getAnimationTime());
+	if (m_nhv_offnode->isVisible())
+		m_nhv_offnode->setLightColorAndAnimation(wield_light,
+				m_client->getAnimationTime());
 
 	// Set render distance
 	updateViewingRange();
@@ -816,6 +856,17 @@ std::array<core::plane3d<f32>, 4> Camera::getFrustumCullPlanes() const
 		frustum_planes[SViewFrustum::VF_BOTTOM_PLANE],
 		frustum_planes[SViewFrustum::VF_TOP_PLANE],
 	};
+}
+
+void Camera::nhvSetOffhand(const ItemStack &item)
+{
+	std::string s = item.getItemString();
+	if (s == m_nhv_off_item)
+		return;
+	m_nhv_off_item = s;
+	m_nhv_offnode->setItem(item, m_client);
+	m_nhv_offnode->setVisible(!item.empty());
+	m_nhv_offnode->setLightColorAndAnimation(m_player_light_color, m_client->getAnimationTime());
 }
 
 void Camera::updateWieldedTool()

@@ -2807,6 +2807,18 @@ void Game::processPlayerInteraction(f32 dtime, bool show_hud)
 			camera->setDigging(1);
 		}
 	}
+	// ... and nhv_off_swing for the left hand, which holds the player's
+	// "nhv_offhand" item (dual wielding)
+	{
+		static bool last_off = false;
+		bool off = player->hud_flags & HUD_FLAG_NHV_OFF_SWING;
+		if (off != last_off) {
+			last_off = off;
+			camera->nhvOffSwing();
+		}
+		const InventoryList *list = player->inventory.getList("nhv_offhand");
+		camera->nhvSetOffhand(list && list->getSize() > 0 ? list->getItem(0) : ItemStack());
+	}
 
 	const v3f camera_direction = camera->getDirection();
 	const v3s16 camera_offset  = camera->getOffset();

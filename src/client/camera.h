@@ -153,6 +153,11 @@ public:
 	// Replace the wielded item mesh
 	void wield(const ItemStack &item, bool animate = true);
 
+	// NetHack Voxel: the left hand (dual wielding) holds this (empty: no
+	// left hand shown), and swings it once
+	void nhvSetOffhand(const ItemStack &item);
+	void nhvOffSwing() { m_nhv_off_anim = 0.0f; }
+
 	// Draw the wielded tool.
 	// This has to happen *after* the main scene is drawn.
 	// Warning: This clears the Z buffer.
@@ -195,6 +200,10 @@ private:
 
 	scene::ISceneManager *m_wieldmgr = nullptr;
 	WieldMeshSceneNode *m_wieldnode = nullptr;
+	// NetHack Voxel: the left hand, a mirror of the right
+	WieldMeshSceneNode *m_nhv_offnode = nullptr;
+	std::string m_nhv_off_item;     // (what it holds, as an item string)
+	f32 m_nhv_off_anim = -1.0f;     // its swing (0..1; -1: none)
 
 	// draw control
 	MapDrawControl& m_draw_control;
