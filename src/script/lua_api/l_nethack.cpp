@@ -191,6 +191,7 @@ const char *req_kind_name(int k)
 	case NHV_REQ_LINE: return "line";
 	case NHV_REQ_EXTCMD: return "extcmd";
 	case NHV_REQ_POS: return "pos";
+	case NHV_REQ_TURN: return "turn";
 	default: return "none";
 	}
 }
