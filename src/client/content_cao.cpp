@@ -625,6 +625,12 @@ void GenericCAO::addToScene(ITextureSource *tsrc, scene::ISceneManager *smgr)
 		if (m_material_type != video::EMT_INVALID)
 			mat.MaterialType = m_material_type;
 		mat.FogEnable = true;
+		if (nhvXray()) {
+			// (seen through walls: no depth test, and not hiding what's
+			// behind it either)
+			mat.ZBuffer = video::ECFN_DISABLED;
+			mat.ZWriteEnable = video::EZW_OFF;
+		}
 		mat.forEachTexture([] (auto &tex) {
 			tex.MinFilter = video::ETMINF_NEAREST_MIPMAP_NEAREST;
 			tex.MagFilter = video::ETMAGF_NEAREST;
@@ -1512,6 +1518,7 @@ bool GenericCAO::visualExpiryRequired(const ObjectProperties &new_) const
 		old.is_visible != new_.is_visible ||
 		old.shaded != new_.shaded ||
 		old.use_texture_alpha != new_.use_texture_alpha ||
+		old.infotext != new_.infotext || // (NetHack Voxel: "nhv:xray")
 		old.node != new_.node ||
 		old.mesh != new_.mesh ||
 		old.visual != new_.visual ||

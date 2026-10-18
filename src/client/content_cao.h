@@ -310,7 +310,18 @@ public:
 
 	std::string infoText() override
 	{
+		// NetHack Voxel: "nhv:..." infotext is a marker (nhvXray), not
+		// something to show when pointed at
+		if (m_prop.infotext.rfind("nhv:", 0) == 0)
+			return "";
 		return m_prop.infotext;
+	}
+
+	// NetHack Voxel: an object marked with infotext "nhv:xray" is drawn
+	// over everything - not hidden by walls (a monster sensed by telepathy)
+	bool nhvXray() const
+	{
+		return m_prop.infotext == "nhv:xray";
 	}
 
 	void updateMeshCulling();
