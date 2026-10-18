@@ -155,6 +155,14 @@ void Camera::step(f32 dtime)
 		m_nhv_offnode->setFlat(flat);
 		m_nhv_off_item.clear(); // (redrawn below)
 	}
+	// NetHack Voxel: hands down (a kick) and the view shaking
+	if (m_nhv_down_anim >= 0.0f) {
+		m_nhv_down_anim += dtime * 2.2f;
+		if (m_nhv_down_anim >= 1.0f)
+			m_nhv_down_anim = -1.0f;
+	}
+	if (m_nhv_shake > 0.0f)
+		m_nhv_shake = std::max(0.0f, m_nhv_shake - dtime * 4.0f);
 	// NetHack Voxel: the left hand's swing
 	if (m_nhv_off_anim >= 0.0f) {
 		m_nhv_off_anim += dtime * 3.5f;
@@ -501,12 +509,20 @@ void Camera::update(LocalPlayer* player, f32 frametime, f32 tool_reload_ratio)
 		m_camera_position = my_cp;
 	}
 
+	// NetHack Voxel: shaking (a kick landing): a quick jitter, dying away
+	v3f nhv_shake;
+	if (m_nhv_shake > 0.0f) {
+		f32 a = m_nhv_shake * m_nhv_shake * 0.06f * BS;
+		nhv_shake = v3f((myrand_range(-100, 100) / 100.0f) * a,
+				(myrand_range(-100, 100) / 100.0f) * a,
+				(myrand_range(-100, 100) / 100.0f) * a);
+	}
 	// Set camera node transformation
-	m_cameranode->setPosition(m_camera_position - intToFloat(m_camera_offset, BS));
+	m_cameranode->setPosition(m_camera_position + nhv_shake - intToFloat(m_camera_offset, BS));
 	m_cameranode->setUpVector(abs_cam_up);
 	m_cameranode->updateAbsolutePosition();
 	// *100 helps in large map coordinates
-	m_cameranode->setTarget(m_camera_position - intToFloat(m_camera_offset, BS)
+	m_cameranode->setTarget(m_camera_position + nhv_shake - intToFloat(m_camera_offset, BS)
 		+ 100 * m_camera_direction);
 
 	/*
@@ -589,6 +605,9 @@ void Camera::update(LocalPlayer* player, f32 frametime, f32 tool_reload_ratio)
 		wield_position.X -= std::sin(bobfrac*M_PI*2.0) * 3.0;
 		wield_position.Y += std::sin(my_modf(bobfrac*2.0)*M_PI) * 3.0;
 	}
+	// NetHack Voxel: kicking, both hands drop out of view and come back
+	f32 nhv_down = m_nhv_down_anim >= 0.0f ? std::sin(m_nhv_down_anim * M_PI) * 90.0f : 0.0f;
+	wield_position.Y -= nhv_down;
 	m_wieldnode->setPosition(wield_position);
 	m_wieldnode->setRotation(wield_rotation);
 
@@ -614,6 +633,7 @@ void Camera::update(LocalPlayer* player, f32 frametime, f32 tool_reload_ratio)
 			off_pos.X -= std::sin(bobfrac * M_PI * 2.0) * 3.0;
 			off_pos.Y += std::sin(my_modf(bobfrac * 2.0) * M_PI) * 3.0;
 		}
+		off_pos.Y -= nhv_down;
 		m_nhv_offnode->setPosition(off_pos);
 		m_nhv_offnode->setRotation(off_rot);
 	}

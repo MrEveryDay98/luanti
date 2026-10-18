@@ -62,6 +62,11 @@
 // the left hand (dual wielding): toggling nhv_off_swing swings it once; what
 // it holds is the player's inventory list "nhv_offhand" (empty: no left hand)
 #define HUD_FLAG_NHV_OFF_SWING         (1 << 19)
+// toggling nhv_hands_down drops both hands out of view and brings them back
+// (a kick: your body moved, not your arms); toggling nhv_shake shakes the
+// view for a moment (a kick landing)
+#define HUD_FLAG_NHV_HANDS_DOWN        (1 << 20)
+#define HUD_FLAG_NHV_SHAKE             (1 << 21)
 
 #define HUD_PARAM_HOTBAR_ITEMCOUNT 1
 #define HUD_PARAM_HOTBAR_IMAGE 2

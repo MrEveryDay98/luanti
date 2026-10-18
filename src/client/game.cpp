@@ -2816,6 +2816,17 @@ void Game::processPlayerInteraction(f32 dtime, bool show_hud)
 			last_off = off;
 			camera->nhvOffSwing();
 		}
+		static bool last_down = false, last_shake = false;
+		bool down = player->hud_flags & HUD_FLAG_NHV_HANDS_DOWN;
+		if (down != last_down) {
+			last_down = down;
+			camera->nhvHandsDown();
+		}
+		bool shake = player->hud_flags & HUD_FLAG_NHV_SHAKE;
+		if (shake != last_shake) {
+			last_shake = shake;
+			camera->nhvShake();
+		}
 		const InventoryList *list = player->inventory.getList("nhv_offhand");
 		camera->nhvSetOffhand(list && list->getSize() > 0 ? list->getItem(0) : ItemStack());
 	}

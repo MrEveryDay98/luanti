@@ -157,6 +157,10 @@ public:
 	// left hand shown), and swings it once
 	void nhvSetOffhand(const ItemStack &item);
 	void nhvOffSwing() { m_nhv_off_anim = 0.0f; }
+	// NetHack Voxel: both hands drop out of view and come back (a kick), and
+	// the view shakes for a moment (it lands)
+	void nhvHandsDown() { m_nhv_down_anim = 0.0f; }
+	void nhvShake() { m_nhv_shake = 1.0f; }
 
 	// Draw the wielded tool.
 	// This has to happen *after* the main scene is drawn.
@@ -204,6 +208,8 @@ private:
 	WieldMeshSceneNode *m_nhv_offnode = nullptr;
 	std::string m_nhv_off_item;     // (what it holds, as an item string)
 	f32 m_nhv_off_anim = -1.0f;     // its swing (0..1; -1: none)
+	f32 m_nhv_down_anim = -1.0f;    // hands down and up (0..1; -1: none)
+	f32 m_nhv_shake = 0.0f;         // shaking (1 .. 0)
 
 	// draw control
 	MapDrawControl& m_draw_control;
