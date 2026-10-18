@@ -60,6 +60,7 @@ struct NhvFuncs {
 	NHV_FN(nhv_get_missiles)
 	NHV_FN(nhv_clear_missiles)
 	NHV_FN(nhv_get_lights)
+	NHV_FN(nhv_get_ball)
 	NHV_FN(nhv_get_rays)
 	NHV_FN(nhv_clear_rays)
 	NHV_FN(nhv_get_spells)
@@ -140,6 +141,7 @@ bool load_library(std::string &err)
 	NHV_FN(nhv_get_missiles)
 	NHV_FN(nhv_clear_missiles)
 	NHV_FN(nhv_get_lights)
+	NHV_FN(nhv_get_ball)
 	NHV_FN(nhv_get_rays)
 	NHV_FN(nhv_clear_rays)
 	NHV_FN(nhv_get_spells)
@@ -774,6 +776,27 @@ int ModApiNetHack::l_nh_get_lights(lua_State *L)
 	return 1;
 }
 
+// nh_get_ball() -> nil if not punished, else {bx, by, cx, cy, carried}:
+// the heavy iron ball's square and its chain's
+int ModApiNetHack::l_nh_get_ball(lua_State *L)
+{
+	REQUIRE_LOADED();
+	int bx, by, cx, cy;
+	int st = nh.nhv_get_ball(&bx, &by, &cx, &cy);
+	if (!st) {
+		lua_pushnil(L);
+		return 1;
+	}
+	lua_createtable(L, 0, 5);
+	set_int(L, "bx", bx);
+	set_int(L, "by", by);
+	set_int(L, "cx", cx);
+	set_int(L, "cy", cy);
+	lua_pushboolean(L, st == 2);
+	lua_setfield(L, -2, "carried");
+	return 1;
+}
+
 // nh_get_rays() -> list of {rid, type, kind, x, y, dx, dy, range, from_hero, caster}
 int ModApiNetHack::l_nh_get_rays(lua_State *L)
 {
@@ -876,6 +899,7 @@ void ModApiNetHack::Initialize(lua_State *L, int top)
 	API_FCT(nh_get_missiles);
 	API_FCT(nh_clear_missiles);
 	API_FCT(nh_get_lights);
+	API_FCT(nh_get_ball);
 	API_FCT(nh_get_rays);
 	API_FCT(nh_clear_rays);
 }
