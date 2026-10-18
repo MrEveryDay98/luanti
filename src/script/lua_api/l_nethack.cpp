@@ -776,13 +776,14 @@ int ModApiNetHack::l_nh_get_lights(lua_State *L)
 	return 1;
 }
 
-// nh_get_ball() -> nil if not punished, else {bx, by, cx, cy, tile, carried}:
+// nh_get_ball() -> nil if not punished, else {bx, by, cx, cy, tile, ball_id, chain_id, carried}:
 // the heavy iron ball's square and its chain's
 int ModApiNetHack::l_nh_get_ball(lua_State *L)
 {
 	REQUIRE_LOADED();
 	int bx, by, cx, cy, tile;
-	int st = nh.nhv_get_ball(&bx, &by, &cx, &cy, &tile);
+	unsigned ball_id, chain_id;
+	int st = nh.nhv_get_ball(&bx, &by, &cx, &cy, &tile, &ball_id, &chain_id);
 	if (!st) {
 		lua_pushnil(L);
 		return 1;
@@ -793,6 +794,8 @@ int ModApiNetHack::l_nh_get_ball(lua_State *L)
 	set_int(L, "cx", cx);
 	set_int(L, "cy", cy);
 	set_int(L, "tile", tile);
+	set_int(L, "ball_id", ball_id);
+	set_int(L, "chain_id", chain_id);
 	lua_pushboolean(L, st == 2);
 	lua_setfield(L, -2, "carried");
 	return 1;
