@@ -609,8 +609,9 @@ void Camera::update(LocalPlayer* player, f32 frametime, f32 tool_reload_ratio)
 			q.toEuler(off_rot);
 			off_rot *= core::RADTODEG;
 		} else {
+			// (sways the same way as the right hand, not mirrored)
 			f32 bobfrac = my_modf(m_view_bobbing_anim);
-			off_pos.X += std::sin(bobfrac * M_PI * 2.0) * 3.0;
+			off_pos.X -= std::sin(bobfrac * M_PI * 2.0) * 3.0;
 			off_pos.Y += std::sin(my_modf(bobfrac * 2.0) * M_PI) * 3.0;
 		}
 		m_nhv_offnode->setPosition(off_pos);
