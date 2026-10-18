@@ -1633,6 +1633,9 @@ void Game::processItemSelection(u16 *new_playeritem)
 			client->sendChatMessage(L"/nhvkey look");
 		if (wasKeyDown(KeyType::NHV_ENHANCE))
 			client->sendChatMessage(L"/nhvkey enhance");
+		// (R picks up: "/nhvkey pickup")
+		if (wasKeyDown(KeyType::NHV_PICKUP))
+			client->sendChatMessage(L"/nhvkey pickup");
 		return;
 	}
 	u16 max_item = player->getMaxHotbarItemcount();
