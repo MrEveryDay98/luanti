@@ -59,6 +59,7 @@ struct NhvFuncs {
 	NHV_FN(nhv_mon_info)
 	NHV_FN(nhv_get_missiles)
 	NHV_FN(nhv_clear_missiles)
+	NHV_FN(nhv_get_lights)
 	NHV_FN(nhv_get_rays)
 	NHV_FN(nhv_clear_rays)
 	NHV_FN(nhv_get_spells)
@@ -138,6 +139,7 @@ bool load_library(std::string &err)
 	NHV_FN(nhv_mon_info)
 	NHV_FN(nhv_get_missiles)
 	NHV_FN(nhv_clear_missiles)
+	NHV_FN(nhv_get_lights)
 	NHV_FN(nhv_get_rays)
 	NHV_FN(nhv_clear_rays)
 	NHV_FN(nhv_get_spells)
@@ -750,6 +752,26 @@ int ModApiNetHack::l_nh_get_missiles(lua_State *L)
 	return 1;
 }
 
+// nh_get_lights() -> list of {x, y, range, at_hero}
+int ModApiNetHack::l_nh_get_lights(lua_State *L)
+{
+	REQUIRE_LOADED();
+	nhv_light buf[128];
+	int n = nh.nhv_get_lights(buf, 128);
+	lua_createtable(L, n, 0);
+	for (int i = 0; i < n; i++) {
+		const nhv_light &l = buf[i];
+		lua_createtable(L, 0, 4);
+		set_int(L, "x", l.x);
+		set_int(L, "y", l.y);
+		set_int(L, "range", l.range);
+		lua_pushboolean(L, l.at_hero);
+		lua_setfield(L, -2, "at_hero");
+		lua_rawseti(L, -2, i + 1);
+	}
+	return 1;
+}
+
 // nh_get_rays() -> list of {rid, type, kind, x, y, dx, dy, range, from_hero, caster}
 int ModApiNetHack::l_nh_get_rays(lua_State *L)
 {
@@ -851,6 +873,7 @@ void ModApiNetHack::Initialize(lua_State *L, int top)
 	API_FCT(nh_mon_info);
 	API_FCT(nh_get_missiles);
 	API_FCT(nh_clear_missiles);
+	API_FCT(nh_get_lights);
 	API_FCT(nh_get_rays);
 	API_FCT(nh_clear_rays);
 }

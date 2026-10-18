@@ -44,6 +44,7 @@ private:
 	static int l_nh_get_missiles(lua_State *L);
 	static int l_nh_clear_missiles(lua_State *L);
 	static int l_nh_get_rays(lua_State *L);
+	static int l_nh_get_lights(lua_State *L);
 	static int l_nh_clear_rays(lua_State *L);
 
 public:
