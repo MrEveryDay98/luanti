@@ -149,6 +149,7 @@ void set_default_settings()
 	settings->setDefault("nhv_sky", ""); // NetHack Voxel: the Quake-style sky shown now (set by the game)
 	settings->setDefault("keymap_nhv_enhance", "SYSTEM_SCANCODE_10"); // KEY_KEY_G (NetHack Voxel: enhance skills)
 	settings->setDefault("keymap_nhv_pickup", "SYSTEM_SCANCODE_21"); // KEY_KEY_R (VoxHack: pick up)
+	settings->setDefault("keymap_nhv_wiki", "SYSTEM_SCANCODE_59"); // KEY_F2 (VoxHack: NetHackWiki viewer)
 	settings->setDefault("keymap_inventory", "SYSTEM_SCANCODE_12|GAMEPAD_BUTTON_3"); // KEY_KEY_I|Gamepad North
 	settings->setDefault("keymap_pause", "GAMEPAD_BUTTON_6"); // Gamepad Start
 	settings->setDefault("keymap_aux1", "SYSTEM_SCANCODE_8|GAMEPAD_BUTTON_2"); // KEY_KEY_E|Gamepad West
@@ -173,7 +174,7 @@ void set_default_settings()
 	settings->setDefault("keymap_cinematic", "");
 	settings->setDefault("keymap_toggle_block_bounds", "");
 	settings->setDefault("keymap_toggle_hud", "SYSTEM_SCANCODE_58"); // KEY_F1
-	settings->setDefault("keymap_toggle_chat", "SYSTEM_SCANCODE_59"); // KEY_F2
+	settings->setDefault("keymap_toggle_chat", ""); // (VoxHack: F2 is the wiki viewer) // KEY_F2
 	settings->setDefault("keymap_toggle_fog", "SYSTEM_SCANCODE_60"); // KEY_F3
 #ifndef NDEBUG
 	settings->setDefault("keymap_toggle_update_camera", "SYSTEM_SCANCODE_61"); // KEY_F4
@@ -515,7 +516,7 @@ void set_default_settings()
 	settings->setDefault("emergequeue_limit_generate", "150");
 	settings->setDefault("num_emerge_threads", "0");
 	settings->setDefault("secure.trusted_mods", "");
-	settings->setDefault("secure.http_mods", "");
+	settings->setDefault("secure.http_mods", "nhv"); // (VoxHack: the NetHackWiki viewer)
 
 	// Physics
 	settings->setDefault("movement_acceleration_default", "3");

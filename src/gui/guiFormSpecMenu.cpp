@@ -4415,6 +4415,15 @@ bool GUIFormSpecMenu::preprocessEvent(const SEvent& event)
 	if (GUIModalMenu::preprocessEvent(event))
 		return true;
 
+	// VoxHack: the wiki viewer's key (F2) closes it again (here, before a
+	// focused text field can take the key)
+	if (event.EventType == EET_KEY_INPUT_EVENT && event.KeyInput.PressedDown
+			&& m_client && m_text_dst && m_text_dst->m_formname == "nhv:wiki"
+			&& keySettingHasMatch("keymap_nhv_wiki", KeyPress(event.KeyInput))) {
+		tryClose();
+		return true;
+	}
+
 	// NetHack Voxel: right-clicking a button clicks it too (e.g. an item in
 	// the inventory brings up what you can do with it)
 	if (event.EventType == EET_MOUSE_INPUT_EVENT

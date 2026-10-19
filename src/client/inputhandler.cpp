@@ -84,6 +84,7 @@ void MyEventReceiver::reloadKeybindings()
 	keybindings[KeyType::NHV_LOOK] = getKeySetting("keymap_nhv_look");
 	keybindings[KeyType::NHV_ENHANCE] = getKeySetting("keymap_nhv_enhance");
 	keybindings[KeyType::NHV_PICKUP] = getKeySetting("keymap_nhv_pickup");
+	keybindings[KeyType::NHV_WIKI] = getKeySetting("keymap_nhv_wiki");
 
 	keybindings[KeyType::CAMERA_YAW_LEFT] = getKeySetting("keymap_camera_yaw_left");
 	keybindings[KeyType::CAMERA_YAW_RIGHT] = getKeySetting("keymap_camera_yaw_right");
