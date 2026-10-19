@@ -49,6 +49,7 @@ struct NhvFuncs {
 	NHV_FN(nhv_max_glyph)
 	NHV_FN(nhv_tile_count)
 	NHV_FN(nhv_cmap_name)
+	NHV_FN(nhv_cmap_tile)
 	NHV_FN(nhv_mon_name)
 	NHV_FN(nhv_obj_name)
 	NHV_FN(nhv_set_freemove)
@@ -131,6 +132,7 @@ bool load_library(std::string &err)
 	NHV_FN(nhv_max_glyph)
 	NHV_FN(nhv_tile_count)
 	NHV_FN(nhv_cmap_name)
+	NHV_FN(nhv_cmap_tile)
 	NHV_FN(nhv_mon_name)
 	NHV_FN(nhv_obj_name)
 	NHV_FN(nhv_set_freemove)
@@ -607,6 +609,14 @@ int ModApiNetHack::l_nh_cmap_name(lua_State *L)
 	return 1;
 }
 
+// nh_cmap_tile(symidx) -> the tile of a map symbol on this level (-1: none)
+int ModApiNetHack::l_nh_cmap_tile(lua_State *L)
+{
+	REQUIRE_LOADED();
+	lua_pushinteger(L, nh.nhv_cmap_tile(luaL_checkinteger(L, 1)));
+	return 1;
+}
+
 int ModApiNetHack::l_nh_mon_name(lua_State *L)
 {
 	REQUIRE_LOADED();
@@ -914,6 +924,7 @@ void ModApiNetHack::Initialize(lua_State *L, int top)
 	API_FCT(nh_max_glyph);
 	API_FCT(nh_tile_count);
 	API_FCT(nh_cmap_name);
+	API_FCT(nh_cmap_tile);
 	API_FCT(nh_mon_name);
 	API_FCT(nh_obj_name);
 	API_FCT(nh_get_spells);

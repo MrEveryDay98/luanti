@@ -30,6 +30,7 @@ private:
 	static int l_nh_max_glyph(lua_State *L);
 	static int l_nh_tile_count(lua_State *L);
 	static int l_nh_cmap_name(lua_State *L);
+	static int l_nh_cmap_tile(lua_State *L);
 	static int l_nh_mon_name(lua_State *L);
 	static int l_nh_obj_name(lua_State *L);
 	static int l_nh_get_spells(lua_State *L);
