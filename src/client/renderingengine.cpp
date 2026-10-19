@@ -73,8 +73,16 @@ class FogShaderUniformSetter : public IShaderUniformSetter
 	CachedPixelShaderSetting<float, 4> m_fog_color{"fogColor"};
 	CachedPixelShaderSetting<float> m_fog_distance{"fogDistance"};
 	CachedPixelShaderSetting<float> m_fog_shading_parameter{"fogShadingParameter"};
+	// NetHack Voxel: the "nhv:xray" objects (sensed monsters, seen through
+	// walls) aren't fogged either - they show through the blind fog
+	bool m_no_fog = false;
 
 public:
+	void onSetMaterial(const video::SMaterial &material) override
+	{
+		m_no_fog = !material.FogEnable && material.ZBuffer == video::ECFN_DISABLED;
+	}
+
 	void onSetUniforms(video::IMaterialRendererServices *services) override
 	{
 		auto *driver = services->getVideoDriver();
@@ -93,11 +101,15 @@ public:
 		video::SColorf fog_colorf(fog_color);
 		m_fog_color.set(fog_colorf, services);
 
-		m_fog_distance.set(&fog_end, services);
-
 		float parameter = 0;
 		if (fog_end > 0)
 			parameter = 1.0f / (1.0f - fog_start / fog_end);
+		if (m_no_fog) {
+			// (clarity = parameter * (1 - distance / fog end): all but 1)
+			fog_end = 1e9f;
+			parameter = 1.0f;
+		}
+		m_fog_distance.set(&fog_end, services);
 		m_fog_shading_parameter.set(&parameter, services);
 	}
 };

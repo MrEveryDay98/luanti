@@ -480,7 +480,7 @@ void set_default_settings()
 
 	settings->setDefault("chat_message_format", "<@name> @message");
 	settings->setDefault("profiler_print_interval", "0");
-	settings->setDefault("active_object_send_range_blocks", "8");
+	settings->setDefault("active_object_send_range_blocks", "16"); // (NetHack Voxel: a whole level; was 8)
 	settings->setDefault("active_block_range", "4");
 	settings->setDefault("max_block_send_distance", "13");
 	settings->setDefault("block_send_optimize_distance", "4");

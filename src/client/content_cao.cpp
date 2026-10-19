@@ -627,9 +627,11 @@ void GenericCAO::addToScene(ITextureSource *tsrc, scene::ISceneManager *smgr)
 		mat.FogEnable = true;
 		if (nhvXray()) {
 			// (seen through walls: no depth test, and not hiding what's
-			// behind it either)
+			// behind it either; and not fogged - a monster sensed while
+			// blind shows through the blind fog, see renderingengine.cpp)
 			mat.ZBuffer = video::ECFN_DISABLED;
 			mat.ZWriteEnable = video::EZW_OFF;
+			mat.FogEnable = false;
 		}
 		mat.forEachTexture([] (auto &tex) {
 			tex.MinFilter = video::ETMINF_NEAREST_MIPMAP_NEAREST;

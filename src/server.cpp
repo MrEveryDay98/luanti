@@ -2217,9 +2217,11 @@ void Server::SendActiveObjectRemoveAdd(RemoteClient *client, PlayerSAO *playersa
 	s16 player_radius = player_transfer_dist == 0 && is_transfer_limited ?
 		radius : player_transfer_dist;
 
-	s16 my_radius = MYMIN(radius, playersao->getWantedRange() * MAP_BLOCKSIZE);
-	if (my_radius <= 0)
-		my_radius = radius;
+	// NetHack Voxel: objects are sent out to the full object range, not
+	// cut to the player's view range - blind, the view is a few nodes of
+	// black fog, but monsters sensed by telepathy show through it (and a
+	// level is small enough for the object range anyway)
+	s16 my_radius = radius;
 
 	std::vector<std::pair<bool, u16>> removed_objects;
 	std::vector<u16> added_objects;
