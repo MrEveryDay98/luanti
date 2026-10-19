@@ -64,7 +64,7 @@ public:
 		NHV_PAY, // NetHack Voxel: the pay key (P)
 		NHV_LOOK, // NetHack Voxel: look at something (middle mouse)
 		NHV_ENHANCE, // NetHack Voxel: enhance skills (G)
-		NHV_PICKUP, // VoxHack: pick up (R)
+		NHV_PICKUP, // VoxHack: pick up (F)
 		NHV_WIKI, // VoxHack: the NetHackWiki viewer (F2)
 
 		QUICKTUNE_NEXT,

@@ -1633,7 +1633,7 @@ void Game::processItemSelection(u16 *new_playeritem)
 			client->sendChatMessage(L"/nhvkey look");
 		if (wasKeyDown(KeyType::NHV_ENHANCE))
 			client->sendChatMessage(L"/nhvkey enhance");
-		// (R picks up: "/nhvkey pickup")
+		// (F picks up: "/nhvkey pickup")
 		if (wasKeyDown(KeyType::NHV_PICKUP))
 			client->sendChatMessage(L"/nhvkey pickup");
 		// (F2 opens the NetHackWiki viewer: "/nhvkey wiki"; it closes it too, in
