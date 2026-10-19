@@ -64,6 +64,7 @@ struct NhvFuncs {
 	NHV_FN(nhv_get_rays)
 	NHV_FN(nhv_clear_rays)
 	NHV_FN(nhv_get_spells)
+	NHV_FN(nhv_get_shops)
 	NHV_FN(nhv_game_id)
 #undef NHV_FN
 };
@@ -145,6 +146,7 @@ bool load_library(std::string &err)
 	NHV_FN(nhv_get_rays)
 	NHV_FN(nhv_clear_rays)
 	NHV_FN(nhv_get_spells)
+	NHV_FN(nhv_get_shops)
 	NHV_FN(nhv_game_id)
 #undef NHV_FN
 	if (nh.nhv_api_version() != NHV_API_VERSION) {
@@ -852,6 +854,29 @@ int ModApiNetHack::l_nh_get_spells(lua_State *L)
 	return 1;
 }
 
+// nh_get_shops() -> list of {door_x, door_y, in_x, in_y, type, keeper}:
+// the level's shops (for the signs over their doors)
+int ModApiNetHack::l_nh_get_shops(lua_State *L)
+{
+	REQUIRE_LOADED();
+	nhv_shop buf[32];
+	int n = std::min(nh.nhv_get_shops(buf, 32), 32);
+	lua_createtable(L, n, 0);
+	for (int i = 0; i < n; i++) {
+		lua_createtable(L, 0, 6);
+		set_int(L, "door_x", buf[i].door_x);
+		set_int(L, "door_y", buf[i].door_y);
+		set_int(L, "in_x", buf[i].in_x);
+		set_int(L, "in_y", buf[i].in_y);
+		lua_pushstring(L, buf[i].type);
+		lua_setfield(L, -2, "type");
+		lua_pushstring(L, buf[i].keeper);
+		lua_setfield(L, -2, "keeper");
+		lua_rawseti(L, -2, i + 1);
+	}
+	return 1;
+}
+
 int ModApiNetHack::l_nh_clear_rays(lua_State *L)
 {
 	if (loaded())
@@ -904,6 +929,7 @@ void ModApiNetHack::Initialize(lua_State *L, int top)
 	API_FCT(nh_clear_missiles);
 	API_FCT(nh_get_lights);
 	API_FCT(nh_get_ball);
+	API_FCT(nh_get_shops);
 	API_FCT(nh_get_rays);
 	API_FCT(nh_clear_rays);
 }
