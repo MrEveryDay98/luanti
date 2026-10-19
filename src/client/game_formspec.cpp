@@ -103,6 +103,13 @@ struct HardcodedPauseFormspecHandler : public TextDest
 			return;
 		}
 
+		// VoxHack: Help shows the keys (the game's help screen)
+		if (fields.find("btn_nhv_help") != fields.end()) {
+			if (m_client)
+				m_client->sendChatMessage(L"/nhvhelp");
+			return;
+		}
+
 		// NetHack Voxel: Quit saves and goes back to the game's title screen
 		if (fields.find("btn_nhv_title") != fields.end()) {
 			if (m_client)
@@ -408,6 +415,10 @@ void GameFormSpec::showPauseMenu()
 			// TRANSLATORS: Pause menu button, try to keep the translation short
 			<< strgettext("Change Password") << "]";
 	}
+
+	// VoxHack: the keys, explained (the game shows them)
+	os << "button_exit[0," << (ypos += button_height + spacing) << ";3.5," << button_height << ";btn_nhv_help;"
+		<< strgettext("Help") << "]";
 
 	os << "button[0," << (ypos += button_height + spacing) << ";3.5," << button_height << ";btn_settings;"
 		// TRANSLATORS: Try to keep the translation short
