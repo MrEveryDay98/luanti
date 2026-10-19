@@ -170,12 +170,11 @@ void RemoteClient::GetNextBlocks (
 	s32 new_nearest_unsent_d = -1;
 
 	// Get view range and camera fov (radians) from the client
-	s16 fog_distance = sao->getPlayer()->getSkyParams().fog_distance;
-	s16 wanted_range = sao->getWantedRange() + 1;
-	if (fog_distance >= 0) {
-		// enforce if limited by mod
-		wanted_range = std::min<unsigned>(wanted_range, std::ceil((float)fog_distance / MAP_BLOCKSIZE));
-	}
+	// NetHack Voxel: the map is sent out to the client's view range even
+	// when a mod's fog is closer - blind, the fog is a few nodes, and cut
+	// to that, the blocks you stand in weren't sent (loading a game while
+	// blind showed only black); the fog still hides what's beyond it
+	s16 wanted_range = std::max<s16>(sao->getWantedRange() + 1, 3);
 	float camera_fov = sao->getFov();
 
 	/*
