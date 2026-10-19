@@ -398,7 +398,8 @@ void GameFormSpec::showPauseMenu()
 	float ypos = simple_singleplayer_mode ? 1.05f : 0.325f;
 	std::ostringstream os;
 
-	os << "formspec_version[2]" << SIZE_TAG;
+	// VoxHack: taller, for the tip under the buttons
+	os << "formspec_version[2]" << (simple_singleplayer_mode ? "size[14.25,8.6,true]" : SIZE_TAG);
 
 	if (simple_singleplayer_mode) {
 		os << "style_type[label;halign=center;valign=center]";
@@ -438,6 +439,12 @@ void GameFormSpec::showPauseMenu()
 		<< strgettext("Quit") << "]";
 
 	os << "container_end[]";
+	// VoxHack: a tip under the buttons (the wiki viewer is easy to miss)
+	if (simple_singleplayer_mode) {
+		os << "textarea[1.5," << (ypos + button_height + 0.3f) << ";11.25,1.1;;;"
+			<< "\x1b(c@#FFD25A)Tip:\x1b(c@#E8E6DF) F2 opens NetHackWiki on whatever you're pointing at"
+			<< "]";
+	}
 	if (!control_text.empty()) {
 		os << "textarea[9.25,0.8;4.625,6.1;;" << control_text << ";]";
 	}
