@@ -9,6 +9,7 @@
 #include "sound_manager.h"
 
 #include "sound_singleton.h"
+#include "sam_voice.h"
 #include "util/numeric.h" // myrand()
 #include "util/tracy_wrapper.h"
 #include "filesys.h"
@@ -94,6 +95,23 @@ std::string OpenALSoundManager::getLoadedSoundNameFromGroup(const std::string &g
 	std::string chosen_sound_name = "";
 
 	auto it_groups = m_sound_groups.find(group_name);
+	if (it_groups == m_sound_groups.end() && isSamVoiceName(group_name)) {
+		// VoxHack: a line for SAM to speak (sam_voice.h): read it now. The
+		// last few are kept, as a line is often said again.
+		std::shared_ptr<ISoundDataOpen> snd = openSamVoice(group_name);
+		if (!snd)
+			return "";
+		m_sound_datas_open.emplace(group_name, snd);
+		m_sound_groups[group_name] = {group_name};
+		m_nhv_sam_recent.push_back(group_name);
+		if (m_nhv_sam_recent.size() > 32) {
+			// (sounds still playing keep their own reference to the data)
+			m_sound_datas_open.erase(m_nhv_sam_recent.front());
+			m_sound_groups.erase(m_nhv_sam_recent.front());
+			m_nhv_sam_recent.pop_front();
+		}
+		it_groups = m_sound_groups.find(group_name);
+	}
 	if (it_groups == m_sound_groups.end())
 		return "";
 

@@ -15,6 +15,7 @@
 #include "sound_spec.h"
 #include "threading/thread.h"
 #include "util/container.h" // MutexedQueue
+#include <deque>
 
 namespace sound {
 
@@ -49,6 +50,8 @@ private:
 	std::unordered_map<std::string, std::shared_ptr<ISoundDataOpen>> m_sound_datas_open;
 	// sound groups
 	std::unordered_map<std::string, std::vector<std::string>> m_sound_groups;
+	// VoxHack: lines SAM spoke lately (sam_voice.h), oldest first
+	std::deque<std::string> m_nhv_sam_recent;
 
 	// currently playing sounds
 	std::unordered_map<sound_handle_t, std::shared_ptr<PlayingSound>> m_sounds_playing;

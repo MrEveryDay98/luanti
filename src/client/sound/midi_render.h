@@ -12,6 +12,7 @@
 #include "sound_data.h"
 #include <memory>
 #include <string>
+#include <vector>
 
 namespace sound {
 
@@ -19,5 +20,8 @@ bool isMidiData(const std::string &data);
 
 // nullptr if it can't be rendered (no SoundFont, a broken file...)
 std::shared_ptr<ISoundDataOpen> openMidi(const std::string &data, const std::string &name);
+
+// a sound already rendered to 16-bit PCM (MIDI, SAM's voice: sam_voice.h)
+std::shared_ptr<ISoundDataOpen> openPCMData(const OggFileDecodeInfo &info, const std::vector<short> &pcm);
 
 } // namespace sound

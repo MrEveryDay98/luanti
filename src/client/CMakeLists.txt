@@ -8,11 +8,31 @@ if(USE_SOUND)
 		${CMAKE_CURRENT_SOURCE_DIR}/sound/ogg_file.cpp
 		${CMAKE_CURRENT_SOURCE_DIR}/sound/playing_sound.cpp
 		${CMAKE_CURRENT_SOURCE_DIR}/sound/proxy_sound_manager.cpp
+		${CMAKE_CURRENT_SOURCE_DIR}/sound/sam_voice.cpp
 		${CMAKE_CURRENT_SOURCE_DIR}/sound/sound_data.cpp
 		${CMAKE_CURRENT_SOURCE_DIR}/sound/sound_manager.cpp
 		${CMAKE_CURRENT_SOURCE_DIR}/sound/sound_openal.cpp
 		${CMAKE_CURRENT_SOURCE_DIR}/sound/sound_singleton.cpp
 	)
+	# VoxHack: SAM (sound/sam_voice.h), built in when its source is there.
+	# It isn't part of this repository (SAM has no licence); VoxHack keeps
+	# it in voice_work/sam/src/src.
+	set(NHV_SAM_SRC "${CMAKE_SOURCE_DIR}/../../voice_work/sam/src/src" CACHE PATH
+		"Folder with SAM's C source (sam.c, render.c, reciter.c...)")
+	if(EXISTS "${NHV_SAM_SRC}/sam.c")
+		message(STATUS "SAM voice: built in from ${NHV_SAM_SRC}")
+		list(APPEND sound_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/sound/sam_unity.c)
+		# (source properties count where the target is made: src/)
+		set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/sound/sam_unity.c
+			DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/.. PROPERTIES
+			INCLUDE_DIRECTORIES "${NHV_SAM_SRC}"
+			COMPILE_OPTIONS "-w")
+		set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/sound/sam_voice.cpp
+			DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/.. PROPERTIES
+			COMPILE_DEFINITIONS NHV_HAVE_SAM)
+	else()
+		message(STATUS "SAM voice: not built in (no source at ${NHV_SAM_SRC})")
+	endif()
 	set(SOUND_INCLUDE_DIRS
 		${OPENAL_INCLUDE_DIR}
 		${VORBIS_INCLUDE_DIR}

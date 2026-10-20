@@ -63,6 +63,11 @@ tsf *soundfont()
 
 } // namespace
 
+std::shared_ptr<ISoundDataOpen> openPCMData(const OggFileDecodeInfo &info, const std::vector<short> &pcm)
+{
+	return std::make_shared<SoundDataOpenPCM>(info, pcm);
+}
+
 bool isMidiData(const std::string &data)
 {
 	return data.size() > 14 && data.compare(0, 4, "MThd") == 0;
