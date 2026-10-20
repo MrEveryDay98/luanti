@@ -438,9 +438,20 @@ void RenderingEngine::finalize()
 	m_hud = nullptr;
 }
 
+extern bool nhv_full_res; // (render/plain.cpp)
+
 void RenderingEngine::draw_scene(video::SColor skycolor, bool show_hud,
 		bool draw_wield_tool, bool draw_crosshair)
 {
+	// NetHack Voxel: the hud flag nhv_full_res turns undersampling off
+	if (m_client) {
+		LocalPlayer *lp = m_client->getEnv().getLocalPlayer();
+		bool full = lp && (lp->hud_flags & HUD_FLAG_NHV_FULL_RES);
+		if (full != nhv_full_res) {
+			nhv_full_res = full;
+			m_rebuild_core = true;
+		}
+	}
 	if (m_rebuild_core.exchange(false) && m_client) {
 		core.reset();
 		core.reset(createRenderingCore(g_settings->get("3d_mode"), m_device, m_client, m_hud));

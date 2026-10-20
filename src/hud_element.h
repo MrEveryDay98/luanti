@@ -67,6 +67,9 @@
 // view for a moment (a kick landing)
 #define HUD_FLAG_NHV_HANDS_DOWN        (1 << 20)
 #define HUD_FLAG_NHV_SHAKE             (1 << 21)
+// the 3D view at the window's full resolution, whatever "undersampling" says
+// (the level atlas); the setting itself is left alone
+#define HUD_FLAG_NHV_FULL_RES          (1 << 22)
 
 #define HUD_PARAM_HOTBAR_ITEMCOUNT 1
 #define HUD_PARAM_HOTBAR_IMAGE 2
