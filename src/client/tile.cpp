@@ -31,6 +31,9 @@ void TileLayer::applyMaterialOptions(video::SMaterial &material, int layer) cons
 	material.setTexture(0, texture);
 
 	material.BackfaceCulling = (material_flags & MATERIAL_FLAG_BACKFACE_CULLING) != 0;
+	// (NetHack Voxel: a sky face writes depth, not colour)
+	if (material_flags & MATERIAL_FLAG_NHV_SKY)
+		material.ColorMask = video::ECP_NONE;
 	if (!(material_flags & MATERIAL_FLAG_TILEABLE_HORIZONTAL)) {
 		material.TextureLayers[0].TextureWrapU = video::ETC_CLAMP_TO_EDGE;
 		material.TextureLayers[1].TextureWrapU = video::ETC_CLAMP_TO_EDGE;

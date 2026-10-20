@@ -49,6 +49,9 @@ static inline MaterialType material_type_with_alpha(MaterialType type)
 #define MATERIAL_FLAG_ANIMATION 0x08
 #define MATERIAL_FLAG_TILEABLE_HORIZONTAL 0x20
 #define MATERIAL_FLAG_TILEABLE_VERTICAL 0x40
+// NetHack Voxel: a "sky" face (a tile named nhv_sky.png): drawn first, into the
+// depth buffer only - what's behind it isn't drawn, the sky shows instead
+#define MATERIAL_FLAG_NHV_SKY 0x80
 
 /*
 	This fully defines the looks of a tile.

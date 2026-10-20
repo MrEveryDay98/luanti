@@ -1117,6 +1117,22 @@ void ClientMap::renderMap(video::IVideoDriver* driver, s32 pass)
 	u32 material_swaps = 0;
 	u32 array_texture_use = 0;
 
+	// NetHack Voxel: sky faces (depth only, no colour) first, so whatever
+	// is behind them fails the depth test and the sky drawn before the map
+	// shows through
+	if (pass == scene::ESNRP_SOLID) {
+		auto is_sky = [](DrawDescriptor &d) {
+			return d.getMaterial().ColorMask == video::ECP_NONE;
+		};
+		auto first_other = std::stable_partition(draw_order.begin(), draw_order.end(), is_sky);
+		if (first_other != draw_order.begin()) {
+			// (materials are only set when they change: in the new order every
+			// buffer sets its own)
+			for (auto &d : draw_order)
+				d.m_reuse_material = false;
+		}
+	}
+
 	// Render all mesh buffers in order
 	drawcall_count += draw_order.size();
 

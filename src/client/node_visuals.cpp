@@ -122,6 +122,9 @@ static void fillTileAttribs(TileLayer *layer, TileAttribContext context,
 		layer->material_flags |= MATERIAL_FLAG_TILEABLE_HORIZONTAL;
 	if (tiledef.tileable_vertical)
 		layer->material_flags |= MATERIAL_FLAG_TILEABLE_VERTICAL;
+	// (NetHack Voxel: the sky block's faces; see MATERIAL_FLAG_NHV_SKY)
+	if (tiledef.name == "nhv_sky.png")
+		layer->material_flags |= MATERIAL_FLAG_NHV_SKY;
 
 	// Color
 	layer->has_color = tiledef.has_color;
