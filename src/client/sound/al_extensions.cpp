@@ -38,6 +38,18 @@ ALExtensions::ALExtensions(const ALCdevice *deviceHandle [[maybe_unused]])
 		}
 #endif
 	}
+
+#ifdef AL_FILTER_LOWPASS
+	// VoxHack: EFX (muffled sounds)
+	if (deviceHandle && alcIsExtensionPresent(const_cast<ALCdevice *>(deviceHandle), "ALC_EXT_EFX")) {
+		genFilters = (LPALGENFILTERS)alGetProcAddress("alGenFilters");
+		deleteFilters = (LPALDELETEFILTERS)alGetProcAddress("alDeleteFilters");
+		filteri = (LPALFILTERI)alGetProcAddress("alFilteri");
+		filterf = (LPALFILTERF)alGetProcAddress("alFilterf");
+		have_efx = genFilters && deleteFilters && filteri && filterf;
+	}
+	infostream << "ALExtensions: EFX filters " << (have_efx ? "found" : "not found") << std::endl;
+#endif
 }
 
 }

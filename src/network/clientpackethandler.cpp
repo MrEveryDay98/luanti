@@ -825,6 +825,11 @@ void Client::handleCommand_PlaySound(NetworkPacket* pkt)
 			break;
 		// >= 5.8.0-dev
 		*pkt >> spec.start_time;
+
+		if (!pkt->hasRemainingBytes())
+			break;
+		// VoxHack: how muffled (sound_spec.h)
+		*pkt >> spec.nhv_muffle;
 	} while (0);
 
 	// Generate a new id

@@ -36,6 +36,9 @@ struct SoundSpec
 	float fade = 0.0f;
 	float pitch = 1.0f;
 	float start_time = 0.0f;
+	// VoxHack: how muffled the sound is, 0 (clear) .. 1 (behind a wall):
+	// quieter, and its highs filtered out (sound.lua works it out)
+	float nhv_muffle = 0.0f;
 	bool loop = false;
 	// If true, a local fallback (ie. from the user's sound pack) is used if the
 	// sound-group does not exist.

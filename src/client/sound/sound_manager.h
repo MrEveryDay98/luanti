@@ -52,6 +52,8 @@ private:
 	std::unordered_map<std::string, std::vector<std::string>> m_sound_groups;
 	// VoxHack: lines SAM spoke lately (sam_voice.h), oldest first
 	std::deque<std::string> m_nhv_sam_recent;
+	// VoxHack: the muffle of the sound being started (sound_spec.h)
+	f32 m_nhv_next_muffle = 0.0f;
 
 	// currently playing sounds
 	std::unordered_map<sound_handle_t, std::shared_ptr<PlayingSound>> m_sounds_playing;

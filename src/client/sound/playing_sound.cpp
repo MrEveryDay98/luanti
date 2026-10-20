@@ -16,6 +16,24 @@
 
 namespace sound {
 
+void PlayingSound::setMuffle(f32 muffle, const ALExtensions &exts [[maybe_unused]]) noexcept
+{
+#ifdef AL_FILTER_LOWPASS
+	if (!(muffle > 0.0f) || !exts.have_efx)
+		return;
+	muffle = std::fmin(muffle, 1.0f);
+	ALuint filter = 0;
+	exts.genFilters(1, &filter);
+	exts.filteri(filter, AL_FILTER_TYPE, AL_FILTER_LOWPASS);
+	exts.filterf(filter, AL_LOWPASS_GAIN, 1.0f - 0.55f * muffle);
+	exts.filterf(filter, AL_LOWPASS_GAINHF, 1.0f - 0.94f * muffle);
+	// (the source keeps a copy of the filter's settings)
+	alSourcei(m_source_id, AL_DIRECT_FILTER, (ALint)filter);
+	exts.deleteFilters(1, &filter);
+	warn_if_al_error("setMuffle");
+#endif
+}
+
 PlayingSound::PlayingSound(ALuint source_id, std::shared_ptr<ISoundDataOpen> data,
 		bool loop, f32 volume, f32 pitch, f32 start_time,
 		const std::optional<std::pair<v3f, v3f>> &pos_vel_opt,

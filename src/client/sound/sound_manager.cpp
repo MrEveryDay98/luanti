@@ -188,6 +188,7 @@ std::shared_ptr<PlayingSound> OpenALSoundManager::createPlayingSound(
 
 	auto sound = std::make_shared<PlayingSound>(source_id, std::move(lsnd), loop,
 			volume, pitch, start_time, pos_vel_opt, m_exts);
+	sound->setMuffle(m_nhv_next_muffle, m_exts); // VoxHack
 
 	sound->play();
 
@@ -481,8 +482,10 @@ void OpenALSoundManager::playSoundAt(sound_handle_t id, const SoundSpec &spec,
 			swap_handedness(vel_)
 		});
 
-	return playSoundGeneric(id, spec.name, spec.loop, spec.gain, spec.fade, spec.pitch,
+	m_nhv_next_muffle = spec.nhv_muffle;
+	playSoundGeneric(id, spec.name, spec.loop, spec.gain, spec.fade, spec.pitch,
 			spec.use_local_fallback, spec.start_time, pos_vel_opt);
+	m_nhv_next_muffle = 0.0f;
 }
 
 void OpenALSoundManager::stopSound(sound_handle_t sound)

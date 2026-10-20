@@ -1333,6 +1333,8 @@ void read_server_sound_params(lua_State *L, int index,
 		getfloatfield(L, index, "fade", params.spec.fade);
 		getfloatfield(L, index, "pitch", params.spec.pitch);
 		getfloatfield(L, index, "start_time", params.spec.start_time);
+		// VoxHack: 0 (clear) .. 1 (behind a wall)
+		getfloatfield(L, index, "nhv_muffle", params.spec.nhv_muffle);
 		getboolfield(L, index, "loop", params.spec.loop);
 
 		getfloatfield(L, index, "gain", params.gain);

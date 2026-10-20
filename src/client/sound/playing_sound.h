@@ -58,6 +58,9 @@ public:
 
 	void updatePosVel(const v3f &pos, const v3f &vel) noexcept;
 
+	// VoxHack: 0 (clear) .. 1 (behind a wall): quieter, highs filtered out
+	void setMuffle(f32 muffle, const ALExtensions &exts) noexcept;
+
 	void setGain(f32 gain) noexcept;
 
 	f32 getGain() noexcept;
