@@ -48,6 +48,8 @@ private:
 	static int l_nh_get_lights(lua_State *L);
 	static int l_nh_get_ball(lua_State *L);
 	static int l_nh_get_shops(lua_State *L);
+	static int l_nh_get_dungeons(lua_State *L);
+	static int l_nh_level_proto(lua_State *L);
 	static int l_nh_clear_rays(lua_State *L);
 
 public:

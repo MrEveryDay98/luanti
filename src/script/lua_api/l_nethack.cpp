@@ -67,6 +67,8 @@ struct NhvFuncs {
 	NHV_FN(nhv_get_spells)
 	NHV_FN(nhv_get_shops)
 	NHV_FN(nhv_game_id)
+	NHV_FN(nhv_get_dungeons)
+	NHV_FN(nhv_level_proto)
 #undef NHV_FN
 };
 
@@ -150,6 +152,8 @@ bool load_library(std::string &err)
 	NHV_FN(nhv_get_spells)
 	NHV_FN(nhv_get_shops)
 	NHV_FN(nhv_game_id)
+	NHV_FN(nhv_get_dungeons)
+	NHV_FN(nhv_level_proto)
 #undef NHV_FN
 	if (nh.nhv_api_version() != NHV_API_VERSION) {
 		err = "nethack.dll API version mismatch";
@@ -887,6 +891,33 @@ int ModApiNetHack::l_nh_get_shops(lua_State *L)
 	return 1;
 }
 
+// nh_get_dungeons() -> list of {name, levels, depth_start} (dnum = index - 1)
+int ModApiNetHack::l_nh_get_dungeons(lua_State *L)
+{
+	REQUIRE_LOADED();
+	nhv_dungeon buf[32];
+	int n = std::min(nh.nhv_get_dungeons(buf, 32), 32);
+	lua_createtable(L, n, 0);
+	for (int i = 0; i < n; i++) {
+		lua_createtable(L, 0, 3);
+		lua_pushstring(L, buf[i].name);
+		lua_setfield(L, -2, "name");
+		set_int(L, "levels", buf[i].levels);
+		set_int(L, "depth_start", buf[i].depth_start);
+		set_int(L, "entry", buf[i].entry);
+		lua_rawseti(L, -2, i + 1);
+	}
+	return 1;
+}
+
+// nh_level_proto(dnum, dlevel) -> a special level's name, "" if ordinary
+int ModApiNetHack::l_nh_level_proto(lua_State *L)
+{
+	REQUIRE_LOADED();
+	lua_pushstring(L, nh.nhv_level_proto(luaL_checkinteger(L, 1), luaL_checkinteger(L, 2)));
+	return 1;
+}
+
 int ModApiNetHack::l_nh_clear_rays(lua_State *L)
 {
 	if (loaded())
@@ -941,6 +972,8 @@ void ModApiNetHack::Initialize(lua_State *L, int top)
 	API_FCT(nh_get_lights);
 	API_FCT(nh_get_ball);
 	API_FCT(nh_get_shops);
+	API_FCT(nh_get_dungeons);
+	API_FCT(nh_level_proto);
 	API_FCT(nh_get_rays);
 	API_FCT(nh_clear_rays);
 }
