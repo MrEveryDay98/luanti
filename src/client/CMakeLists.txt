@@ -14,10 +14,8 @@ if(USE_SOUND)
 		${CMAKE_CURRENT_SOURCE_DIR}/sound/sound_openal.cpp
 		${CMAKE_CURRENT_SOURCE_DIR}/sound/sound_singleton.cpp
 	)
-	# VoxHack: SAM (sound/sam_voice.h), built in when its source is there.
-	# It isn't part of this repository (SAM has no licence); VoxHack keeps
-	# it in voice_work/sam/src/src.
-	set(NHV_SAM_SRC "${CMAKE_SOURCE_DIR}/../../voice_work/sam/src/src" CACHE PATH
+	# VoxHack: SAM (sound/sam_voice.h), from lib/sam (see lib/sam/VOXHACK.md)
+	set(NHV_SAM_SRC "${CMAKE_SOURCE_DIR}/lib/sam" CACHE PATH
 		"Folder with SAM's C source (sam.c, render.c, reciter.c...)")
 	if(EXISTS "${NHV_SAM_SRC}/sam.c")
 		message(STATUS "SAM voice: built in from ${NHV_SAM_SRC}")

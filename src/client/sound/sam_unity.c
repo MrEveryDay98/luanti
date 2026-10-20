@@ -1,9 +1,8 @@
 /* VoxHack: SAM (Software Automatic Mouth), built into the engine.
  *
- * This file holds none of SAM's code: it compiles Sebastian Macke's C port
- * of SAM (github.com/s-macke/SAM) from the folder NHV_SAM_SRC points CMake
- * at (VoxHack keeps it in voice_work/sam/src/src, outside git, as SAM has no
- * licence). All of SAM is one translation unit here, with every one of its
+ * It compiles Sebastian Macke's C port of SAM (github.com/s-macke/SAM),
+ * kept unchanged in lib/sam (see lib/sam/VOXHACK.md), from the folder CMake's
+ * NHV_SAM_SRC points at. All of SAM is one translation unit here, with every one of its
  * global names prefixed, so names like A, X, Y, input or buffer can't clash
  * with anything else in the engine. sam_voice.cpp uses nhv_sam_render().
  */
