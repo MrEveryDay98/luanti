@@ -39,6 +39,9 @@ struct SoundSpec
 	// VoxHack: how muffled the sound is, 0 (clear) .. 1 (behind a wall):
 	// quieter, and its highs filtered out (sound.lua works it out)
 	float nhv_muffle = 0.0f;
+	// VoxHack: how much goes to the place's reverb (nhv_acoustics.h),
+	// 0 (dry: music) .. 1
+	float nhv_reverb = 1.0f;
 	bool loop = false;
 	// If true, a local fallback (ie. from the user's sound pack) is used if the
 	// sound-group does not exist.

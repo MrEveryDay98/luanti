@@ -31,6 +31,16 @@ struct ALExtensions
 	LPALDELETEFILTERS deleteFilters = nullptr;
 	LPALFILTERI filteri = nullptr;
 	LPALFILTERF filterf = nullptr;
+	// ... and EFX effects (acoustics: nhv_acoustics.h)
+	LPALGENEFFECTS genEffects = nullptr;
+	LPALDELETEEFFECTS deleteEffects = nullptr;
+	LPALEFFECTI effecti = nullptr;
+	LPALEFFECTF effectf = nullptr;
+	LPALEFFECTFV effectfv = nullptr;
+	LPALGENAUXILIARYEFFECTSLOTS genAuxiliaryEffectSlots = nullptr;
+	LPALDELETEAUXILIARYEFFECTSLOTS deleteAuxiliaryEffectSlots = nullptr;
+	LPALAUXILIARYEFFECTSLOTI auxiliaryEffectSloti = nullptr;
+	LPALAUXILIARYEFFECTSLOTF auxiliaryEffectSlotf = nullptr;
 #endif
 };
 

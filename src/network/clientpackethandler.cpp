@@ -828,8 +828,12 @@ void Client::handleCommand_PlaySound(NetworkPacket* pkt)
 
 		if (!pkt->hasRemainingBytes())
 			break;
-		// VoxHack: how muffled (sound_spec.h)
+		// VoxHack: how muffled, and how much reverb (sound_spec.h)
 		*pkt >> spec.nhv_muffle;
+
+		if (!pkt->hasRemainingBytes())
+			break;
+		*pkt >> spec.nhv_reverb;
 	} while (0);
 
 	// Generate a new id

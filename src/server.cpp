@@ -2381,7 +2381,7 @@ s32 Server::playSound(ServerPlayingSound &params, bool ephemeral)
 			<< (u8) params.type << pos << params.object
 			<< params.spec.loop << params.spec.fade << params.spec.pitch
 			<< ephemeral << params.spec.start_time
-			<< params.spec.nhv_muffle; // VoxHack (read only if present)
+			<< params.spec.nhv_muffle << params.spec.nhv_reverb; // VoxHack (read only if present)
 
 	const bool as_reliable = !ephemeral;
 

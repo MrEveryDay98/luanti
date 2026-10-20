@@ -47,6 +47,18 @@ ALExtensions::ALExtensions(const ALCdevice *deviceHandle [[maybe_unused]])
 		filteri = (LPALFILTERI)alGetProcAddress("alFilteri");
 		filterf = (LPALFILTERF)alGetProcAddress("alFilterf");
 		have_efx = genFilters && deleteFilters && filteri && filterf;
+		genEffects = (LPALGENEFFECTS)alGetProcAddress("alGenEffects");
+		deleteEffects = (LPALDELETEEFFECTS)alGetProcAddress("alDeleteEffects");
+		effecti = (LPALEFFECTI)alGetProcAddress("alEffecti");
+		effectf = (LPALEFFECTF)alGetProcAddress("alEffectf");
+		effectfv = (LPALEFFECTFV)alGetProcAddress("alEffectfv");
+		genAuxiliaryEffectSlots = (LPALGENAUXILIARYEFFECTSLOTS)alGetProcAddress("alGenAuxiliaryEffectSlots");
+		deleteAuxiliaryEffectSlots = (LPALDELETEAUXILIARYEFFECTSLOTS)alGetProcAddress("alDeleteAuxiliaryEffectSlots");
+		auxiliaryEffectSloti = (LPALAUXILIARYEFFECTSLOTI)alGetProcAddress("alAuxiliaryEffectSloti");
+		auxiliaryEffectSlotf = (LPALAUXILIARYEFFECTSLOTF)alGetProcAddress("alAuxiliaryEffectSlotf");
+		if (!(genEffects && deleteEffects && effecti && effectf && effectfv && genAuxiliaryEffectSlots
+				&& deleteAuxiliaryEffectSlots && auxiliaryEffectSloti && auxiliaryEffectSlotf))
+			genEffects = nullptr; // (no acoustics, filters still work)
 	}
 	infostream << "ALExtensions: EFX filters " << (have_efx ? "found" : "not found") << std::endl;
 #endif

@@ -189,6 +189,8 @@ std::shared_ptr<PlayingSound> OpenALSoundManager::createPlayingSound(
 	auto sound = std::make_shared<PlayingSound>(source_id, std::move(lsnd), loop,
 			volume, pitch, start_time, pos_vel_opt, m_exts);
 	sound->setMuffle(m_nhv_next_muffle, m_exts); // VoxHack
+	if (m_nhv_acoustics)
+		m_nhv_acoustics->attach(source_id, m_nhv_next_reverb); // VoxHack
 
 	sound->play();
 
@@ -341,6 +343,7 @@ OpenALSoundManager::OpenALSoundManager(SoundManagerSingleton *smg,
 	m_next_lingering_sounds_print(porting::getTimeS())
 {
 	SANITY_CHECK(!!m_fallback_path_provider);
+	m_nhv_acoustics = std::make_unique<NhvAcoustics>(m_exts); // VoxHack
 
 	infostream << "Audio: Initialized: OpenAL " << std::endl;
 }
@@ -354,6 +357,8 @@ OpenALSoundManager::~OpenALSoundManager()
 
 void OpenALSoundManager::step(f32 dtime)
 {
+	if (m_nhv_acoustics)
+		m_nhv_acoustics->step(dtime); // VoxHack
 	m_time_until_dead_removal -= dtime;
 	if (m_time_until_dead_removal <= 0.0f) {
 		if (!m_sounds_playing.empty()) {
@@ -470,8 +475,10 @@ void OpenALSoundManager::addSoundToGroup(const std::string &sound_name, const st
 
 void OpenALSoundManager::playSound(sound_handle_t id, const SoundSpec &spec)
 {
-	return playSoundGeneric(id, spec.name, spec.loop, spec.gain, spec.fade, spec.pitch,
+	m_nhv_next_reverb = spec.nhv_reverb;
+	playSoundGeneric(id, spec.name, spec.loop, spec.gain, spec.fade, spec.pitch,
 			spec.use_local_fallback, spec.start_time, std::nullopt);
+	m_nhv_next_reverb = 1.0f;
 }
 
 void OpenALSoundManager::playSoundAt(sound_handle_t id, const SoundSpec &spec,
@@ -483,9 +490,11 @@ void OpenALSoundManager::playSoundAt(sound_handle_t id, const SoundSpec &spec,
 		});
 
 	m_nhv_next_muffle = spec.nhv_muffle;
+	m_nhv_next_reverb = spec.nhv_reverb;
 	playSoundGeneric(id, spec.name, spec.loop, spec.gain, spec.fade, spec.pitch,
 			spec.use_local_fallback, spec.start_time, pos_vel_opt);
 	m_nhv_next_muffle = 0.0f;
+	m_nhv_next_reverb = 1.0f;
 }
 
 void OpenALSoundManager::stopSound(sound_handle_t sound)

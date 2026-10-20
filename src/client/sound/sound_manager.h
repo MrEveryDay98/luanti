@@ -15,6 +15,7 @@
 #include "sound_spec.h"
 #include "threading/thread.h"
 #include "util/container.h" // MutexedQueue
+#include "nhv_acoustics.h"
 #include <deque>
 
 namespace sound {
@@ -52,8 +53,11 @@ private:
 	std::unordered_map<std::string, std::vector<std::string>> m_sound_groups;
 	// VoxHack: lines SAM spoke lately (sam_voice.h), oldest first
 	std::deque<std::string> m_nhv_sam_recent;
-	// VoxHack: the muffle of the sound being started (sound_spec.h)
+	// VoxHack: the muffle and reverb of the sound being started (sound_spec.h)
 	f32 m_nhv_next_muffle = 0.0f;
+	f32 m_nhv_next_reverb = 1.0f;
+	// VoxHack: the place's reverb (made once the extensions are known)
+	std::unique_ptr<NhvAcoustics> m_nhv_acoustics;
 
 	// currently playing sounds
 	std::unordered_map<sound_handle_t, std::shared_ptr<PlayingSound>> m_sounds_playing;
