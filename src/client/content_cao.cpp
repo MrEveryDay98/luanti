@@ -633,9 +633,17 @@ void GenericCAO::addToScene(ITextureSource *tsrc, scene::ISceneManager *smgr)
 			mat.ZWriteEnable = video::EZW_OFF;
 			mat.FogEnable = false;
 		}
-		mat.forEachTexture([] (auto &tex) {
+		// NetHack Voxel: a flat sprite's picture doesn't repeat - stretched
+		// or turned (the wavy sprites), its edge pixels sampled just past
+		// the edge showed the other side's (stray feet over the head)
+		const bool clamp = m_prop.visual == OBJECTVISUAL_UPRIGHT_SPRITE;
+		mat.forEachTexture([clamp] (auto &tex) {
 			tex.MinFilter = video::ETMINF_NEAREST_MIPMAP_NEAREST;
 			tex.MagFilter = video::ETMAGF_NEAREST;
+			if (clamp) {
+				tex.TextureWrapU = video::ETC_CLAMP_TO_EDGE;
+				tex.TextureWrapV = video::ETC_CLAMP_TO_EDGE;
+			}
 		});
 	};
 
