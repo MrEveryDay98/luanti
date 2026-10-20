@@ -19,7 +19,8 @@ if(USE_SOUND)
 		"Folder with SAM's C source (sam.c, render.c, reciter.c...)")
 	if(EXISTS "${NHV_SAM_SRC}/sam.c")
 		message(STATUS "SAM voice: built in from ${NHV_SAM_SRC}")
-		list(APPEND sound_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/sound/sam_unity.c)
+		list(APPEND sound_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/sound/sam_unity.c
+			${CMAKE_CURRENT_SOURCE_DIR}/sound/sam_speech.cpp)
 		# (source properties count where the target is made: src/)
 		set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/sound/sam_unity.c
 			DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/.. PROPERTIES

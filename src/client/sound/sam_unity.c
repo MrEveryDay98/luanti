@@ -4,7 +4,7 @@
  * kept unchanged in lib/sam (see lib/sam/VOXHACK.md), from the folder CMake's
  * NHV_SAM_SRC points at. All of SAM is one translation unit here, with every one of its
  * global names prefixed, so names like A, X, Y, input or buffer can't clash
- * with anything else in the engine. sam_voice.cpp uses nhv_sam_render().
+ * with anything else in the engine. sam_speech.cpp uses the two functions at the end.
  */
 
 /* SAM's own includes come first, so the renames below can't touch them */
@@ -134,31 +134,49 @@ void PrintRule(int offset) { (void)offset; }
 #include "render.c"
 #include "sam.c"
 
-/* Renders one short piece of text (at most ~70 characters: SAM's buffers
- * are 256 bytes once it's spelled out as phonemes) or of SAM phonemes.
- * On success *out is 8-bit unsigned mono PCM at 22050 Hz, malloc'd (the
- * caller frees it), and its length is returned; 0 if SAM can't read it. */
-int nhv_sam_render(const char *text, int phonetic, int spd, int ptch, int thrt, int mth, int sing,
-		unsigned char **out)
+/* Spells a short piece of text (at most ~70 characters: SAM's buffers are
+ * 256 bytes once it's spelled out) as SAM phonemes, into out (out_size >=
+ * 256), without SAM's end mark. Returns 0 if SAM can't spell it. */
+int nhv_sam_text_to_phonemes(const char *text, char *out, int out_size)
 {
-	char in[256];
+	unsigned char in[256];
 	size_t i, n;
-	int len;
 
-	*out = NULL;
 	memset(in, 0, sizeof(in));
 	n = strlen(text);
 	if (n > 200)
 		n = 200;
 	for (i = 0; i < n; i++)
-		in[i] = (char)toupper((unsigned char)text[i]);
-	if (phonetic) {
-		strcat(in, "\x9b");
-	} else {
-		strcat(in, "[");
-		if (!TextToPhonemes((unsigned char *)in))
-			return 0;
-	}
+		in[i] = (unsigned char)toupper((unsigned char)text[i]);
+	in[n] = '[';
+	if (!TextToPhonemes(in))
+		return 0;
+	for (i = 0; i < sizeof(in) - 1 && in[i] && in[i] != 0x9b; i++)
+		;
+	in[i] = 0;
+	if ((int)i >= out_size)
+		return 0;
+	memcpy(out, in, i + 1);
+	return 1;
+}
+
+/* Renders SAM phonemes (at most ~250 characters). On success *out is 8-bit
+ * unsigned mono PCM at 22050 Hz, malloc'd (the caller frees it), and its
+ * length is returned; 0 if SAM can't read them. */
+int nhv_sam_render_phonemes(const char *phonemes, int spd, int ptch, int thrt, int mth, int sing,
+		unsigned char **out)
+{
+	char in[256];
+	size_t n;
+	int len;
+
+	*out = NULL;
+	n = strlen(phonemes);
+	if (n > 250)
+		return 0;
+	memcpy(in, phonemes, n);
+	in[n] = (char)0x9b;
+	in[n + 1] = 0;
 	SetSpeed((unsigned char)spd);
 	SetPitch((unsigned char)ptch);
 	SetThroat((unsigned char)thrt);
