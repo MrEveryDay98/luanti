@@ -106,6 +106,10 @@ class GameGlobalShaderUniformSetter : public IShaderUniformSetter
 	// NetHack Voxel full brightness (nodes and objects shaders): 0 or 1
 	CachedPixelShaderSetting<float> m_nhv_fullbright_pixel{"nhvFullbright"};
 	float m_nhv_wave = 0.0f, m_nhv_hallu = 0.0f;
+	// VoxHack: the setting nhv_brightness (0..1, wizard mode's /brightness),
+	// read a few times a second
+	float m_nhv_brightness = 0.0f;
+	u64 m_nhv_brightness_read = 0;
 	bool m_volumetric_light_enabled;
 	CachedPixelShaderSetting<float, 3>
 		m_sun_position_pixel{"sunPositionScreen"};
@@ -182,7 +186,14 @@ public:
 			float fx[3] = {m_nhv_wave, m_nhv_hallu,
 					(float)(m_client->getEnv().getFrameTime() % 1000000) / 1000.0f};
 			m_nhv_fx_pixel.set(fx, services);
-			float fullbright = (f & HUD_FLAG_NHV_FULLBRIGHT) ? 1.0f : 0.0f;
+			u64 now_ms = porting::getTimeMs();
+			if (now_ms - m_nhv_brightness_read > 250) {
+				m_nhv_brightness_read = now_ms;
+				m_nhv_brightness = g_settings->exists("nhv_brightness")
+						? std::clamp(g_settings->getFloat("nhv_brightness"), 0.0f, 1.0f) : 0.0f;
+			}
+			// (full brightness, or wizard mode's partial: unlit colours mixed in)
+			float fullbright = (f & HUD_FLAG_NHV_FULLBRIGHT) ? 1.0f : m_nhv_brightness;
 			m_nhv_fullbright_pixel.set(&fullbright, services);
 		}
 
