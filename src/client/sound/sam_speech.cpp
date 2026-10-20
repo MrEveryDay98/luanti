@@ -394,6 +394,206 @@ std::vector<Piece> pieces(const std::string &text, const Settings &s, const Dict
 	return out;
 }
 
+// ---------------------------------------------------------------- effects
+// A chain like "echo:delay=250:decay=0.4/reverb:room=60:mix=35", applied in
+// order. Every parameter has a default, so "reverb" alone works too. The
+// sound editor (samvoice.py EFFECTS) lists the same effects and parameters.
+using Params = std::unordered_map<std::string, float>;
+
+float param(const Params &p, const char *key, float def, float lo, float hi)
+{
+	auto it = p.find(key);
+	float v = it == p.end() || !std::isfinite(it->second) ? def : it->second;
+	return std::clamp(v, lo, hi);
+}
+
+const float PI = 3.14159265f;
+
+// a delay line read with fractional delays (chorus, vibrato)
+float tap(const std::vector<float> &x, float pos)
+{
+	if (pos < 0)
+		return 0;
+	size_t i = (size_t)pos;
+	if (i + 1 >= x.size())
+		return i < x.size() ? x[i] : 0;
+	float f = pos - i;
+	return x[i] * (1 - f) + x[i + 1] * f;
+}
+
+void echo(std::vector<float> &x, const Params &p)
+{
+	size_t d = (size_t)(param(p, "delay", 250, 20, 1500) / 1000 * RATE);
+	float decay = param(p, "decay", 0.4f, 0.05f, 0.95f);
+	int repeats = (int)param(p, "repeats", 3, 1, 8);
+	size_t n = x.size();
+	x.resize(n + d * repeats, 0);
+	std::vector<float> dry(x.begin(), x.begin() + n);
+	float g = 1;
+	for (int k = 1; k <= repeats; k++) {
+		g *= decay;
+		for (size_t i = 0; i < n; i++)
+			x[i + d * k] += dry[i] * g;
+	}
+}
+
+// a small Freeverb-style room: four damped combs, then two all-passes
+void reverb(std::vector<float> &x, const Params &p)
+{
+	float room = param(p, "room", 60, 0, 100) / 100, mix = param(p, "mix", 35, 0, 100) / 100;
+	float feedback = 0.7f + 0.27f * room, damp = 0.45f - 0.25f * room;
+	size_t tail = (size_t)((0.3f + 2.7f * room) * RATE);
+	size_t n = x.size();
+	x.resize(n + tail, 0);
+	static const int COMB[] = {558, 594, 638, 678}, ALL[] = {278, 220};
+	std::vector<float> wet(x.size(), 0);
+	for (int c : COMB) {
+		std::vector<float> buf(c, 0);
+		float low = 0;
+		for (size_t i = 0, j = 0; i < x.size(); i++, j = (j + 1) % c) {
+			float out = buf[j];
+			low = out * (1 - damp) + low * damp;
+			buf[j] = x[i] + low * feedback;
+			wet[i] += out * 0.25f;
+		}
+	}
+	for (int a : ALL) {
+		std::vector<float> buf(a, 0);
+		for (size_t i = 0, j = 0; i < wet.size(); i++, j = (j + 1) % a) {
+			float b = buf[j];
+			float out = -wet[i] + b;
+			buf[j] = wet[i] + b * 0.5f;
+			wet[i] = out;
+		}
+	}
+	for (size_t i = 0; i < x.size(); i++)
+		x[i] = x[i] * (1 - mix * 0.5f) + wet[i] * mix * 1.6f;
+}
+
+void chorus(std::vector<float> &x, const Params &p)
+{
+	float depth = param(p, "depth", 3, 0.5f, 15) / 1000 * RATE, rate = param(p, "rate", 0.8f, 0.05f, 8);
+	float mix = param(p, "mix", 50, 0, 100) / 100, base = 0.02f * RATE;
+	std::vector<float> dry = x;
+	for (size_t i = 0; i < x.size(); i++) {
+		float t = (float)i / RATE;
+		float a = tap(dry, i - base - depth * (0.5f + 0.5f * std::sin(2 * PI * rate * t)));
+		float b = tap(dry, i - base * 1.4f - depth * (0.5f + 0.5f * std::sin(2 * PI * rate * 1.3f * t + 1.7f)));
+		x[i] = dry[i] * (1 - mix * 0.5f) + (a + b) * 0.5f * mix;
+	}
+}
+
+void vibrato(std::vector<float> &x, const Params &p)
+{
+	float depth = param(p, "depth", 2, 0.2f, 10) / 1000 * RATE, rate = param(p, "rate", 5, 0.5f, 20);
+	std::vector<float> dry = x;
+	for (size_t i = 0; i < x.size(); i++)
+		x[i] = tap(dry, i - depth * (1 + std::sin(2 * PI * rate * i / RATE)));
+}
+
+void tremolo(std::vector<float> &x, const Params &p)
+{
+	float rate = param(p, "rate", 6, 0.5f, 30), depth = param(p, "depth", 50, 0, 100) / 100;
+	for (size_t i = 0; i < x.size(); i++)
+		x[i] *= 1 - depth * (0.5f + 0.5f * std::sin(2 * PI * rate * i / RATE));
+}
+
+void distortion(std::vector<float> &x, const Params &p)
+{
+	float g = std::pow(10.0f, param(p, "drive", 12, 0, 40) / 20);
+	float norm = std::tanh(g);
+	for (float &v : x)
+		v = std::tanh(v / 32768 * g) / norm * 32768 * 0.8f;
+}
+
+void bitcrush(std::vector<float> &x, const Params &p)
+{
+	float levels = std::pow(2.0f, param(p, "bits", 6, 1, 16) - 1);
+	int hold = (int)param(p, "downsample", 2, 1, 16);
+	float held = 0;
+	for (size_t i = 0; i < x.size(); i++) {
+		if (i % hold == 0)
+			held = std::round(x[i] / 32768 * levels) / levels * 32768;
+		x[i] = held;
+	}
+}
+
+// ring modulation: SAM's voice times a tone, a buzzing machine
+void robot(std::vector<float> &x, const Params &p)
+{
+	float f = param(p, "freq", 60, 10, 2000), mix = param(p, "mix", 70, 0, 100) / 100;
+	for (size_t i = 0; i < x.size(); i++)
+		x[i] = x[i] * (1 - mix) + x[i] * std::sin(2 * PI * f * i / RATE) * mix * 1.4f;
+}
+
+// RBJ biquad low/high-pass
+void biquad(std::vector<float> &x, float freq, bool high)
+{
+	float w = 2 * PI * std::clamp(freq, 20.0f, RATE * 0.45f) / RATE, alpha = std::sin(w) / (2 * 0.7071f);
+	float c = std::cos(w), a0 = 1 + alpha;
+	float b0 = (high ? (1 + c) : (1 - c)) / 2, b1 = high ? -(1 + c) : (1 - c), b2 = b0;
+	float a1 = -2 * c, a2 = 1 - alpha;
+	float x1 = 0, x2 = 0, y1 = 0, y2 = 0;
+	for (float &v : x) {
+		float y = (b0 * v + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2) / a0;
+		x2 = x1, x1 = v, y2 = y1, y1 = y;
+		v = y;
+	}
+}
+
+void applyEffects(std::vector<float> &x, const std::string &chain)
+{
+	size_t i = 0;
+	while (i < chain.size()) {
+		size_t e = chain.find('/', i);
+		e = e == std::string::npos ? chain.size() : e;
+		std::string item = chain.substr(i, e - i);
+		i = e + 1;
+		// "type:key=value:key=value"
+		Params p;
+		std::string type;
+		size_t a = 0;
+		while (a <= item.size()) {
+			size_t b = item.find(':', a);
+			b = b == std::string::npos ? item.size() : b;
+			std::string part = item.substr(a, b - a);
+			size_t eq = part.find('=');
+			if (type.empty() && eq == std::string::npos)
+				type = lower(part);
+			else if (eq != std::string::npos)
+				p[lower(part.substr(0, eq))] = std::strtof(part.c_str() + eq + 1, nullptr);
+			a = b + 1;
+		}
+		if (type == "echo") echo(x, p);
+		else if (type == "reverb") reverb(x, p);
+		else if (type == "chorus") chorus(x, p);
+		else if (type == "vibrato") vibrato(x, p);
+		else if (type == "tremolo") tremolo(x, p);
+		else if (type == "distortion") distortion(x, p);
+		else if (type == "bitcrush") bitcrush(x, p);
+		else if (type == "robot") robot(x, p);
+		else if (type == "lowpass") biquad(x, param(p, "freq", 3000, 100, 10000), false);
+		else if (type == "highpass") biquad(x, param(p, "freq", 300, 20, 5000), true);
+		else if (type == "gain") {
+			float g = std::pow(10.0f, param(p, "db", 0, -30, 30) / 20);
+			for (float &v : x)
+				v *= g;
+		}
+	}
+	// whatever the chain did, never clip
+	float peak = 0;
+	for (float v : x)
+		peak = std::max(peak, std::fabs(v));
+	if (peak > 32000)
+		for (float &v : x)
+			v *= 32000 / peak;
+	// trim the silent end of echo and reverb tails
+	size_t end = x.size();
+	while (end > 0 && std::fabs(x[end - 1]) < 40)
+		end--;
+	x.resize(std::min(x.size(), end + RATE / 20));
+}
+
 } // namespace
 
 // ---------------------------------------------------------------- public
@@ -474,6 +674,13 @@ std::vector<short> speak(const std::string &text, const Settings &s, const Dicti
 			l3 = (1 - a) * l2 + a * l3;
 			v = (short)std::clamp(l3, -32768.0f, 32767.0f);
 		}
+	}
+	if (!s.effects.empty() && !pcm.empty()) {
+		std::vector<float> x(pcm.begin(), pcm.end());
+		applyEffects(x, s.effects);
+		pcm.resize(x.size());
+		for (size_t i = 0; i < x.size(); i++)
+			pcm[i] = (short)std::clamp(x[i], -32768.0f, 32767.0f);
 	}
 	return pcm;
 }

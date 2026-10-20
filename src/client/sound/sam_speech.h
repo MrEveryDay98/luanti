@@ -3,8 +3,8 @@
 // Turns a line of text into SAM's speech: the pronunciation dictionary,
 // numbers and symbols read as words, {PHONEMES} written straight into the
 // text, short pieces (SAM's buffers are small), quicker and higher
-// exclamations, soft edges between pieces, and an optional smoothing of
-// SAM's 8-bit sound. Used by the engine (sam_voice.cpp) and by the sound
+// exclamations, soft edges between pieces, an optional smoothing of SAM's
+// 8-bit sound, and effects (echo, reverb, chorus...). Used by the engine (sam_voice.cpp) and by the sound
 // editor's preview tool (VoxHack's tools/samtool.cpp), so both say exactly
 // the same. No engine dependencies.
 
@@ -24,6 +24,9 @@ struct Settings {
 	bool phonetic = false;  // the whole text is SAM phonemes
 	bool smooth = false;    // soften SAM's 8-bit edge
 	bool tone = true;       // exclamations are quicker and higher
+	// effects applied in order after SAM speaks:
+	// "echo:delay=250:decay=0.4/reverb:room=60:mix=35" (see sam_speech.cpp)
+	std::string effects;
 };
 
 // lowercase word -> what SAM says instead: other words, or {PHONEMES}
