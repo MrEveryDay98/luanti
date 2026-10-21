@@ -251,7 +251,7 @@ keymap_toggle_chat (Toggle chat log) key SYSTEM_SCANCODE_59
 
 keymap_console (Toggle large chat console) key SYSTEM_SCANCODE_67
 
-keymap_toggle_fog (Toggle fog) key SYSTEM_SCANCODE_60
+keymap_toggle_fog (Toggle fog) key
 
 keymap_toggle_debug (Toggle debug info) key SYSTEM_SCANCODE_62
 

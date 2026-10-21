@@ -4415,11 +4415,15 @@ bool GUIFormSpecMenu::preprocessEvent(const SEvent& event)
 	if (GUIModalMenu::preprocessEvent(event))
 		return true;
 
-	// VoxHack: the wiki viewer's key (F2) closes it again (here, before a
-	// focused text field can take the key)
+	// VoxHack: the wiki viewer's key (F2) closes it again, and the command
+	// list's key (F3) closes the list (here, before a focused text field
+	// can take the key)
 	if (event.EventType == EET_KEY_INPUT_EVENT && event.KeyInput.PressedDown
-			&& m_client && m_text_dst && m_text_dst->m_formname == "nhv:wiki"
-			&& keySettingHasMatch("keymap_nhv_wiki", KeyPress(event.KeyInput))) {
+			&& m_client && m_text_dst
+			&& ((m_text_dst->m_formname == "nhv:wiki"
+				&& keySettingHasMatch("keymap_nhv_wiki", KeyPress(event.KeyInput)))
+			|| (m_text_dst->m_formname == "nhv:commands"
+				&& keySettingHasMatch("keymap_nhv_commands", KeyPress(event.KeyInput))))) {
 		tryClose();
 		return true;
 	}

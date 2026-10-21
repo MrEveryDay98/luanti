@@ -763,6 +763,11 @@ static bool init_common(const Settings &cmd_args, int argc, char *argv[])
 
 	// Initialize g_settings
 	set_default_settings();
+	// VoxHack: the game's own defaults (nhv_defaults.conf beside bin), so a
+	// release can set them without shipping minetest.conf, which holds the
+	// player's settings (a Steam update or file check would put it back)
+	Settings::getLayer(SL_DEFAULTS)->readConfigFile(
+		(porting::path_share + DIR_DELIM + "nhv_defaults.conf").c_str());
 	Settings::createLayer(SL_GLOBAL);
 
 	// Set cleanup callback(s) to run at process exit

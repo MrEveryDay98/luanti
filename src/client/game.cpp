@@ -1651,6 +1651,9 @@ void Game::processItemSelection(u16 *new_playeritem)
 		// guiFormSpecMenu)
 		if (wasKeyDown(KeyType::NHV_WIKI))
 			client->sendChatMessage(L"/nhvkey wiki");
+		// (F3: NetHack's commands, "/nhvkey commands"; closed the same way)
+		if (wasKeyDown(KeyType::NHV_COMMANDS))
+			client->sendChatMessage(L"/nhvkey commands");
 		return;
 	}
 	u16 max_item = player->getMaxHotbarItemcount();

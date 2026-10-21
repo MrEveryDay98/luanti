@@ -150,6 +150,7 @@ void set_default_settings()
 	settings->setDefault("keymap_nhv_enhance", "SYSTEM_SCANCODE_10"); // KEY_KEY_G (NetHack Voxel: enhance skills)
 	settings->setDefault("keymap_nhv_pickup", "SYSTEM_SCANCODE_9"); // KEY_KEY_F (VoxHack: pick up)
 	settings->setDefault("keymap_nhv_wiki", "SYSTEM_SCANCODE_59"); // KEY_F2 (VoxHack: NetHackWiki viewer)
+	settings->setDefault("keymap_nhv_commands", "SYSTEM_SCANCODE_60"); // KEY_F3 (VoxHack: NetHack's commands)
 	settings->setDefault("keymap_inventory", "SYSTEM_SCANCODE_12|GAMEPAD_BUTTON_3"); // KEY_KEY_I|Gamepad North
 	settings->setDefault("keymap_pause", "GAMEPAD_BUTTON_6"); // Gamepad Start
 	settings->setDefault("keymap_aux1", "SYSTEM_SCANCODE_8|GAMEPAD_BUTTON_2"); // KEY_KEY_E|Gamepad West
@@ -175,7 +176,7 @@ void set_default_settings()
 	settings->setDefault("keymap_toggle_block_bounds", "");
 	settings->setDefault("keymap_toggle_hud", "SYSTEM_SCANCODE_58"); // KEY_F1
 	settings->setDefault("keymap_toggle_chat", ""); // (VoxHack: F2 is the wiki viewer) // KEY_F2
-	settings->setDefault("keymap_toggle_fog", "SYSTEM_SCANCODE_60"); // KEY_F3
+	settings->setDefault("keymap_toggle_fog", ""); // (VoxHack: F3 is NetHack's commands) // KEY_F3
 #ifndef NDEBUG
 	settings->setDefault("keymap_toggle_update_camera", "SYSTEM_SCANCODE_61"); // KEY_F4
 #else

@@ -66,6 +66,7 @@ public:
 		NHV_ENHANCE, // NetHack Voxel: enhance skills (G)
 		NHV_PICKUP, // VoxHack: pick up (F)
 		NHV_WIKI, // VoxHack: the NetHackWiki viewer (F2)
+		NHV_COMMANDS, // VoxHack: NetHack's commands, explained (F3)
 
 		QUICKTUNE_NEXT,
 		QUICKTUNE_PREV,
