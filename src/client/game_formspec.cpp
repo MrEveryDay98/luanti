@@ -7,6 +7,8 @@
 #include "gettext.h"
 #include "nodemetadata.h"
 #include "renderingengine.h"
+#include "client/fontengine.h"
+#include <IGUIFont.h>
 #include "client.h"
 #include "scripting_client.h"
 #include "cpp_api/s_client_common.h"
@@ -371,6 +373,46 @@ void GameFormSpec::showPlayerInventory(const std::string *fs_override)
 
 #define SIZE_TAG "size[14.25,7.275,true]" // Fixed size (ignored in touchscreen mode)
 
+// VoxHack: the pause menu's tips, just left of the menu. The menu has a fixed
+// size (its unit depends only on the DPI and gui_scaling), so the room beside
+// it and the text's own width are known here: the tips end just left of the
+// menu at any window or font size. Too little room: inside the menu, at its
+// left (the buttons are in its middle). A label whose box starts off the
+// screen isn't drawn at all, so each line is its own label, placed exactly.
+static std::string pauseMenuTips()
+{
+	static const wchar_t *keys[] = {L"F2", L"F3"};
+	static const wchar_t *what[] = {L"NetHackWiki", L"NetHack's commands"};
+	gui::IGUIFont *font = g_fontengine->getFont();
+	if (!font)
+		return "";
+	const double u = GUIFormSpecMenu::getFixedImgsize(
+		RenderingEngine::getDisplayDensity() * 96,
+		g_settings->getFloat("gui_scaling", 0.5f, 42.0f));
+	const double screen_w = RenderingEngine::get_video_driver()->getScreenSize().Width;
+	const double menu_w = 14.25; // (SIZE_TAG's width)
+	const double gap = 0.4;      // (between the tips and the menu)
+	// widths in menu units: the key column, then the widest line
+	double key_w = (font->getDimension(L"F3").Width + font->getDimension(L"  ").Width) / u;
+	double text_w = font->getDimension(L"Tips").Width / u;
+	for (const wchar_t *w : what)
+		text_w = std::max(text_w, key_w + font->getDimension(w).Width / u);
+	const double line_h = font->getDimension(L"Ag").Height * 1.3 / u;
+	double room = (screen_w / 2) / u - menu_w / 2; // (left of the menu)
+	double x = room >= text_w + gap + 0.2 ? -text_w - gap : 0.4;
+	std::ostringstream os;
+	os << "style_type[label;noclip=true]";
+	double y = 1.45;
+	os << "label[" << x << "," << y << ";\x1b(c@#FFD25A)Tips]";
+	for (size_t i = 0; i < 2; i++) {
+		y += line_h;
+		os << "label[" << x << "," << y << ";\x1b(c@#FFD080)" << wide_to_utf8(keys[i]) << "]"
+			<< "label[" << (x + key_w) << "," << y << ";\x1b(c@#E8E6DF)"
+			<< wide_to_utf8(what[i]) << "]";
+	}
+	return os.str();
+}
+
 void GameFormSpec::showPauseMenu()
 {
 	std::string control_text;
@@ -440,14 +482,8 @@ void GameFormSpec::showPauseMenu()
 	os << "container_end[]";
 	// VoxHack: tips, out to the left of the menu with nothing behind them
 	// (the wiki viewer and the command list are easy to miss)
-	if (simple_singleplayer_mode) {
-		// (short lines, to fit between the screen edge and the menu on a
-		// 16:9 screen)
-		os << "style_type[label;noclip=true;halign=left]"
-			<< "label[-4.7,1.4;\x1b(c@#FFD25A)Tips\x1b(c@#E8E6DF)\n"
-			<< "\x1b(c@#FFD080)F2\x1b(c@#E8E6DF)  NetHackWiki\n"
-			<< "\x1b(c@#FFD080)F3\x1b(c@#E8E6DF)  NetHack's commands]";
-	}
+	if (simple_singleplayer_mode)
+		os << pauseMenuTips();
 	if (!control_text.empty()) {
 		os << "textarea[9.25,0.8;4.625,6.1;;" << control_text << ";]";
 	}
