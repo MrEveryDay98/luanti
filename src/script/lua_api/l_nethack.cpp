@@ -45,6 +45,7 @@ struct NhvFuncs {
 	NHV_FN(nhv_get_inventory)
 	NHV_FN(nhv_get_floor_objects)
 	NHV_FN(nhv_get_container)
+	NHV_FN(nhv_jump_squares)
 	NHV_FN(nhv_get_glyph_info)
 	NHV_FN(nhv_max_glyph)
 	NHV_FN(nhv_tile_count)
@@ -130,6 +131,7 @@ bool load_library(std::string &err)
 	NHV_FN(nhv_get_inventory)
 	NHV_FN(nhv_get_floor_objects)
 	NHV_FN(nhv_get_container)
+	NHV_FN(nhv_jump_squares)
 	NHV_FN(nhv_get_glyph_info)
 	NHV_FN(nhv_max_glyph)
 	NHV_FN(nhv_tile_count)
@@ -557,6 +559,31 @@ int ModApiNetHack::l_nh_get_floor_objects(lua_State *L)
 	return 1;
 }
 
+// nh_jump_squares() -> list of {x=, y=} where a jump (#jump) could land
+// now, and "ok"; or nil and "not_now" (#jump says why) / "no" (can't jump)
+int ModApiNetHack::l_nh_jump_squares(lua_State *L)
+{
+	REQUIRE_LOADED();
+	int xy[128];
+	int n = nh.nhv_jump_squares(xy, 64);
+	if (n < 0) {
+		lua_pushnil(L);
+		lua_pushstring(L, n == -1 ? "not_now" : "no");
+		return 2;
+	}
+	lua_createtable(L, n, 0);
+	for (int i = 0; i < n; i++) {
+		lua_createtable(L, 0, 2);
+		lua_pushinteger(L, xy[2 * i]);
+		lua_setfield(L, -2, "x");
+		lua_pushinteger(L, xy[2 * i + 1]);
+		lua_setfield(L, -2, "y");
+		lua_rawseti(L, -2, i + 1);
+	}
+	lua_pushstring(L, "ok");
+	return 2;
+}
+
 // nh_get_container(id) -> list of objects, or nil if it isn't reachable
 int ModApiNetHack::l_nh_get_container(lua_State *L)
 {
@@ -950,6 +977,7 @@ void ModApiNetHack::Initialize(lua_State *L, int top)
 	API_FCT(nh_get_hero);
 	API_FCT(nh_get_inventory);
 	API_FCT(nh_get_floor_objects);
+	API_FCT(nh_jump_squares);
 	API_FCT(nh_get_container);
 	API_FCT(nh_glyph_info);
 	API_FCT(nh_max_glyph);

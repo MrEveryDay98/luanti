@@ -25,6 +25,7 @@ private:
 	static int l_nh_get_hero(lua_State *L);
 	static int l_nh_get_inventory(lua_State *L);
 	static int l_nh_get_floor_objects(lua_State *L);
+	static int l_nh_jump_squares(lua_State *L);
 	static int l_nh_get_container(lua_State *L);
 	static int l_nh_glyph_info(lua_State *L);
 	static int l_nh_max_glyph(lua_State *L);
