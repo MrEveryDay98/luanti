@@ -470,6 +470,7 @@ int ModApiNetHack::l_nh_get_map(lua_State *L)
 	FIELD_ARRAY("door", l.door)
 	FIELD_ARRAY("back", l.back)
 	FIELD_ARRAY("trap", l.trap)
+	FIELD_ARRAY("back_tile", l.back_tile)
 #undef FIELD_ARRAY
 	return 1;
 }
