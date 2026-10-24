@@ -70,6 +70,9 @@
 // the 3D view at the window's full resolution, whatever "undersampling" says
 // (the level atlas); the setting itself is left alone
 #define HUD_FLAG_NHV_FULL_RES          (1 << 22)
+// toggling nhv_stab thrusts the wielded item forward once (a polearm's or
+// Snickersnee's hit from a distance)
+#define HUD_FLAG_NHV_STAB              (1 << 23)
 
 #define HUD_PARAM_HOTBAR_ITEMCOUNT 1
 #define HUD_PARAM_HOTBAR_IMAGE 2

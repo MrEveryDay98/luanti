@@ -1654,6 +1654,9 @@ void Game::processItemSelection(u16 *new_playeritem)
 		// (F3: NetHack's commands, "/nhvkey commands"; closed the same way)
 		if (wasKeyDown(KeyType::NHV_COMMANDS))
 			client->sendChatMessage(L"/nhvkey commands");
+		// (Q invokes the wielded item, when it can be: "/nhvkey invoke")
+		if (wasKeyDown(KeyType::NHV_INVOKE))
+			client->sendChatMessage(L"/nhvkey invoke");
 		return;
 	}
 	u16 max_item = player->getMaxHotbarItemcount();
@@ -2847,6 +2850,12 @@ void Game::processPlayerInteraction(f32 dtime, bool show_hud)
 		if (shake != last_shake) {
 			last_shake = shake;
 			camera->nhvShake();
+		}
+		static bool last_stab = false;
+		bool stab = player->hud_flags & HUD_FLAG_NHV_STAB;
+		if (stab != last_stab) {
+			last_stab = stab;
+			camera->nhvStab();
 		}
 		const InventoryList *list = player->inventory.getList("nhv_offhand");
 		camera->nhvSetOffhand(list && list->getSize() > 0 ? list->getItem(0) : ItemStack());

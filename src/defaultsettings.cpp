@@ -140,7 +140,8 @@ void set_default_settings()
 	settings->setDefault("keymap_sneak", "SYSTEM_SCANCODE_225|GAMEPAD_BUTTON_1"); // KEY_LSHIFT|Gamepad East
 	settings->setDefault("keymap_dig", "MOUSE_BUTTON_1|GAMEPAD_AXIS_PLUS_5"); // LMB|Gamepad RT
 	settings->setDefault("keymap_place", "MOUSE_BUTTON_3|GAMEPAD_AXIS_PLUS_4"); // RMB|Gamepad LT
-	settings->setDefault("keymap_drop", "SYSTEM_SCANCODE_20|GAMEPAD_BUTTON_12"); // KEY_KEY_Q|D-Pad Down
+	// (VoxHack: nothing to drop that way - Q invokes, keymap_nhv_invoke)
+	settings->setDefault("keymap_drop", "GAMEPAD_BUTTON_12"); // D-Pad Down
 	settings->setDefault("keymap_zoom", "SYSTEM_SCANCODE_29|GAMEPAD_BUTTON_11"); // KEY_KEY_Z|D-Pad Up
 	settings->setDefault("keymap_nhv_search", "SYSTEM_SCANCODE_27"); // KEY_KEY_X (NetHack Voxel: search)
 	settings->setDefault("keymap_nhv_pay", "SYSTEM_SCANCODE_19"); // KEY_KEY_P (NetHack Voxel: pay)
@@ -151,6 +152,7 @@ void set_default_settings()
 	settings->setDefault("keymap_nhv_pickup", "SYSTEM_SCANCODE_9"); // KEY_KEY_F (VoxHack: pick up)
 	settings->setDefault("keymap_nhv_wiki", "SYSTEM_SCANCODE_59"); // KEY_F2 (VoxHack: NetHackWiki viewer)
 	settings->setDefault("keymap_nhv_commands", "SYSTEM_SCANCODE_60"); // KEY_F3 (VoxHack: NetHack's commands)
+	settings->setDefault("keymap_nhv_invoke", "SYSTEM_SCANCODE_20"); // KEY_KEY_Q (VoxHack: invoke the wielded item)
 	settings->setDefault("keymap_inventory", "SYSTEM_SCANCODE_12|GAMEPAD_BUTTON_3"); // KEY_KEY_I|Gamepad North
 	settings->setDefault("keymap_pause", "GAMEPAD_BUTTON_6"); // Gamepad Start
 	settings->setDefault("keymap_aux1", "SYSTEM_SCANCODE_8|GAMEPAD_BUTTON_2"); // KEY_KEY_E|Gamepad West

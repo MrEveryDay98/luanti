@@ -67,6 +67,7 @@ public:
 		NHV_PICKUP, // VoxHack: pick up (F)
 		NHV_WIKI, // VoxHack: the NetHackWiki viewer (F2)
 		NHV_COMMANDS, // VoxHack: NetHack's commands, explained (F3)
+		NHV_INVOKE, // VoxHack: invoke the wielded item (Q)
 
 		QUICKTUNE_NEXT,
 		QUICKTUNE_PREV,

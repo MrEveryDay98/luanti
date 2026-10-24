@@ -163,6 +163,12 @@ void Camera::step(f32 dtime)
 	}
 	if (m_nhv_shake > 0.0f)
 		m_nhv_shake = std::max(0.0f, m_nhv_shake - dtime * 4.0f);
+	// NetHack Voxel: a stab
+	if (m_nhv_stab_anim >= 0.0f) {
+		m_nhv_stab_anim += dtime * 2.8f;
+		if (m_nhv_stab_anim >= 1.0f)
+			m_nhv_stab_anim = -1.0f;
+	}
 	// NetHack Voxel: the left hand's swing
 	if (m_nhv_off_anim >= 0.0f) {
 		m_nhv_off_anim += dtime * 3.5f;
@@ -604,6 +610,25 @@ void Camera::update(LocalPlayer* player, f32 frametime, f32 tool_reload_ratio)
 		f32 bobfrac = my_modf(m_view_bobbing_anim);
 		wield_position.X -= std::sin(bobfrac*M_PI*2.0) * 3.0;
 		wield_position.Y += std::sin(my_modf(bobfrac*2.0)*M_PI) * 3.0;
+	}
+	// NetHack Voxel: a stab - the item drawn back a little, driven straight
+	// out towards the middle of the view, pointing ahead, and pulled back
+	if (m_nhv_stab_anim >= 0.0f) {
+		f32 t = m_nhv_stab_anim;
+		f32 out = t < 0.12f ? -0.25f * std::sin(t / 0.12f * M_PI * 0.5f)
+			: t < 0.35f ? -0.25f + 1.25f * std::sin((t - 0.12f) / 0.23f * M_PI * 0.5f)
+			: 1.0f - easeCurve((t - 0.35f) / 0.65f);
+		f32 aim = std::sin(std::min(t / 0.35f, 1.0f) * M_PI * 0.5f)
+			* (t < 0.35f ? 1.0f : 1.0f - easeCurve((t - 0.35f) / 0.65f));
+		wield_position.Z += 55.0f * out;
+		wield_position.X -= m_wieldmesh_offset.X * 0.55f * aim;
+		wield_position.Y += 12.0f * aim;
+		core::quaternion q_begin(wield_rotation * core::DEGTORAD);
+		core::quaternion q_end(v3f(-90, 90, -45) * core::DEGTORAD);
+		core::quaternion q;
+		q.slerp(q_begin, q_end, aim * 0.8f);
+		q.toEuler(wield_rotation);
+		wield_rotation *= core::RADTODEG;
 	}
 	// NetHack Voxel: kicking, both hands drop out of view and come back
 	f32 nhv_down = m_nhv_down_anim >= 0.0f ? std::sin(m_nhv_down_anim * M_PI) * 90.0f : 0.0f;

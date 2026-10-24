@@ -161,6 +161,8 @@ public:
 	// the view shakes for a moment (it lands)
 	void nhvHandsDown() { m_nhv_down_anim = 0.0f; }
 	void nhvShake() { m_nhv_shake = 1.0f; }
+	// NetHack Voxel: the wielded item thrusts forward once (a polearm's hit)
+	void nhvStab() { m_nhv_stab_anim = 0.0f; m_digging_button = -1; }
 
 	// Draw the wielded tool.
 	// This has to happen *after* the main scene is drawn.
@@ -210,6 +212,7 @@ private:
 	f32 m_nhv_off_anim = -1.0f;     // its swing (0..1; -1: none)
 	f32 m_nhv_down_anim = -1.0f;    // hands down and up (0..1; -1: none)
 	f32 m_nhv_shake = 0.0f;         // shaking (1 .. 0)
+	f32 m_nhv_stab_anim = -1.0f;    // a stab (0..1; -1: none)
 
 	// draw control
 	MapDrawControl& m_draw_control;
