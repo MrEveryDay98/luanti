@@ -225,6 +225,7 @@ const char *event_kind_name(int k)
 	case NHV_EV_RAY: return "ray";
 	case NHV_EV_CONTAINER: return "container";
 	case NHV_EV_SPLEV: return "splev";
+	case NHV_EV_ACHIEVE: return "achieve";
 	default: return "unknown";
 	}
 }
@@ -521,6 +522,7 @@ int ModApiNetHack::l_nh_get_hero(lua_State *L)
 	set_int(L, "encumbrance", h.encumbrance);
 	set_int(L, "glyph", h.glyph); set_int(L, "tile", h.tile);
 	set_int(L, "mndx", h.mndx); set_int(L, "flags", h.flags);
+	set_int(L, "conds", h.conds);
 	set_int(L, "dx", h.dx); set_int(L, "dy", h.dy);
 	set_str(L, "name", h.name); set_str(L, "rank", h.rank);
 	set_str(L, "align", h.align);
@@ -871,6 +873,50 @@ int ModApiNetHack::l_nh_get_rays(lua_State *L)
 	return 1;
 }
 
+// The player's own files, kept from version to version (each VoxHack
+// version is unpacked into a folder of its own): %APPDATA%/NetHackVoxel on
+// Windows, else the user path. core.nh_profile_read(name) -> its text or
+// nil; core.nh_profile_write(name, text) -> true if written. A name is a
+// plain file name (letters, digits, "_", "-", ".").
+static std::string profile_path(lua_State *L)
+{
+	std::string name = luaL_checkstring(L, 1);
+	if (name.empty() || name[0] == '.' || name.find_first_not_of(
+			"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-.") != std::string::npos)
+		throw LuaError("bad profile file name: " + name);
+	std::string dir;
+#ifdef _WIN32
+	const char *appdata = getenv("APPDATA");
+	if (appdata && *appdata)
+		dir = std::string(appdata) + DIR_DELIM "NetHackVoxel";
+#endif
+	if (dir.empty())
+		dir = porting::path_user + DIR_DELIM "nethackvoxel";
+	return dir + DIR_DELIM + name;
+}
+
+int ModApiNetHack::l_nh_profile_read(lua_State *L)
+{
+	std::string text;
+	if (!fs::ReadFile(profile_path(L), text))
+		return 0;
+	lua_pushlstring(L, text.data(), text.size());
+	return 1;
+}
+
+int ModApiNetHack::l_nh_profile_write(lua_State *L)
+{
+	std::string path = profile_path(L);
+	size_t len;
+	const char *text = luaL_checklstring(L, 2, &len);
+	bool ok = fs::CreateAllDirs(fs::RemoveLastPathComponent(path))
+		&& fs::safeWriteToFile(path, std::string_view(text, len));
+	if (!ok)
+		warningstream << "[nhv] could not write " << path << std::endl;
+	lua_pushboolean(L, ok);
+	return 1;
+}
+
 int ModApiNetHack::l_nh_game_id(lua_State *L)
 {
 	REQUIRE_LOADED();
@@ -989,6 +1035,8 @@ void ModApiNetHack::Initialize(lua_State *L, int top)
 	API_FCT(nh_obj_name);
 	API_FCT(nh_get_spells);
 	API_FCT(nh_game_id);
+	API_FCT(nh_profile_read);
+	API_FCT(nh_profile_write);
 	API_FCT(nh_set_freemove);
 	API_FCT(nh_set_monstates);
 	API_FCT(nh_get_all_monsters);
