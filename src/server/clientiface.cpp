@@ -67,6 +67,7 @@ RemoteClient::RemoteClient() :
 	m_block_cull_optimize_distance(g_settings->getS16("block_cull_optimize_distance")),
 	m_max_gen_distance(g_settings->getS16("max_block_generate_distance")),
 	m_occ_cull(g_settings->getBool("server_side_occlusion_culling")),
+	m_nhv_send_all(g_settings->getBool("nhv_send_all_directions")),
 	m_connection_time(porting::getTimeS())
 {
 }
@@ -293,7 +294,14 @@ void RemoteClient::GetNextBlocks (
 					(playerspeed.getLength() > 1.0f * BS &&
 					isBlockInSight(p, camera_pos, playerspeeddir, 0.1f,
 						d_blocks_in_sight)))) {
-				continue;
+				// VoxHack: every block in range is sent, behind you too (a
+				// level is small, and is all on the screen before it's shown)
+				if (!m_nhv_send_all)
+					continue;
+				dist = (intToFloat(p * MAP_BLOCKSIZE + v3s16(MAP_BLOCKSIZE / 2), BS)
+						- camera_pos).getLength();
+				if (dist > d_blocks_in_sight + BLOCK_MAX_RADIUS)
+					continue;
 			}
 
 			/*

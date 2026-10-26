@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: LGPL-2.1-or-later
 // Copyright (C) 2015 nerzhul, Loic Blot <loic.blot@unix-experience.fr>
 
+#include "nhv_levelready.h"
 #include "client/client.h"
 
 #include "exceptions.h"
@@ -332,6 +333,9 @@ void Client::handleCommand_BlockData(NetworkPacket* pkt)
 	if (m_localdb) {
 		ServerMap::saveBlock(block, m_localdb.get());
 	}
+
+	// VoxHack: a block of a level being waited for (nhv_levelready.h)
+	nhv_levelready::block_received(p);
 
 	/*
 		Add it to mesh update queue and set it to be acknowledged after update.

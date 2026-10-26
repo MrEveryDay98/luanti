@@ -112,6 +112,18 @@ struct HardcodedPauseFormspecHandler : public TextDest
 			return;
 		}
 
+		// VoxHack: the game's achievements, NetHack's options (the game shows them)
+		if (fields.find("btn_nhv_achievements") != fields.end()) {
+			if (m_client)
+				m_client->sendChatMessage(L"/nhvachievements");
+			return;
+		}
+		if (fields.find("btn_nhv_options") != fields.end()) {
+			if (m_client)
+				m_client->sendChatMessage(L"/nhvoptions");
+			return;
+		}
+
 		// NetHack Voxel: Quit saves and goes back to the game's title screen
 		if (fields.find("btn_nhv_title") != fields.end()) {
 			if (m_client)
@@ -440,45 +452,61 @@ void GameFormSpec::showPauseMenu()
 	float ypos = simple_singleplayer_mode ? 1.05f : 0.325f;
 	std::ostringstream os;
 
-	os << "formspec_version[2]" << SIZE_TAG;
+	// VoxHack: the buttons, as wide as the widest label needs (at least the
+	// usual 3.5), centred; the menu as tall as they need
+	struct PauseButton { bool exits; const char *name; std::string label; };
+	std::vector<PauseButton> buttons;
+	// TRANSLATORS: Pause menu button, try to keep the translation short
+	buttons.push_back({true, "btn_continue", strgettext("Continue")});
+	if (!simple_singleplayer_mode)
+		// TRANSLATORS: Pause menu button, try to keep the translation short
+		buttons.push_back({false, "btn_change_password", strgettext("Change Password")});
+	// VoxHack: the keys, explained (the game shows them)
+	buttons.push_back({true, "btn_nhv_help", strgettext("Help")});
+	// VoxHack: the game's achievements and NetHack's own options
+	buttons.push_back({true, "btn_nhv_achievements", strgettext("Achievements")});
+	buttons.push_back({true, "btn_nhv_options", strgettext("NetHack Options")});
+	// TRANSLATORS: Try to keep the translation short
+	buttons.push_back({false, "btn_settings", strgettext("Settings")});
+#ifndef __ANDROID__
+#if USE_SOUND
+	// TRANSLATORS: Pause menu button, try to keep the translation short
+	buttons.push_back({false, "btn_sound", strgettext("Sound Volume")});
+#endif
+#endif
+	// NetHack Voxel: no main menu to go back to; Quit saves and goes back to
+	// the game's title screen (Quit there leaves the game)
+	buttons.push_back({true, "btn_nhv_title", strgettext("Quit")});
+
+	const double menu_w = 14.25;
+	double button_w = 3.5;
+	if (gui::IGUIFont *font = g_fontengine->getFont()) {
+		const double u = GUIFormSpecMenu::getFixedImgsize(
+			RenderingEngine::getDisplayDensity() * 96,
+			g_settings->getFloat("gui_scaling", 0.5f, 42.0f));
+		for (const PauseButton &b : buttons)
+			button_w = std::max(button_w,
+				font->getDimension(utf8_to_wide(b.label).c_str()).Width / u + 1.2);
+		button_w = std::min(button_w, menu_w - 0.8);
+	}
+	const double menu_h = std::max(7.275, ypos + buttons.size() * (button_height + spacing) + 0.3);
+	const double button_x = (menu_w - button_w) / 2;
+
+	os << "formspec_version[2]size[" << menu_w << "," << menu_h << ",true]";
 
 	if (simple_singleplayer_mode) {
 		os << "style_type[label;halign=center;valign=center]";
-		os << "label[5.375,0;3.5," << ypos << ";" << strgettext("Game paused") << "]";
+		os << "label[" << button_x << ",0;" << button_w << "," << ypos << ";" << strgettext("Game paused") << "]";
 	}
 
-	os << "container[5.375,0]";
-	os << "button_exit[0," << ypos << ";3.5," << button_height << ";btn_continue;"
-		// TRANSLATORS: Pause menu button, try to keep the translation short
-		<< strgettext("Continue") << "]";
-
-	if (!simple_singleplayer_mode) {
-		os << "button[0," << (ypos += button_height + spacing) << ";3.5," << button_height << ";btn_change_password;"
-			// TRANSLATORS: Pause menu button, try to keep the translation short
-			<< strgettext("Change Password") << "]";
+	os << "container[" << button_x << ",0]";
+	for (size_t i = 0; i < buttons.size(); i++) {
+		const PauseButton &b = buttons[i];
+		if (i > 0)
+			ypos += button_height + spacing;
+		os << (b.exits ? "button_exit[0," : "button[0,") << ypos << ";" << button_w << ","
+			<< button_height << ";" << b.name << ";" << b.label << "]";
 	}
-
-	// VoxHack: the keys, explained (the game shows them)
-	os << "button_exit[0," << (ypos += button_height + spacing) << ";3.5," << button_height << ";btn_nhv_help;"
-		<< strgettext("Help") << "]";
-
-	os << "button[0," << (ypos += button_height + spacing) << ";3.5," << button_height << ";btn_settings;"
-		// TRANSLATORS: Try to keep the translation short
-		<< strgettext("Settings") << "]";
-
-#ifndef __ANDROID__
-#if USE_SOUND
-	os << "button[0," << (ypos += button_height + spacing) << ";3.5," << button_height << ";btn_sound;"
-		// TRANSLATORS: Pause menu button, try to keep the translation short
-		<< strgettext("Sound Volume") << "]";
-#endif
-#endif
-
-	// NetHack Voxel: no main menu to go back to; Quit saves and goes back to
-	// the game's title screen (Quit there leaves the game)
-	os << "button_exit[0," << (ypos += button_height + spacing) << ";3.5," << button_height << ";btn_nhv_title;"
-		<< strgettext("Quit") << "]";
-
 	os << "container_end[]";
 	// VoxHack: tips, out to the left of the menu with nothing behind them
 	// (the wiki viewer and the command list are easy to miss)

@@ -262,6 +262,8 @@ public:
 		so it shouldn't be a problem.
 	*/
 	void onMapEditEvent(const MapEditEvent &event) override;
+	// VoxHack: send these map blocks to every client again (nhv_levelready.h)
+	void nhvResendBlocks(const std::vector<v3s16> &blocks) { m_clients.markBlocksNotSent(blocks); }
 
 	// Connection must be locked when called
 	std::string getStatusString();

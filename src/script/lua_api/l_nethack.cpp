@@ -1,6 +1,9 @@
 // NetHack Voxel
 // SPDX-License-Identifier: LGPL-2.1-or-later
 
+#include "nhv_levelready.h"
+#include "server.h"
+#include "mapblock.h"
 #include "lua_api/l_nethack.h"
 #include "lua_api/l_internal.h"
 #include "common/c_converter.h"
@@ -523,6 +526,7 @@ int ModApiNetHack::l_nh_get_hero(lua_State *L)
 	set_int(L, "glyph", h.glyph); set_int(L, "tile", h.tile);
 	set_int(L, "mndx", h.mndx); set_int(L, "flags", h.flags);
 	set_int(L, "conds", h.conds);
+	set_str(L, "ability", h.ability);
 	set_int(L, "dx", h.dx); set_int(L, "dy", h.dy);
 	set_str(L, "name", h.name); set_str(L, "rank", h.rank);
 	set_str(L, "align", h.align);
@@ -917,6 +921,36 @@ int ModApiNetHack::l_nh_profile_write(lua_State *L)
 	return 1;
 }
 
+// core.nh_level_await(minp, maxp, center, radius): the level was just
+// rebuilt there; start waiting for it to reach the screen (the part of it
+// within radius nodes of center, where you'll be: the rest isn't sent
+// until you come nearer). core.nh_level_progress() -> 0..1: how
+// much of it has (1: all of it, or not waiting), and 0..1: how much of it
+// has arrived, meshed yet or not. (nhv_levelready.h)
+int ModApiNetHack::l_nh_level_await(lua_State *L)
+{
+	v3s16 minp = read_v3s16(L, 1), maxp = read_v3s16(L, 2);
+	nhv_levelready::await(minp, maxp, read_v3s16(L, 3), luaL_checkinteger(L, 4));
+	// (all of it sent again: blocks the rebuild left as they were too, or
+	// they'd never come, already being on the client)
+	std::vector<v3s16> blocks;
+	v3s16 b0 = getNodeBlockPos(minp), b1 = getNodeBlockPos(maxp);
+	for (s16 z = b0.Z; z <= b1.Z; z++)
+	for (s16 y = b0.Y; y <= b1.Y; y++)
+	for (s16 x = b0.X; x <= b1.X; x++)
+		blocks.emplace_back(x, y, z);
+	getServer(L)->nhvResendBlocks(blocks);
+	return 0;
+}
+
+int ModApiNetHack::l_nh_level_progress(lua_State *L)
+{
+	float received;
+	lua_pushnumber(L, nhv_levelready::progress(&received));
+	lua_pushnumber(L, received);
+	return 2;
+}
+
 int ModApiNetHack::l_nh_game_id(lua_State *L)
 {
 	REQUIRE_LOADED();
@@ -1035,6 +1069,8 @@ void ModApiNetHack::Initialize(lua_State *L, int top)
 	API_FCT(nh_obj_name);
 	API_FCT(nh_get_spells);
 	API_FCT(nh_game_id);
+	API_FCT(nh_level_await);
+	API_FCT(nh_level_progress);
 	API_FCT(nh_profile_read);
 	API_FCT(nh_profile_write);
 	API_FCT(nh_set_freemove);

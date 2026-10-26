@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: LGPL-2.1-or-later
 // Copyright (C) 2013 celeron55, Perttu Ahola <celeron55@gmail.com>
 
+#include "nhv_levelready.h"
 #include "client.h"
 
 #include "chatmessage.h"
@@ -629,6 +630,7 @@ void Client::step(float dtime)
 		while (m_mesh_update_manager->getNextResult(r))
 		{
 			num_processed_meshes++;
+			nhv_levelready::block_meshed(r.p); // (VoxHack: nhv_levelready.h)
 
 			std::vector<MinimapMapblock*> minimap_mapblocks;
 			bool do_mapper_update = true;

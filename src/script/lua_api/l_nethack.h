@@ -36,6 +36,8 @@ private:
 	static int l_nh_obj_name(lua_State *L);
 	static int l_nh_get_spells(lua_State *L);
 	static int l_nh_game_id(lua_State *L);
+	static int l_nh_level_await(lua_State *L);
+	static int l_nh_level_progress(lua_State *L);
 	static int l_nh_profile_read(lua_State *L);
 	static int l_nh_profile_write(lua_State *L);
 	static int l_nh_set_freemove(lua_State *L);

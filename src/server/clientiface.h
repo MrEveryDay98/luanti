@@ -380,6 +380,8 @@ private:
 	const s16 m_block_cull_optimize_distance;
 	const s16 m_max_gen_distance;
 	const bool m_occ_cull;
+	// VoxHack: send blocks outside the camera's view too
+	const bool m_nhv_send_all;
 
 	/*
 		Set of media files the client has already requested

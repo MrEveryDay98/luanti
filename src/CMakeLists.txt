@@ -509,6 +509,7 @@ set(common_SRCS
 	map_settings_manager.cpp
 	map.cpp
 	mapblock.cpp
+	nhv_levelready.cpp
 	mapnode.cpp
 	mapsector.cpp
 	nodedef.cpp
