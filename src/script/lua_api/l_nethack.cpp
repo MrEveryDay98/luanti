@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: LGPL-2.1-or-later
 
 #include "nhv_levelready.h"
+#include "nhv_camera.h"
 #include "server.h"
 #include "mapblock.h"
 #include "lua_api/l_nethack.h"
@@ -626,6 +627,19 @@ int ModApiNetHack::l_nh_glyph_info(lua_State *L)
 	return 1;
 }
 
+// nhv_camera() -> where the client's camera is (a vector, nodes), or nil
+// (nhv_camera.h; not NetHack's: works with no game loaded)
+int ModApiNetHack::l_nhv_camera(lua_State *L)
+{
+	v3f p;
+	if (!nhv_camera::get(&p)) {
+		lua_pushnil(L);
+		return 1;
+	}
+	push_v3f(L, p);
+	return 1;
+}
+
 int ModApiNetHack::l_nh_max_glyph(lua_State *L)
 {
 	REQUIRE_LOADED();
@@ -1062,6 +1076,7 @@ void ModApiNetHack::Initialize(lua_State *L, int top)
 	API_FCT(nh_get_container);
 	API_FCT(nh_glyph_info);
 	API_FCT(nh_max_glyph);
+	API_FCT(nhv_camera);
 	API_FCT(nh_tile_count);
 	API_FCT(nh_cmap_name);
 	API_FCT(nh_cmap_tile);

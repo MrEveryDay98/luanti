@@ -16,6 +16,7 @@
 #include "clientmedia.h" // For clientMediaUpdateCacheCopy
 #include "config.h"
 #include "daynightratio.h"
+#include "nhv_camera.h" // (VoxHack)
 #include "content_cao.h"
 #include "content/subgames.h"
 #include "client/event_manager.h"
@@ -1654,6 +1655,9 @@ void Game::processItemSelection(u16 *new_playeritem)
 		// (F3: NetHack's commands, "/nhvkey commands"; closed the same way)
 		if (wasKeyDown(KeyType::NHV_COMMANDS))
 			client->sendChatMessage(L"/nhvkey commands");
+		// (F4: ASCII mode on or off, "/nhvkey ascii")
+		if (wasKeyDown(KeyType::NHV_ASCII))
+			client->sendChatMessage(L"/nhvkey ascii");
 		// (Q invokes the wielded item, when it can be: "/nhvkey invoke")
 		if (wasKeyDown(KeyType::NHV_INVOKE))
 			client->sendChatMessage(L"/nhvkey invoke");
@@ -2739,6 +2743,8 @@ void Game::updateCamera(f32 dtime)
 	tool_reload_ratio = std::min(tool_reload_ratio, 1.0f);
 	camera->update(player, dtime, tool_reload_ratio);
 	camera->step(dtime);
+	// (VoxHack: where it is, for the game's sprites to face - nhv_camera.h)
+	nhv_camera::set(camera->getPosition() / BS);
 
 	if (!m_flags.disable_camera_update) {
 		client->getEnv().getClientMap().updateCamera(camera->getPosition(),

@@ -5494,6 +5494,23 @@ bool GUIFormSpecMenu::OnEvent(const SEvent& event)
 				acceptInput();
 			return true;
 
+		// NetHack Voxel: field_enter_after_edit on the desktop too - each
+		// edit of the field sends the fields (as Enter would, but without
+		// key_enter_field: VoxHack's command finder narrows its list as
+		// you type)
+		case gui::EGET_EDITBOX_CHANGED:
+			if (caller_id <= ID_PROCEED_BTN)
+				break;
+			for (GUIFormSpecMenu::FieldSpec &s : m_fields) {
+				if (s.ftype == f_Unknown && s.fid == caller_id) {
+					auto it = field_enter_after_edit.find(s.fname);
+					if (it != field_enter_after_edit.end() && it->second)
+						acceptInput();
+					break;
+				}
+			}
+			break;
+
 		case gui::EGET_TABLE_CHANGED:
 			if (caller_id <= ID_PROCEED_BTN)
 				break;

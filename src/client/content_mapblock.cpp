@@ -239,8 +239,10 @@ static std::array<video::S3DVertex, 24> setupCuboidVertices(const aabb3f &box,
 				auto scale = tile.layers[0].scale;
 				f32 scale_factor = 1.0f / scale;
 
-				float x = alignment[coord_dim[face*2]] % scale;
-				float y = alignment[coord_dim[face*2 + 1]] % scale;
+				// (NetHack Voxel: wrapped into 0..scale-1 below 0 too)
+				int iscale = (int)scale;
+				float x = ((alignment[coord_dim[face*2]] % iscale) + iscale) % iscale;
+				float y = ((alignment[coord_dim[face*2 + 1]] % iscale) + iscale) % iscale;
 
 				// Faces grow in different directions
 				if (face != 1) {
@@ -287,7 +289,11 @@ void MapblockMeshGenerator::drawCuboid(const aabb3f &box,
 {
 	assert(tilecount >= 1 && tilecount <= 6); // pre-condition
 
-	auto vertices = setupCuboidVertices(box, txc, tiles, tilecount, cur_node.p);
+	// (NetHack Voxel: world-aligned textures by the node's place in the
+	// world, not in its map block - one spanning 3 nodes, as ASCII mode's
+	// characters do, would otherwise shift at every block edge, 16 not
+	// being a multiple of 3)
+	auto vertices = setupCuboidVertices(box, txc, tiles, tilecount, blockpos_nodes + cur_node.p);
 
 	for (int k = 0; k < 6; ++k) {
 		if (mask & (1 << k))
