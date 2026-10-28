@@ -42,4 +42,21 @@ struct Bubble {
 void set_bubbles(const std::vector<Bubble> &list, float floor_y);
 bool get_bubbles(std::vector<Bubble> *list, float *floor_y, u64 *at_ms);
 
+// server (core.nhv_camera_orbit): the camera circles a point, looking at it
+// - a cutscene's (the ascension: cutscene.lua) - placed by the client every
+// frame, so it goes round smoothly: center (nodes), radius and height over
+// it (nodes), speed (radians a second), the angle it starts at, and how far
+// over the center it looks (look_y: the client eases there, so it can be
+// moved along). Off: the camera is the player's again.
+struct Orbit {
+	bool on = false;
+	v3f center;
+	float radius = 5, height = 4, speed = 0, angle = 0, look_y = 1;
+	u64 at_ms = 0; // (when it started: the client's angle goes on from there)
+};
+void set_orbit(const Orbit &o);
+void set_orbit_look(float look_y);
+void stop_orbit();
+Orbit get_orbit();
+
 } // namespace nhv_camera

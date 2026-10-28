@@ -21,7 +21,8 @@
 #include "fontengine.h"
 #include "script/scripting_client.h"
 #include "gettext.h"
-#include "nhv_camera.h"     // (VoxHack: the game's tilt)
+#include "nhv_camera.h"     // (VoxHack: the game's tilt, a cutscene's orbit)
+#include "porting.h"
 
 #include <ICameraSceneNode.h>
 #include <IGUIFont.h>
@@ -522,6 +523,30 @@ void Camera::update(LocalPlayer* player, f32 frametime, f32 tool_reload_ratio)
 		// update the camera position in third-person mode to render blocks behind player
 		// and correctly apply liquid post FX.
 		m_camera_position = my_cp;
+	}
+
+	// (VoxHack: a cutscene's camera circling a point, looking at it -
+	// nhv_camera::get_orbit - placed here every frame, so it goes round
+	// smoothly; what it looks at eased toward where the game says)
+	{
+		static f32 nhv_look_y = 0.0f;
+		static bool nhv_orbiting = false;
+		nhv_camera::Orbit o = nhv_camera::get_orbit();
+		if (o.on) {
+			if (!nhv_orbiting)
+				nhv_look_y = o.look_y;
+			nhv_orbiting = true;
+			nhv_look_y += (o.look_y - nhv_look_y) * MYMIN(1.0f, frametime * 3.0f);
+			f32 ang = o.angle + o.speed * (porting::getTimeMs() - o.at_ms) / 1000.0f;
+			v3f eye(o.center.X - std::sin(ang) * o.radius, o.center.Y + o.height,
+					o.center.Z + std::cos(ang) * o.radius);
+			v3f target(o.center.X, o.center.Y + nhv_look_y, o.center.Z);
+			m_camera_position = eye * BS;
+			m_camera_direction = (target - eye).normalize();
+			abs_cam_up = v3f(0, 1, 0);
+		} else {
+			nhv_orbiting = false;
+		}
 	}
 
 	// NetHack Voxel: shaking (a kick landing): a quick jitter, dying away

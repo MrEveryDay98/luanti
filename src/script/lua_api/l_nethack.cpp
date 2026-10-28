@@ -682,6 +682,42 @@ int ModApiNetHack::l_nhv_player_drift(lua_State *L)
 	return 0;
 }
 
+// core.nhv_camera_orbit({center=, radius=, height=, speed=, angle=,
+// look_y=}): the camera circles center, looking at it, placed by the
+// client every frame (nhv_camera.h); core.nhv_camera_orbit({look_y=}) while
+// it goes round: look higher or lower; core.nhv_camera_orbit(nil): stop
+int ModApiNetHack::l_nhv_camera_orbit(lua_State *L)
+{
+	if (!lua_istable(L, 1)) {
+		nhv_camera::stop_orbit();
+		return 0;
+	}
+	lua_getfield(L, 1, "center");
+	bool start = lua_istable(L, -1);
+	lua_pop(L, 1);
+	auto num = [L](const char *k, float def) {
+		lua_getfield(L, 1, k);
+		float v = lua_isnumber(L, -1) ? (float)lua_tonumber(L, -1) : def;
+		lua_pop(L, 1);
+		return v;
+	};
+	if (!start) {
+		nhv_camera::set_orbit_look(num("look_y", nhv_camera::get_orbit().look_y));
+		return 0;
+	}
+	nhv_camera::Orbit o;
+	lua_getfield(L, 1, "center");
+	o.center = read_v3f(L, -1);
+	lua_pop(L, 1);
+	o.radius = num("radius", o.radius);
+	o.height = num("height", o.height);
+	o.speed = num("speed", o.speed);
+	o.angle = num("angle", o.angle);
+	o.look_y = num("look_y", o.look_y);
+	nhv_camera::set_orbit(o);
+	return 0;
+}
+
 // core.nhv_bubble_floor({{x=, z=, rx=, rz=, vx=, vz=}...}, floor_y): the
 // Plane of Water's bubbles on the floor, drawn by the client (nil or {}:
 // none) - nhv_camera.h, client/nhv_bubble_floor.cpp
@@ -1154,6 +1190,7 @@ void ModApiNetHack::Initialize(lua_State *L, int top)
 	API_FCT(nhv_camera_roll);
 	API_FCT(nhv_player_drift);
 	API_FCT(nhv_bubble_floor);
+	API_FCT(nhv_camera_orbit);
 	API_FCT(nh_tile_count);
 	API_FCT(nh_cmap_name);
 	API_FCT(nh_cmap_tile);

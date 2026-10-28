@@ -73,4 +73,32 @@ bool get_bubbles(std::vector<Bubble> *list, float *floor_y, u64 *at_ms)
 	return !bubbles.empty();
 }
 
+static Orbit orbit;
+
+void set_orbit(const Orbit &o)
+{
+	std::lock_guard<std::mutex> guard(lock);
+	orbit = o;
+	orbit.on = true;
+	orbit.at_ms = porting::getTimeMs();
+}
+
+void set_orbit_look(float look_y)
+{
+	std::lock_guard<std::mutex> guard(lock);
+	orbit.look_y = look_y;
+}
+
+void stop_orbit()
+{
+	std::lock_guard<std::mutex> guard(lock);
+	orbit.on = false;
+}
+
+Orbit get_orbit()
+{
+	std::lock_guard<std::mutex> guard(lock);
+	return orbit;
+}
+
 } // namespace nhv_camera
