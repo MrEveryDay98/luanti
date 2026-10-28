@@ -640,6 +640,14 @@ int ModApiNetHack::l_nhv_camera(lua_State *L)
 	return 1;
 }
 
+// core.nhv_camera_roll(degrees): tilt the view to the side (0: level); the
+// camera eases there (nhv_camera.h)
+int ModApiNetHack::l_nhv_camera_roll(lua_State *L)
+{
+	nhv_camera::set_roll((float)luaL_checknumber(L, 1));
+	return 0;
+}
+
 int ModApiNetHack::l_nh_max_glyph(lua_State *L)
 {
 	REQUIRE_LOADED();
@@ -1077,6 +1085,7 @@ void ModApiNetHack::Initialize(lua_State *L, int top)
 	API_FCT(nh_glyph_info);
 	API_FCT(nh_max_glyph);
 	API_FCT(nhv_camera);
+	API_FCT(nhv_camera_roll);
 	API_FCT(nh_tile_count);
 	API_FCT(nh_cmap_name);
 	API_FCT(nh_cmap_tile);

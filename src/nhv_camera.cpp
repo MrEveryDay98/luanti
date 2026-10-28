@@ -10,6 +10,7 @@ namespace nhv_camera
 static std::mutex lock;
 static v3f where;
 static bool known = false;
+static float roll = 0.0f;
 
 void set(v3f pos)
 {
@@ -24,6 +25,18 @@ bool get(v3f *pos)
 	if (known)
 		*pos = where;
 	return known;
+}
+
+void set_roll(float degrees)
+{
+	std::lock_guard<std::mutex> guard(lock);
+	roll = degrees;
+}
+
+float get_roll()
+{
+	std::lock_guard<std::mutex> guard(lock);
+	return roll;
 }
 
 } // namespace nhv_camera

@@ -21,6 +21,7 @@
 #include "fontengine.h"
 #include "script/scripting_client.h"
 #include "gettext.h"
+#include "nhv_camera.h"     // (VoxHack: the game's tilt)
 
 #include <ICameraSceneNode.h>
 #include <IGUIFont.h>
@@ -436,8 +437,16 @@ void Camera::update(LocalPlayer* player, f32 frametime, f32 tool_reload_ratio)
 		// Set head node transformation
 		eye_offset.Y += cameratilt * -player->hurt_tilt_strength;
 		m_headnode->setPosition(eye_offset);
+		// (VoxHack: the game's tilt to the side - nhv_camera::get_roll -
+		// eased toward, so it sways smoothly between the game's steps)
+		static f32 nhv_roll = 0.0f;
+		{
+			f32 want = nhv_camera::get_roll();
+			f32 k = MYMIN(1.0f, frametime * 6.0f);
+			nhv_roll += (want - nhv_roll) * k;
+		}
 		m_headnode->setRotation(v3f(pitch, 0,
-			cameratilt * player->hurt_tilt_strength));
+			cameratilt * player->hurt_tilt_strength + nhv_roll));
 		m_headnode->updateAbsolutePosition();
 	}
 
