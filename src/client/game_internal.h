@@ -21,6 +21,7 @@
 #include "irrlichttypes_bloated.h"
 #include "log_internal.h"
 #include "sky.h"
+#include "nhv_bubble_floor.h"
 #include "util/pointedthing.h"
 
 /* DO NOT INCLUDE THIS FROM OUTSIDE GAME.CPP */
@@ -331,6 +332,7 @@ private:
 	Camera *camera = nullptr;
 	irr_ptr<Clouds> clouds;
 	irr_ptr<Sky> sky;
+	irr_ptr<NhvBubbleFloor> nhv_bubble_floor; // (VoxHack: the Plane of Water's)
 	Hud *hud = nullptr;
 	Minimap *mapper = nullptr;
 	GameFormSpec m_game_formspec;

@@ -678,6 +678,34 @@ int ModApiNetHack::l_nhv_player_drift(lua_State *L)
 	return 0;
 }
 
+// core.nhv_bubble_floor({{x=, z=, rx=, rz=, vx=, vz=}...}, floor_y): the
+// Plane of Water's bubbles on the floor, drawn by the client (nil or {}:
+// none) - nhv_camera.h, client/nhv_bubble_floor.cpp
+int ModApiNetHack::l_nhv_bubble_floor(lua_State *L)
+{
+	std::vector<nhv_camera::Bubble> list;
+	if (lua_istable(L, 1)) {
+		size_t n = lua_objlen(L, 1);
+		for (size_t i = 1; i <= n; i++) {
+			lua_rawgeti(L, 1, i);
+			if (lua_istable(L, -1)) {
+				nhv_camera::Bubble b{};
+				const char *keys[] = {"x", "z", "rx", "rz", "vx", "vz"};
+				float *vals[] = {&b.x, &b.z, &b.rx, &b.rz, &b.vx, &b.vz};
+				for (int k = 0; k < 6; k++) {
+					lua_getfield(L, -1, keys[k]);
+					*vals[k] = (float)lua_tonumber(L, -1);
+					lua_pop(L, 1);
+				}
+				list.push_back(b);
+			}
+			lua_pop(L, 1);
+		}
+	}
+	nhv_camera::set_bubbles(list, (float)luaL_optnumber(L, 2, 0));
+	return 0;
+}
+
 int ModApiNetHack::l_nh_max_glyph(lua_State *L)
 {
 	REQUIRE_LOADED();
@@ -1117,6 +1145,7 @@ void ModApiNetHack::Initialize(lua_State *L, int top)
 	API_FCT(nhv_camera);
 	API_FCT(nhv_camera_roll);
 	API_FCT(nhv_player_drift);
+	API_FCT(nhv_bubble_floor);
 	API_FCT(nh_tile_count);
 	API_FCT(nh_cmap_name);
 	API_FCT(nh_cmap_tile);

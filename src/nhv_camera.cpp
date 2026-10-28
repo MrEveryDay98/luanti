@@ -2,6 +2,7 @@
 
 #include "nhv_camera.h"
 
+#include "porting.h"
 #include <mutex>
 
 namespace nhv_camera
@@ -12,6 +13,9 @@ static v3f where;
 static bool known = false;
 static float roll = 0.0f;
 static v3f drift(0.0f, 0.0f, 0.0f);
+static std::vector<Bubble> bubbles;
+static float bubbles_y = 0.0f;
+static u64 bubbles_at = 0;
 
 void set(v3f pos)
 {
@@ -50,6 +54,23 @@ v3f get_drift()
 {
 	std::lock_guard<std::mutex> guard(lock);
 	return drift;
+}
+
+void set_bubbles(const std::vector<Bubble> &list, float floor_y)
+{
+	std::lock_guard<std::mutex> guard(lock);
+	bubbles = list;
+	bubbles_y = floor_y;
+	bubbles_at = porting::getTimeMs();
+}
+
+bool get_bubbles(std::vector<Bubble> *list, float *floor_y, u64 *at_ms)
+{
+	std::lock_guard<std::mutex> guard(lock);
+	*list = bubbles;
+	*floor_y = bubbles_y;
+	*at_ms = bubbles_at;
+	return !bubbles.empty();
 }
 
 } // namespace nhv_camera

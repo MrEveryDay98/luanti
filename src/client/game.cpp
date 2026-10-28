@@ -672,6 +672,7 @@ void Game::shutdown()
 	gui_chat_console.reset();
 
 	sky.reset();
+	nhv_bubble_floor.reset();
 
 	// only if the shutdown progress bar isn't shown yet
 	if (m_shutdown_progress == 0.0f)
@@ -917,6 +918,8 @@ bool Game::createClient(const GameStartData &start_data)
 
 	// NetHack Voxel: the Quake-style sky's uniforms (sky.cpp)
 	shader_src->addShaderUniformSetterFactory(nhvSkyUniformSetterFactory());
+	// (and the Plane of Water's bubbles on the floor: nhv_bubble_floor.cpp)
+	shader_src->addShaderUniformSetterFactory(nhvBubbleUniformSetterFactory());
 
 	ShadowRenderer::preInit(shader_src);
 
@@ -940,6 +943,9 @@ bool Game::createClient(const GameStartData &start_data)
 	 */
 	sky = make_irr<Sky>(-1, m_rendering_engine, texture_src, shader_src);
 	scsf->setSky(sky.get());
+
+	// NetHack Voxel: the Plane of Water's bubbles on the floor
+	nhv_bubble_floor = make_irr<NhvBubbleFloor>(smgr, shader_src);
 
 	if (!initGui())
 		return false;
@@ -3781,6 +3787,8 @@ void Game::updateFrame(ProfilerGraph *graph, RunStats *stats, f32 dtime,
 
 void Game::updateClouds(float dtime)
 {
+	if (nhv_bubble_floor)
+		nhv_bubble_floor->setCameraOffset(camera->getOffset());
 	if (this->sky->getCloudsVisible()) {
 		this->clouds->setVisible(true);
 		this->clouds->step(dtime);

@@ -8,6 +8,7 @@
 #pragma once
 
 #include "irr_v3d.h"
+#include <vector>
 
 namespace nhv_camera
 {
@@ -29,5 +30,16 @@ float get_roll();
 // as a moving platform would carry it
 void set_drift(v3f velocity);
 v3f get_drift();
+
+// server (core.nhv_bubble_floor): the Plane of Water's bubbles, each an
+// ellipse on the floor - x, z (its middle), rx, rz (its half widths), vx,
+// vz (how fast it's going) - all in nodes; floor_y: the floor's height;
+// none: not there. client (nhv_bubble_floor.cpp): them, and when they were
+// said (ms, porting::getTimeMs)
+struct Bubble {
+	float x, z, rx, rz, vx, vz;
+};
+void set_bubbles(const std::vector<Bubble> &list, float floor_y);
+bool get_bubbles(std::vector<Bubble> *list, float *floor_y, u64 *at_ms);
 
 } // namespace nhv_camera
