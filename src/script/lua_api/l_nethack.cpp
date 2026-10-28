@@ -60,6 +60,7 @@ struct NhvFuncs {
 	NHV_FN(nhv_set_freemove)
 	NHV_FN(nhv_set_monstates)
 	NHV_FN(nhv_get_all_monsters)
+	NHV_FN(nhv_get_bubbles)
 	NHV_FN(nhv_move_monster)
 	NHV_FN(nhv_num_monsters)
 	NHV_FN(nhv_mon_info)
@@ -146,6 +147,7 @@ bool load_library(std::string &err)
 	NHV_FN(nhv_set_freemove)
 	NHV_FN(nhv_set_monstates)
 	NHV_FN(nhv_get_all_monsters)
+	NHV_FN(nhv_get_bubbles)
 	NHV_FN(nhv_move_monster)
 	NHV_FN(nhv_num_monsters)
 	NHV_FN(nhv_mon_info)
@@ -640,6 +642,25 @@ int ModApiNetHack::l_nhv_camera(lua_State *L)
 	return 1;
 }
 
+// core.nh_get_bubbles() -> {{x=, y=, w=, h=}...}: the Plane of Water's air
+// bubbles (their top left squares and sizes), in NetHack's own order
+int ModApiNetHack::l_nh_get_bubbles(lua_State *L)
+{
+	REQUIRE_LOADED();
+	static int buf[4 * 64];
+	int n = nh.nhv_get_bubbles(buf, 64);
+	lua_createtable(L, n, 0);
+	for (int i = 0; i < n; i++) {
+		lua_createtable(L, 0, 4);
+		set_int(L, "x", buf[4 * i]);
+		set_int(L, "y", buf[4 * i + 1]);
+		set_int(L, "w", buf[4 * i + 2]);
+		set_int(L, "h", buf[4 * i + 3]);
+		lua_rawseti(L, -2, i + 1);
+	}
+	return 1;
+}
+
 // core.nhv_camera_roll(degrees): tilt the view to the side (0: level); the
 // camera eases there (nhv_camera.h)
 int ModApiNetHack::l_nhv_camera_roll(lua_State *L)
@@ -1110,6 +1131,7 @@ void ModApiNetHack::Initialize(lua_State *L, int top)
 	API_FCT(nh_set_freemove);
 	API_FCT(nh_set_monstates);
 	API_FCT(nh_get_all_monsters);
+	API_FCT(nh_get_bubbles);
 	API_FCT(nh_move_monster);
 	API_FCT(nh_load);
 	API_FCT(nh_num_monsters);
