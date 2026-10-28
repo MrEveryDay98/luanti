@@ -487,6 +487,10 @@ int ModApiNetHack::l_nh_get_monsters(lua_State *L)
 	REQUIRE_LOADED();
 	static std::vector<nhv_mon> buf(512);
 	int n = nh.nhv_get_monsters(buf.data(), (int)buf.size());
+	if (n > (int)buf.size()) { // (more than that on the level: room for them all)
+		buf.resize(n + 64);
+		n = nh.nhv_get_monsters(buf.data(), (int)buf.size());
+	}
 	if (n > (int)buf.size())
 		n = (int)buf.size();
 	lua_createtable(L, n, 0);
@@ -788,6 +792,10 @@ int ModApiNetHack::l_nh_get_all_monsters(lua_State *L)
 	REQUIRE_LOADED();
 	static std::vector<nhv_monfull> buf(512);
 	int n = nh.nhv_get_all_monsters(buf.data(), (int)buf.size());
+	if (n > (int)buf.size()) { // (more than that on the level: room for them all)
+		buf.resize(n + 64);
+		n = nh.nhv_get_all_monsters(buf.data(), (int)buf.size());
+	}
 	if (n > (int)buf.size())
 		n = (int)buf.size();
 	lua_createtable(L, n, 0);
