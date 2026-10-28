@@ -21,6 +21,7 @@
 #include "content_cao.h"
 #include "porting.h"
 #include "client/renderingengine.h"
+#include "nhv_camera.h" // (VoxHack: carried along)
 
 /*
 	ClientEnvironment
@@ -178,6 +179,12 @@ void ClientEnvironment::step(float dtime)
 		*/
 
 		lplayer->move(dtime_part, this, &player_collisions);
+
+		// (VoxHack: carried along - a bubble of the Plane of Water - on top
+		// of moving yourself: nhv_camera::get_drift)
+		v3f drift = nhv_camera::get_drift();
+		if (drift.X != 0.0f || drift.Y != 0.0f || drift.Z != 0.0f)
+			lplayer->setPosition(lplayer->getPosition() + drift * (BS * dtime_part));
 	}
 
 	bool player_immortal = false;

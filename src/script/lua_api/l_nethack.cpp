@@ -648,6 +648,15 @@ int ModApiNetHack::l_nhv_camera_roll(lua_State *L)
 	return 0;
 }
 
+// core.nhv_player_drift(velocity): carry the player along at this velocity
+// (nodes per second; zero vector: stop) - client-side, every frame
+// (nhv_camera.h)
+int ModApiNetHack::l_nhv_player_drift(lua_State *L)
+{
+	nhv_camera::set_drift(read_v3f(L, 1));
+	return 0;
+}
+
 int ModApiNetHack::l_nh_max_glyph(lua_State *L)
 {
 	REQUIRE_LOADED();
@@ -1086,6 +1095,7 @@ void ModApiNetHack::Initialize(lua_State *L, int top)
 	API_FCT(nh_max_glyph);
 	API_FCT(nhv_camera);
 	API_FCT(nhv_camera_roll);
+	API_FCT(nhv_player_drift);
 	API_FCT(nh_tile_count);
 	API_FCT(nh_cmap_name);
 	API_FCT(nh_cmap_tile);

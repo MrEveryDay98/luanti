@@ -23,4 +23,11 @@ bool get(v3f *pos);
 void set_roll(float degrees);
 float get_roll();
 
+// server (core.nhv_player_drift): carry the player along at this velocity
+// (nodes per second; zero: not) - a bubble of the Plane of Water carrying
+// you; client: added to where the local player moves itself, every frame,
+// as a moving platform would carry it
+void set_drift(v3f velocity);
+v3f get_drift();
+
 } // namespace nhv_camera

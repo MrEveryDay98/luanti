@@ -11,6 +11,7 @@ static std::mutex lock;
 static v3f where;
 static bool known = false;
 static float roll = 0.0f;
+static v3f drift(0.0f, 0.0f, 0.0f);
 
 void set(v3f pos)
 {
@@ -37,6 +38,18 @@ float get_roll()
 {
 	std::lock_guard<std::mutex> guard(lock);
 	return roll;
+}
+
+void set_drift(v3f velocity)
+{
+	std::lock_guard<std::mutex> guard(lock);
+	drift = velocity;
+}
+
+v3f get_drift()
+{
+	std::lock_guard<std::mutex> guard(lock);
+	return drift;
 }
 
 } // namespace nhv_camera
