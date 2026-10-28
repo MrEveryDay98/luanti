@@ -100,12 +100,24 @@ void CBillboardSceneNode::updateMesh(const scene::ICameraSceneNode *camera)
 		horizontal.set(up.Y, up.X, up.Z);
 	}
 	horizontal.normalize();
-	core::vector3df topHorizontal = horizontal * 0.5f * TopEdgeWidth;
-	horizontal *= 0.5f * Size.Width;
 
 	// pointing down!
 	core::vector3df vertical = horizontal.crossProduct(view);
 	vertical.normalize();
+
+	// (VoxHack: turned about the view by its own rotation's Y - an entity's
+	// automatic_rotate spins a sprite round like a pinwheel, smoothly, on
+	// the client)
+	if (RelativeRotation.Y != 0.0f) {
+		const f32 a = RelativeRotation.Y * core::DEGTORAD;
+		const f32 c = cosf(a), s = sinf(a);
+		const core::vector3df h = horizontal, v = vertical;
+		horizontal = h * c + v * s;
+		vertical = v * c - h * s;
+	}
+
+	core::vector3df topHorizontal = horizontal * 0.5f * TopEdgeWidth;
+	horizontal *= 0.5f * Size.Width;
 	vertical *= 0.5f * Size.Height;
 
 	view *= -1.0f;
