@@ -12,8 +12,8 @@
 // client is fed the recorded messages at the times they came (anything it
 // sends goes nowhere), you're put where you were, looking where you
 // looked. Space pauses, W and S speed it up and slow it down. A demo plays
-// only in the VoxHack it was recorded with (the same messages, the same
-// media).
+// in any VoxHack speaking the same network protocol (the same messages),
+// with the media it used in its cache.
 
 #pragma once
 

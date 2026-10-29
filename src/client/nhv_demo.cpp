@@ -1,7 +1,9 @@
 // VoxHack: demos (see nhv_demo.h)
 //
-// A demo file: "NHVDEMO1\n", the engine's version line, the player's name
-// line; then records, in time order, each:
+// A demo file: "NHVDEMO2\n", "proto <network protocol version> <build>\n" (a
+// demo plays in any VoxHack speaking the same protocol), the player's name
+// line; then, compressed with zstd as one stream (flushed every second, so
+// a crash keeps what came before), records in time order, each:
 //   u8 type, u32 time (ms since the session started), u32 size, data
 // types:
 //   1 a message from the server: u16 command, its data
@@ -12,6 +14,7 @@
 //   6 a cutscene's orbit: u8 on, f32 center x, y, z, radius, height,
 //     speed, angle, look y
 //   7 your inventory opened (nothing)
+// (NHVDEMO1: the same, not compressed - the first demos)
 
 #include "nhv_demo.h"
 #include "nhv_camera.h"
@@ -30,11 +33,12 @@
 #include <fstream>
 #include <map>
 #include <vector>
+#include <zstd.h>
 
 namespace nhv_demo
 {
 
-static const char MAGIC[] = "NHVDEMO1";
+static const char MAGIC[] = "NHVDEMO2", MAGIC_PLAIN[] = "NHVDEMO1";
 enum : u8 {
 	REC_PACKET = 1, REC_FRAME = 2, REC_SETTING = 3, REC_ROLL = 4, REC_BUBBLES = 5,
 	REC_ORBIT = 6, REC_INVENTORY = 7,
@@ -62,6 +66,24 @@ static f32 get_f32(const std::string &s, size_t &at)
 
 // ---------------------------------------------------------------- recording
 static std::ofstream rec_file;
+static ZSTD_CCtx *rec_z = nullptr;
+static std::string rec_last_frame;
+
+// into the file, compressed (mode: go on, flush what's in, or end)
+static void z_write(const void *src, size_t len, ZSTD_EndDirective mode)
+{
+	ZSTD_inBuffer in{src, len, 0};
+	char out[1 << 16];
+	for (;;) {
+		ZSTD_outBuffer o{out, sizeof out, 0};
+		size_t left = ZSTD_compressStream2(rec_z, &o, &in, mode);
+		rec_file.write(out, o.pos);
+		if (ZSTD_isError(left))
+			break;
+		if (mode == ZSTD_e_continue ? in.pos == in.size : left == 0)
+			break;
+	}
+}
 static u64 rec_t0 = 0;
 static std::map<std::string, std::string> rec_settings;
 static f32 rec_roll = 0.0f;
@@ -80,11 +102,12 @@ static void write_record(u8 type, const std::string &data)
 	head[0] = type;
 	writeU32(head + 1, (u32)(porting::getTimeMs() - rec_t0));
 	writeU32(head + 5, (u32)data.size());
-	rec_file.write((const char *)head, 9);
-	rec_file.write(data.data(), data.size());
+	z_write(head, 9, ZSTD_e_continue);
+	z_write(data.data(), data.size(), ZSTD_e_continue);
 	// (to the disk every second: a game that crashes keeps its demo)
 	if (porting::getTimeMs() - rec_flushed > 1000) {
 		rec_flushed = porting::getTimeMs();
+		z_write(nullptr, 0, ZSTD_e_flush);
 		rec_file.flush();
 	}
 }
@@ -105,7 +128,13 @@ void record_begin(const std::string &name)
 		rec_file.close();
 		return;
 	}
-	rec_file << MAGIC << "\n" << g_version_hash << "\n" << name << "\n";
+	// (the network protocol's version: what playing it back depends on -
+	// and after it, for the curious, the build it was made with)
+	rec_file << MAGIC << "\n" << "proto " << LATEST_PROTOCOL_VERSION << " " << g_version_hash
+			<< "\n" << name << "\n";
+	rec_z = ZSTD_createCCtx();
+	ZSTD_CCtx_setParameter(rec_z, ZSTD_c_compressionLevel, 6);
+	rec_last_frame.clear();
 	rec_t0 = porting::getTimeMs();
 	rec_settings.clear();
 	rec_roll = 0.0f;
@@ -155,7 +184,11 @@ void record_frame(v3f pos, f32 yaw, f32 pitch, u8 camera_mode)
 	put_f32(f, yaw);
 	put_f32(f, pitch);
 	f.push_back((char)camera_mode);
-	write_record(REC_FRAME, f);
+	// (standing still, looking the same way: nothing new)
+	if (f != rec_last_frame) {
+		rec_last_frame = f;
+		write_record(REC_FRAME, f);
+	}
 
 	// what's passed outside the messages, when it changes
 	for (const char *key : SETTINGS) {
@@ -203,6 +236,9 @@ void record_frame(v3f pos, f32 yaw, f32 pitch, u8 camera_mode)
 void record_end()
 {
 	if (recording()) {
+		z_write(nullptr, 0, ZSTD_e_end);
+		ZSTD_freeCCtx(rec_z);
+		rec_z = nullptr;
 		rec_file.close();
 		actionstream << "[nhv] demo: recording ended" << std::endl;
 	}
@@ -236,17 +272,63 @@ bool playing()
 	return play_is_open;
 }
 
+// reading: straight from the file (NHVDEMO1), or decompressed from it
+static bool play_z = false;
+static ZSTD_DCtx *play_dz = nullptr;
+static std::string play_buf; // decompressed, not read yet (from play_at)
+static size_t play_at = 0;
+static std::vector<char> play_zin(1 << 16);
+static ZSTD_inBuffer play_zib{nullptr, 0, 0};
+
+// more decompressed into play_buf; false at the end
+static bool fill()
+{
+	play_buf.erase(0, play_at);
+	play_at = 0;
+	char out[1 << 16];
+	for (;;) {
+		if (play_zib.pos == play_zib.size) {
+			play_file.read(play_zin.data(), play_zin.size());
+			size_t got = (size_t)play_file.gcount();
+			if (!got)
+				return false;
+			play_zib = ZSTD_inBuffer{play_zin.data(), got, 0};
+		}
+		ZSTD_outBuffer o{out, sizeof out, 0};
+		size_t r = ZSTD_decompressStream(play_dz, &o, &play_zib);
+		if (ZSTD_isError(r))
+			return false;
+		if (o.pos) {
+			play_buf.append(out, o.pos);
+			return true;
+		}
+	}
+}
+
+static bool read_bytes(char *dst, size_t n)
+{
+	if (!play_z)
+		return n == 0 || (bool)play_file.read(dst, n);
+	while (play_buf.size() - play_at < n) {
+		if (!fill())
+			return false;
+	}
+	memcpy(dst, play_buf.data() + play_at, n);
+	play_at += n;
+	return true;
+}
+
 static void read_next()
 {
 	u8 head[9];
 	next_ok = false;
-	if (!play_file.read((char *)head, 9))
+	if (!read_bytes((char *)head, 9))
 		return;
 	next_type = head[0];
 	next_t = readU32(head + 1);
 	u32 size = readU32(head + 5);
 	next_data.resize(size);
-	if (size && !play_file.read(&next_data[0], size))
+	if (size && !read_bytes(&next_data[0], size))
 		return;
 	next_ok = true;
 }
@@ -268,14 +350,23 @@ bool play_open(std::string *name, std::string *error)
 	std::getline(play_file, magic);
 	std::getline(play_file, version);
 	std::getline(play_file, *name);
-	if (magic != MAGIC) {
+	if (magic != MAGIC && magic != MAGIC_PLAIN) {
 		*error = "That isn't a VoxHack demo: " + play_path;
 		return false;
 	}
-	if (version != g_version_hash) {
-		*error = "That demo was recorded with another version of VoxHack (" + version
-				+ "); this is " + g_version_hash + ".";
-		return false;
+	play_z = magic == MAGIC;
+	if (play_z)
+		play_dz = ZSTD_createDCtx();
+	// (the protocol it was recorded with must be this one's; the first demos
+	// don't say - they're tried)
+	if (version.rfind("proto ", 0) == 0) {
+		int proto = atoi(version.c_str() + 6);
+		if (proto != LATEST_PROTOCOL_VERSION) {
+			*error = "That demo was recorded with another version of VoxHack (network protocol "
+					+ std::to_string(proto) + "; this one plays "
+					+ std::to_string(LATEST_PROTOCOL_VERSION) + ").";
+			return false;
+		}
 	}
 	play_is_open = true;
 	play_name = *name;
@@ -461,6 +552,10 @@ void play_end()
 	nhv_camera::set_roll(0.0f);
 	nhv_camera::set_bubbles({}, 0.0f);
 	play_file.close();
+	if (play_dz) {
+		ZSTD_freeDCtx(play_dz);
+		play_dz = nullptr;
+	}
 	play_is_open = false;
 }
 
