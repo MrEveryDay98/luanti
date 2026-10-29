@@ -143,5 +143,6 @@ lib/irrlichtmt
 # Generated mod storage database
 client/mod_storage.sqlite
 
-# VoxHack: recorded demos
-demos/
+# VoxHack: recorded demos (the script that plays them is kept)
+demos/*
+!demos/Play Demo.bat

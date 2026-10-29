@@ -133,6 +133,7 @@ void record_formspec_closed(const std::string &formname)
 	NetworkPacket pkt(TOCLIENT_SHOW_FORMSPEC, 0);
 	pkt.putLongString("");
 	pkt << formname;
+	pkt.seek(0); // (read from the start: written, it's at the end)
 	record_packet(pkt);
 }
 
@@ -290,6 +291,18 @@ static void apply_record(u8 type, const std::string &d)
 	size_t at = 0;
 	switch (type) {
 	case REC_PACKET:
+		// (a menu closed, recorded empty by an early recorder: as the
+		// server closing whatever menu is open)
+		if (d.size() == 2 && readU16((const u8 *)d.data()) == TOCLIENT_SHOW_FORMSPEC) {
+			NetworkPacket pkt(TOCLIENT_SHOW_FORMSPEC, 0);
+			pkt.putLongString("");
+			pkt << std::string();
+			pkt.seek(0);
+			std::string fixed = d;
+			fixed.append(pkt.getRemainingNoCopy());
+			play_packets.push_back(fixed);
+			break;
+		}
 		play_packets.push_back(d);
 		break;
 	case REC_FRAME:
