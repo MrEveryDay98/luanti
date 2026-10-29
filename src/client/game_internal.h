@@ -390,6 +390,7 @@ private:
 	// if true, (almost) the whole game is paused
 	// this happens in pause menu in singleplayer
 	bool m_is_paused = false;
+	bool m_nhv_demo_end_said = false; // (VoxHack: "End of the demo" shown)
 
 	bool m_touch_simulate_aux1 = false;
 	bool isTouchShootlineUsed() const;

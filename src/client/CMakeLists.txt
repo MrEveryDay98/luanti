@@ -92,6 +92,7 @@ set(client_SRCS
 	${CMAKE_CURRENT_SOURCE_DIR}/shader.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/sky.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/nhv_bubble_floor.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/nhv_demo.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/sound_maker.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/tile.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/texturepaths.cpp

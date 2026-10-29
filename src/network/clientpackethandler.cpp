@@ -119,7 +119,8 @@ void Client::handleCommand_Hello(NetworkPacket* pkt)
 				m_access_denied_reason =
 						gettext("Name is taken. Please choose another name");
 			}
-			m_con->Disconnect();
+			if (m_con) // (VoxHack: none while a demo plays)
+				m_con->Disconnect();
 		} else {
 			startAuth(chosen_auth_mechanism);
 		}
@@ -127,7 +128,8 @@ void Client::handleCommand_Hello(NetworkPacket* pkt)
 		m_chosen_auth_mech = AUTH_MECHANISM_NONE;
 		m_access_denied = true;
 		m_access_denied_reason = "Unknown";
-		m_con->Disconnect();
+		if (m_con)
+			m_con->Disconnect();
 	}
 
 }
@@ -159,7 +161,7 @@ void Client::handleCommand_AuthAccept(NetworkPacket* pkt)
 	m_state = LC_Init;
 
 	// Log meaningful info
-	if (!m_internal_server) {
+	if (!m_internal_server && m_con) { // (VoxHack: no connection while a demo plays)
 		Address remote = m_con->GetPeerAddress(PEER_ID_SERVER);
 		actionstream << "Connected to " << m_address_name << " (";
 		remote.print(actionstream);

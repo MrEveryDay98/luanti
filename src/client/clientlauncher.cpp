@@ -17,6 +17,7 @@
 #include "gui/guiEngine.h"
 #include "fontengine.h"
 #include "clientlauncher.h"
+#include "nhv_demo.h" // (VoxHack)
 #include "version.h"
 #include "renderingengine.h"
 #include "settings.h"
@@ -295,6 +296,23 @@ void ClientLauncher::init_args(GameStartData &start_data, const Settings &cmd_ar
 
 	if (cmd_args.exists("name"))
 		start_data.name = cmd_args.get("name");
+
+	// (VoxHack: playing a demo back - no world, no server: as the player
+	// who recorded it, "connected" to the demo, nhv_demo.h)
+	if (cmd_args.exists("nhv-demo")) {
+		nhv_demo::play_path = cmd_args.get("nhv-demo");
+		std::string name, error;
+		if (nhv_demo::play_open(&name, &error)) {
+			start_data.mode = GameClientData::GM_JOIN;
+			start_data.address = "127.0.0.1";
+			start_data.world_path.clear();
+			start_data.name = name;
+			skip_main_menu = true;
+		} else {
+			errorstream << error << std::endl;
+			nhv_demo::play_path.clear();
+		}
+	}
 
 	// If a world was commanded, select it
 	// (NetHack Voxel: always singleplayer - a local game, never a server

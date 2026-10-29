@@ -17,6 +17,7 @@
 #include "config.h"
 #include "daynightratio.h"
 #include "nhv_camera.h" // (VoxHack)
+#include "nhv_demo.h" // (VoxHack)
 #include "content_cao.h"
 #include "content/subgames.h"
 #include "client/event_manager.h"
@@ -616,6 +617,16 @@ void Game::run()
 					cam_damp_lambda
 			);
 		}
+		// (VoxHack: a demo playing - looking where you looked then)
+		v3f demo_pos;
+		f32 demo_yaw = 0.0f, demo_pitch = 0.0f;
+		u8 demo_mode = 0;
+		const bool demo_frame = nhv_demo::playing() &&
+				nhv_demo::play_frame(&demo_pos, &demo_yaw, &demo_pitch, &demo_mode);
+		if (demo_frame) {
+			cam_view.camera_yaw = cam_view_target.camera_yaw = demo_yaw;
+			cam_view.camera_pitch = cam_view_target.camera_pitch = demo_pitch;
+		}
 		updatePlayerControl(cam_view);
 
 		updatePauseState();
@@ -623,6 +634,25 @@ void Game::run()
 			dtime = 0.0f;
 
 		step(dtime);
+
+		// (VoxHack: a demo playing - you where you were then; recording one -
+		// where you are now: nhv_demo.h)
+		{
+			LocalPlayer *me = client->getEnv().getLocalPlayer();
+			if (demo_frame) {
+				me->setPosition(demo_pos);
+				me->setSpeed(v3f(0.0f, 0.0f, 0.0f));
+				if (camera && demo_mode < CameraMode_END && demo_mode != CAMERA_MODE_ANY)
+					camera->setCameraMode((CameraMode)demo_mode);
+			} else if (nhv_demo::recording() && camera) {
+				nhv_demo::record_frame(me->getPosition(), cam_view.camera_yaw,
+						cam_view.camera_pitch, (u8)camera->getCameraMode());
+			}
+			if (nhv_demo::playing() && nhv_demo::play_ended() && !m_nhv_demo_end_said) {
+				m_nhv_demo_end_said = true;
+				m_game_ui->showStatusText(L"End of the demo (Esc to leave)");
+			}
+		}
 
 		processClientEvents(&cam_view_target);
 		updateDebugState();
@@ -650,6 +680,7 @@ void Game::run()
 
 void Game::shutdown()
 {
+	nhv_demo::play_end(); // (VoxHack: the settings a demo changed put back)
 	// Delete text and menus first
 	m_game_ui->clearText();
 	m_game_formspec.reset();
@@ -1502,6 +1533,32 @@ void Game::processUserInput(f32 dtime)
 
 void Game::processKeyInput()
 {
+	// (VoxHack: a demo playing - Space pauses, W and S speed it up and slow
+	// it down, Esc the pause menu (to leave); nothing else does anything)
+	if (nhv_demo::playing()) {
+		auto say = [this]() {
+			wchar_t buf[96];
+			swprintf(buf, 96, L"Demo: %ls, speed x%g (Space: pause, W/S: faster/slower)",
+					nhv_demo::play_paused() ? L"paused" : L"playing", nhv_demo::play_speed_now());
+			m_game_ui->showStatusText(buf);
+		};
+		if (wasKeyDown(KeyType::JUMP)) {
+			nhv_demo::play_toggle_pause();
+			say();
+		} else if (wasKeyDown(KeyType::FORWARD)) {
+			nhv_demo::play_speed(2.0f);
+			say();
+		} else if (wasKeyDown(KeyType::BACKWARD)) {
+			nhv_demo::play_speed(0.5f);
+			say();
+		} else if (input->cancelPressed()) {
+			m_game_formspec.showPauseMenu();
+		} else if (wasKeyDown(KeyType::SCREENSHOT)) {
+			client->requestScreenshot();
+		}
+		return;
+	}
+
 	if (wasKeyDown(KeyType::DROP)) {
 		dropSelectedItem(isKeyDown(KeyType::SNEAK));
 	} else if (wasKeyDown(KeyType::AUTOFORWARD)) {
@@ -2252,6 +2309,14 @@ void Game::updatePlayerControl(const CameraOrientation &cam)
 		player->setSpeed(v3f(0.0f, v.Y, 0.0f));
 	}
 
+	// (VoxHack: a demo playing - nothing you press moves you)
+	if (nhv_demo::playing()) {
+		PlayerControl still;
+		still.pitch = control.pitch;
+		still.yaw = control.yaw;
+		control = still;
+	}
+
 	client->setPlayerControl(control);
 
 	//tt.stop();
@@ -2275,6 +2340,10 @@ void Game::updatePauseState()
 inline void Game::step(f32 dtime)
 {
 	ZoneScoped;
+
+	// (VoxHack: a demo playing - its clock goes on, what's due comes)
+	if (nhv_demo::playing())
+		nhv_demo::play_step(dtime);
 
 	if (server) {
 		float fps_max = !device->isWindowFocused() && simple_singleplayer_mode ?

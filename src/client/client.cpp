@@ -4,6 +4,7 @@
 
 #include "nhv_levelready.h"
 #include "client.h"
+#include "nhv_demo.h" // (VoxHack)
 
 #include "chatmessage.h"
 #include "client/clientevent.h"
@@ -366,6 +367,7 @@ bool Client::isShutdown()
 Client::~Client()
 {
 	m_shutdown = true;
+	nhv_demo::record_end();
 	if (m_con)
 		m_con->Disconnect();
 
@@ -415,6 +417,14 @@ void Client::connect(const Address &address, const std::string &address_name)
 	}
 
 	m_address_name = address_name;
+	// (VoxHack: playing a demo back - no server, no connection: the
+	// messages come from the demo file, nhv_demo.h)
+	if (nhv_demo::playing()) {
+		infostream << "Playing a demo: no connection" << std::endl;
+		return;
+	}
+	// (VoxHack: recording one, if that's on)
+	nhv_demo::record_begin(m_env.getLocalPlayer()->getName());
 	// NetHack Voxel: talking to the built-in local server, the socket only
 	// exists on this computer (127.0.0.1), never on the network
 	if (address.isLocalhost() && !address.isIPv6()) {
@@ -518,6 +528,9 @@ void Client::step(float dtime)
 			}
 		}
 
+		// (VoxHack: a demo playing keeps every block - no server to send one
+		// again)
+		if (!nhv_demo::playing())
 		m_env.getMap().timerUpdate(map_timer_and_unload_dtime,
 			std::max(g_settings->getFloat("client_unload_unused_data_timeout"), 0.0f),
 			mapblock_limit, &deleted_blocks);
@@ -1000,6 +1013,17 @@ void Client::ReceiveAll()
 	u64 start_ms = porting::getTimeMs();
 	const u64 budget = m_state == LC_Ready ? 10 : 100;
 
+	// (VoxHack: a demo playing - its messages that are due)
+	if (nhv_demo::playing()) {
+		while (porting::getTimeMs() - start_ms < budget) {
+			pkt.clear();
+			if (!nhv_demo::play_next_packet(&pkt))
+				break;
+			ProcessData(&pkt);
+		}
+		return;
+	}
+
 	FATAL_ERROR_IF(!m_con, "Networking not initialized");
 	for (;;) {
 		// Limit time even if there would be huge amounts of data to
@@ -1066,6 +1090,9 @@ void Client::ProcessData(NetworkPacket *pkt)
 		return;
 	}
 
+	// (VoxHack: recording a demo - every message, as it comes)
+	nhv_demo::record_packet(*pkt);
+
 	/*
 	 * Those packets are handled before m_server_ser_ver is set, it's normal
 	 * But we must use the new ToClientConnectionState in the future,
@@ -1088,6 +1115,8 @@ void Client::ProcessData(NetworkPacket *pkt)
 
 void Client::Send(NetworkPacket* pkt)
 {
+	if (nhv_demo::playing())
+		return; // (VoxHack: a demo playing - there's no one to send to)
 	auto &scf = serverCommandFactoryTable[pkt->getCommand()];
 	FATAL_ERROR_IF(!scf.name, "packet type missing in table");
 	m_con->Send(PEER_ID_SERVER, scf.channel, pkt, scf.reliable);
@@ -1325,6 +1354,11 @@ void Client::sendInventoryFields(const std::string &formname,
 {
 	size_t fields_size = fields.size();
 	FATAL_ERROR_IF(fields_size > 0xFFFF, "Unsupported number of inventory fields");
+
+	// (VoxHack: a menu you closed yourself - recorded, as the server never
+	// says so)
+	if (fields.count("quit"))
+		nhv_demo::record_formspec_closed(formname);
 
 	NetworkPacket pkt(TOSERVER_INVENTORY_FIELDS, 0);
 	pkt << formname << (u16) (fields_size & 0xFFFF);
@@ -2011,13 +2045,15 @@ print("sscsm_test0: air def: " .. dump(core.registered_nodes["air"]))
 
 float Client::getRTT()
 {
-	assert(m_con);
+	if (!m_con)
+		return 0.0f; // (VoxHack: a demo playing)
 	return m_con->getPeerStat(PEER_ID_SERVER,con::AVG_RTT);
 }
 
 float Client::getCurRate()
 {
-	assert(m_con);
+	if (!m_con)
+		return 0.0f;
 	return (m_con->getLocalStat(con::CUR_INC_RATE) +
 			m_con->getLocalStat(con::CUR_DL_RATE));
 }
