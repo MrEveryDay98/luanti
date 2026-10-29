@@ -648,6 +648,9 @@ void Game::run()
 				nhv_demo::record_frame(me->getPosition(), cam_view.camera_yaw,
 						cam_view.camera_pitch, (u8)camera->getCameraMode());
 			}
+			// (the inventory, opened then)
+			if (nhv_demo::playing() && nhv_demo::play_take_inventory())
+				m_game_formspec.showPlayerInventory(nullptr);
 			if (nhv_demo::playing() && nhv_demo::play_ended() && !m_nhv_demo_end_said) {
 				m_nhv_demo_end_said = true;
 				m_game_ui->showStatusText(L"End of the demo (Esc to leave)");

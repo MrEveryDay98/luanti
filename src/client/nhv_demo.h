@@ -33,6 +33,8 @@ bool recording();
 void record_packet(const NetworkPacket &pkt);
 // a menu (formspec) you closed yourself: played back as the server closing it
 void record_formspec_closed(const std::string &formname);
+// your inventory opened (the client opens it itself: no message says so)
+void record_inventory_opened();
 // this frame: where you are (BS units), which way you look, the camera mode
 // - and the state passed outside the messages, when it changed
 void record_frame(v3f pos, f32 yaw, f32 pitch, u8 camera_mode);
@@ -49,6 +51,8 @@ bool play_open(std::string *name, std::string *error);
 void play_step(f32 dtime);
 // the next message due, if any
 bool play_next_packet(NetworkPacket *pkt);
+// the inventory was opened now: true once (then it's shown)
+bool play_take_inventory();
 // where you were and which way you looked now (false: not yet known)
 bool play_frame(v3f *pos, f32 *yaw, f32 *pitch, u8 *camera_mode);
 // controls

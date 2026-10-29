@@ -11,6 +11,7 @@
 //   5 the Plane of Water's bubbles: f32 floor y, u16 n, n * 6 f32
 //   6 a cutscene's orbit: u8 on, f32 center x, y, z, radius, height,
 //     speed, angle, look y
+//   7 your inventory opened (nothing)
 
 #include "nhv_demo.h"
 #include "nhv_camera.h"
@@ -36,7 +37,7 @@ namespace nhv_demo
 static const char MAGIC[] = "NHVDEMO1";
 enum : u8 {
 	REC_PACKET = 1, REC_FRAME = 2, REC_SETTING = 3, REC_ROLL = 4, REC_BUBBLES = 5,
-	REC_ORBIT = 6,
+	REC_ORBIT = 6, REC_INVENTORY = 7,
 };
 
 // the settings the client reads that the game sets as it goes
@@ -137,6 +138,12 @@ void record_formspec_closed(const std::string &formname)
 	record_packet(pkt);
 }
 
+void record_inventory_opened()
+{
+	if (recording())
+		write_record(REC_INVENTORY, "");
+}
+
 void record_frame(v3f pos, f32 yaw, f32 pitch, u8 camera_mode)
 {
 	if (!recording())
@@ -222,6 +229,7 @@ static std::string next_data;
 // settings as they were before the demo changed them: put back after
 static std::map<std::string, std::pair<bool, std::string>> play_saved;
 static nhv_camera::Orbit play_orbit_was;
+static bool play_inventory = false;
 
 bool playing()
 {
@@ -363,9 +371,19 @@ static void apply_record(u8 type, const std::string &d)
 		play_orbit_was = o;
 		break;
 	}
+	case REC_INVENTORY:
+		play_inventory = true;
+		break;
 	default:
 		break;
 	}
+}
+
+bool play_take_inventory()
+{
+	bool was = play_inventory;
+	play_inventory = false;
+	return was;
 }
 
 void play_step(f32 dtime)

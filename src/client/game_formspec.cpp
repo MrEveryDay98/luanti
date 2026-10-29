@@ -3,6 +3,7 @@
 // Copyright (C) 2010-2013 celeron55, Perttu Ahola <celeron55@gmail.com>
 
 #include "game_formspec.h"
+#include "nhv_demo.h" // (VoxHack)
 
 #include "gettext.h"
 #include "nodemetadata.h"
@@ -381,6 +382,8 @@ void GameFormSpec::showPlayerInventory(const std::string *fs_override)
 
 	m_formspec->setFormSpec(fs_src->getForm(), inventoryloc);
 	fs_src.release(); // owned by GUIFormSpecMenu
+	// (VoxHack: recording a demo - you opened it: the server never hears)
+	nhv_demo::record_inventory_opened();
 }
 
 #define SIZE_TAG "size[14.25,7.275,true]" // Fixed size (ignored in touchscreen mode)
