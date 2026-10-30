@@ -10,6 +10,8 @@
 #include "client/client.h"
 #include "client/clientmap.h"
 #include "client/hud.h"
+#include "client/localplayer.h"
+#include "hud_element.h"
 #include "client/minimap.h"
 #include "client/shadows/dynamicshadowsrender.h"
 #include <IGUIEnvironment.h>
@@ -26,7 +28,9 @@ void Draw3D::run(PipelineContext &context)
 	context.device->getVideoDriver()->setTransform(video::ETS_WORLD, core::IdentityMatrix);
 	if (context.show_hud) {
 		context.hud->drawBlockBounds();
-		context.hud->drawSelectionMesh();
+		LocalPlayer *lp = context.client->getEnv().getLocalPlayer();
+		if (!lp || !(lp->hud_flags & HUD_FLAG_NHV_NO_SELECTION))
+			context.hud->drawSelectionMesh();
 	}
 	extern bool nhv_retro;
 	auto *from = dynamic_cast<TextureBufferOutput *>(m_target);

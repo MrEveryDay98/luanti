@@ -59,6 +59,7 @@ const struct EnumString es_HudBuiltinElement[] =
 	{HUD_FLAG_NHV_FULL_RES,          "nhv_full_res"},
 	{HUD_FLAG_NHV_OFF_SWING,         "nhv_off_swing"},
 	{HUD_FLAG_NHV_STAB,              "nhv_stab"},
+	{HUD_FLAG_NHV_NO_SELECTION,      "nhv_no_selection"},
 	{HUD_FLAG_NHV_HANDS_DOWN,        "nhv_hands_down"},
 	{HUD_FLAG_NHV_SHAKE,             "nhv_shake"},
 	{HUD_FLAG_NHV_ACTION_KEYS,       "nhv_action_keys"},

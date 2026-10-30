@@ -76,6 +76,8 @@
 // toggling nhv_stab thrusts the wielded item forward once (a polearm's or
 // Snickersnee's hit from a distance)
 #define HUD_FLAG_NHV_STAB              (1 << 23)
+// no outline round what's pointed at (the game: outside the editors)
+#define HUD_FLAG_NHV_NO_SELECTION      (1 << 24)
 
 #define HUD_PARAM_HOTBAR_ITEMCOUNT 1
 #define HUD_PARAM_HOTBAR_IMAGE 2
