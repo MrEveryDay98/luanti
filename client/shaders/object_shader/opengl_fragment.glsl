@@ -44,18 +44,18 @@ VARYING_ vec3 worldPosition;
 VARYING_ lowp vec4 varColor;
 // NetHack Voxel: 1 = full brightness (no light or shadow)
 uniform float nhvFullbright;
-// VoxHack retro mode: on, dithered (0 or 1 each) - light in a few steps,
-// not smooth
-uniform vec2 nhvRetro;
+// VoxHack retro mode: on, dithering, light steps, palette (game.cpp) -
+// the light in a few steps, not smooth
+uniform vec4 nhvRetro;
 vec3 nhvBandedLight(vec3 light)
 {
-	if (nhvRetro.x <= 0.0)
+	float bands = nhvRetro.z;
+	if (nhvRetro.x <= 0.0 || bands < 1.0)
 		return light;
-	const float BANDS = 6.0;
 	float l = max(light.r, max(light.g, light.b));
 	if (l <= 0.001)
 		return light;
-	return light * (max(floor(l * BANDS + 0.5), 1.0) / BANDS) / l;
+	return light * (max(floor(l * bands + 0.5), 1.0) / bands) / l;
 }
 
 CENTROID_ VARYING_ mediump vec2 varTexCoord;

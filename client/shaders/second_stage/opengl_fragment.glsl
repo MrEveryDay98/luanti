@@ -22,8 +22,9 @@ uniform lowp float bloomIntensity;
 uniform lowp float saturation;
 // NetHack Voxel: x = wave strength, y = hallucination, z = time (seconds)
 uniform vec3 nhvFx;
-// VoxHack retro mode: on, dithered (0 or 1 each)
-uniform vec2 nhvRetro;
+// VoxHack retro mode: on, dithering amount, light steps, palette (0 full,
+// 1 VGA, 2 EGA) - game.cpp
+uniform vec4 nhvRetro;
 
 
 
@@ -40,6 +41,21 @@ float nhvBayer(vec2 p)
 // by how bright each channel looks. Written out, not a table looked up in a
 // loop: GPUs index a big constant table very slowly.
 #define NHV_TRY(r, g, b) { vec3 p_ = vec3(r, g, b); vec3 d_ = c - p_; float e_ = dot(w, d_ * d_); if (e_ < bd) { bd = e_; best = p_; } }
+// the nearest of EGA's 16 colours (NetHack's own) - each channel counted
+// alike: with so few colours, weighting by brightness turns everything
+// grey; this keeps the hue
+vec3 nhvEga(vec3 c)
+{
+	const vec3 w = vec3(1.0);
+	vec3 best = vec3(0.0);
+	float bd = 1e9;
+	NHV_TRY(0.000, 0.000, 0.000) NHV_TRY(0.000, 0.000, 0.667) NHV_TRY(0.000, 0.667, 0.000) NHV_TRY(0.000, 0.667, 0.667)
+	NHV_TRY(0.667, 0.000, 0.000) NHV_TRY(0.667, 0.000, 0.667) NHV_TRY(0.667, 0.333, 0.000) NHV_TRY(0.667, 0.667, 0.667)
+	NHV_TRY(0.333, 0.333, 0.333) NHV_TRY(0.333, 0.333, 1.000) NHV_TRY(0.333, 1.000, 0.333) NHV_TRY(0.333, 1.000, 1.000)
+	NHV_TRY(1.000, 0.333, 0.333) NHV_TRY(1.000, 0.333, 1.000) NHV_TRY(1.000, 1.000, 0.333) NHV_TRY(1.000, 1.000, 1.000)
+	return best;
+}
+
 vec3 nhvVga(vec3 c)
 {
 	const vec3 w = vec3(0.30, 0.59, 0.11);
@@ -278,12 +294,13 @@ void main(void)
 		color.rgb = mix(color.rgb, clamp(shifted, 0.0, 1.0), nhvFx.y);
 	}
 
-	// VoxHack retro mode: VGA's 256 colours - dithered, the ordered pattern
-	// standing in for the colours between
-	if (nhvRetro.x > 0.0) {
+	// VoxHack retro mode: its palette's colours - dithered, the ordered
+	// pattern standing in for the colours between (wider for EGA's few)
+	if (nhvRetro.x > 0.0 && nhvRetro.w > 0.0) {
+		float spread = nhvRetro.w > 1.5 ? 0.36 : 0.12;
 		if (nhvRetro.y > 0.0)
-			color.rgb = clamp(color.rgb + (nhvBayer(gl_FragCoord.xy) - 0.5) * 0.12, 0.0, 1.0);
-		gl_FragColor = vec4(nhvVga(color.rgb), 1.0);
+			color.rgb = clamp(color.rgb + (nhvBayer(gl_FragCoord.xy) - 0.5) * spread * nhvRetro.y, 0.0, 1.0);
+		gl_FragColor = vec4(nhvRetro.w > 1.5 ? nhvEga(color.rgb) : nhvVga(color.rgb), 1.0);
 		return;
 	}
 

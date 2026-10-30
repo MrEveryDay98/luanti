@@ -108,9 +108,10 @@ class GameGlobalShaderUniformSetter : public IShaderUniformSetter
 	// NetHack Voxel full brightness (nodes and objects shaders): 0 or 1
 	CachedPixelShaderSetting<float> m_nhv_fullbright_pixel{"nhvFullbright"};
 	// VoxHack retro mode (nodes and objects shaders: banded light; second
-	// stage: VGA's colours): on, dithered (0 or 1 each)
-	CachedPixelShaderSetting<float, 2> m_nhv_retro_pixel{"nhvRetro"};
-	float m_nhv_retro[2] = {0.0f, 0.0f};
+	// stage: its colours): on (0/1), dithering (0..1.6), light steps (0:
+	// smooth), palette (0 full, 1 VGA's 256, 2 EGA's 16)
+	CachedPixelShaderSetting<float, 4> m_nhv_retro_pixel{"nhvRetro"};
+	float m_nhv_retro[4] = {0.0f, 0.0f, 0.0f, 0.0f};
 	float m_nhv_wave = 0.0f, m_nhv_hallu = 0.0f;
 	// VoxHack: the setting nhv_brightness (0..1, wizard mode's /brightness),
 	// read a few times a second
@@ -198,7 +199,13 @@ public:
 				m_nhv_brightness = g_settings->exists("nhv_brightness")
 						? std::clamp(g_settings->getFloat("nhv_brightness"), 0.0f, 1.0f) : 0.0f;
 				m_nhv_retro[0] = g_settings->getBool("nhv_retro") ? 1.0f : 0.0f;
-				m_nhv_retro[1] = g_settings->getBool("nhv_retro_dither") ? 1.0f : 0.0f;
+				// (dithering: an amount; "true"/"false" from before it was one)
+				const std::string dither = g_settings->get("nhv_retro_dither");
+				m_nhv_retro[1] = dither == "true" ? 1.0f : dither == "false" ? 0.0f
+						: std::clamp((float)atof(dither.c_str()), 0.0f, 3.0f);
+				m_nhv_retro[2] = std::clamp((float)g_settings->getS32("nhv_retro_bands"), 0.0f, 64.0f);
+				const std::string pal = g_settings->get("nhv_retro_palette");
+				m_nhv_retro[3] = pal == "full" ? 0.0f : pal == "ega" ? 2.0f : 1.0f;
 			}
 			m_nhv_retro_pixel.set(m_nhv_retro, services);
 			// (full brightness, or wizard mode's partial: unlit colours mixed in)

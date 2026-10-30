@@ -1647,6 +1647,8 @@ core::rect<s32> COpenGL3DriverBase::virtualScreenRect() const
 	if (!VirtualSize.Width || !WindowSize.Width)
 		return core::rect<s32>(0, 0, WindowSize.Width, WindowSize.Height);
 	f32 scale = core::min_((f32)WindowSize.Width / VirtualSize.Width, (f32)WindowSize.Height / VirtualSize.Height);
+	if (VirtualWhole && scale >= 1.0f)
+		scale = std::floor(scale);
 	s32 w = (s32)(VirtualSize.Width * scale), h = (s32)(VirtualSize.Height * scale);
 	s32 x = ((s32)WindowSize.Width - w) / 2, y = ((s32)WindowSize.Height - h) / 2;
 	return core::rect<s32>(x, y, x + w, y + h);

@@ -458,10 +458,16 @@ extern bool nhv_retro; // (render/plain.cpp)
 
 void RenderingEngine::nhvApplyRetro()
 {
-	static const v2u32 RETRO_SCREEN(800, 600);
 	bool retro = g_settings->getBool("nhv_retro");
-	get_video_driver()->setVirtualScreenSize(retro ? core::dimension2du(RETRO_SCREEN.X, RETRO_SCREEN.Y)
-			: core::dimension2du(0, 0));
+	// (the screen: nhv_retro_res, "<w>x<h>", 320..1920 by 200..1200)
+	core::dimension2du screen(800, 600);
+	unsigned w = 0, h = 0;
+	if (sscanf(g_settings->get("nhv_retro_res").c_str(), "%ux%u", &w, &h) == 2 &&
+			w >= 320 && w <= 1920 && h >= 200 && h <= 1200)
+		screen = core::dimension2du(w, h);
+	auto *driver = get_video_driver();
+	driver->setVirtualScreenWholeScale(g_settings->getBool("nhv_retro_whole"));
+	driver->setVirtualScreenSize(retro ? screen : core::dimension2du(0, 0));
 	if (retro != nhv_retro) {
 		// (the render resolution changes with it: render/plain.cpp)
 		nhv_retro = retro;
@@ -507,6 +513,11 @@ void RenderingEngine::showErrorMessageBox(const std::string &message)
 
 float RenderingEngine::getDisplayDensity()
 {
+	// (VoxHack: retro mode's screen is its own, whatever the monitor: its
+	// HUD and menus sized for it alone)
+	extern bool nhv_retro;
+	if (nhv_retro)
+		return 1.0f;
 	float user_factor = g_settings->getFloat("display_density_factor", 0.5f, 5.0f);
 #ifndef __ANDROID__
 	float dpi = get_raw_device()->getDisplayDensity();
