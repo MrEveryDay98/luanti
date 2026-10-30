@@ -1014,7 +1014,12 @@ void GenericCAO::updateNametag()
 // height (x, z), the thickness
 void GenericCAO::nhvLayOutShadow(v3f foot)
 {
-	const v3f rot = rot_translator.val_current;
+	v3f rot = rot_translator.val_current;
+	v3f cam;
+	if (nhvShadowBillboard() && nhv_camera::get(&cam)) {
+		v3f d = cam * BS - (foot + intToFloat(m_env->getCameraOffset(), BS));
+		rot.Y += std::atan2(-d.X, d.Z) * core::RADTODEG;
+	}
 	core::matrix4 turn;
 	setPitchYawRoll(turn, v3f(0.0f, -rot.Y, 0.0f));
 	const v3f across = turn.rotateAndScaleVect(v3f(1.0f, 0.0f, 0.0f));

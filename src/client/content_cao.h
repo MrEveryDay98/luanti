@@ -338,7 +338,13 @@ public:
 	void nhvLayOutShadow(v3f foot);
 	bool nhvShadow() const
 	{
-		return m_prop.infotext == "nhv:shadow";
+		return m_prop.infotext == "nhv:shadow" || nhvShadowBillboard();
+	}
+	// (a billboard's shadow, "nhv:shadow_billboard": turned to the camera as
+	// its thing is - nhvBillboard)
+	bool nhvShadowBillboard() const
+	{
+		return m_prop.infotext == "nhv:shadow_billboard";
 	}
 
 	void updateMeshCulling();
