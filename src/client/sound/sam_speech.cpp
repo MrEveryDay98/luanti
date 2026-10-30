@@ -10,7 +10,7 @@
 extern "C" {
 int nhv_sam_text_to_phonemes(const char *text, char *out, int out_size);
 int nhv_sam_render_phonemes(const char *phonemes, int spd, int ptch, int thrt, int mth, int sing,
-		unsigned char **out, int hifi, float **hifi_out);
+		unsigned char **out, const float *hifi, float **hifi_out);
 }
 
 namespace nhvsam {
@@ -643,8 +643,10 @@ std::vector<short> speak(const std::string &text, const Settings &s, const Dicti
 		}
 		unsigned char *buf = nullptr;
 		float *hifi = nullptr;
+		const float tuning[4] = {s.bright, s.breath, s.movement, s.hiss};
 		int n = nhv_sam_render_phonemes(p.phonemes.c_str(), std::clamp(speed, 1, 255), std::clamp(pitch, 1, 255),
-				std::clamp(s.throat, 1, 255), std::clamp(s.mouth, 1, 255), s.sing, &buf, s.hifi, &hifi);
+				std::clamp(s.throat, 1, 255), std::clamp(s.mouth, 1, 255), s.sing, &buf,
+				s.hifi ? tuning : nullptr, &hifi);
 		if (n <= 0)
 			continue;
 		if (!pcm.empty())

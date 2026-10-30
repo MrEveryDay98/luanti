@@ -28,7 +28,7 @@ constexpr float DECLINE = 0.08f;     // the pitch, lower by the end (period long
 constexpr float VIBRATO = 0.004f, VIBRATO_HZ = 5.1f;
 constexpr float JITTER = 0.006f;     // each pulse's period, a little off
 constexpr float SHIMMER = 0.03f;     // each pulse's loudness, a little off
-constexpr float BREATH = 0.02f;      // a breath of noise in the voice
+constexpr float BREATH = 0.008f;     // a breath of noise in the voice
 
 // the hissed consonants (SAM's kinds: sam's sampledConsonantFlag & 7, less 1):
 // a band of noise each
@@ -36,11 +36,11 @@ struct Hiss {
 	float centre, q, level;
 };
 const Hiss HISS[5] = {
-	{6000.0f, 1.2f, 0.30f},  // T, S, Z
-	{3200.0f, 1.5f, 0.30f},  // CH, J, SH, ZH
-	{4500.0f, 0.5f, 0.12f},  // P, F, V, TH, DH
-	{1500.0f, 0.6f, 0.10f},  // /H
-	{2000.0f, 1.0f, 0.18f},  // /X (the German ch)
+	{6000.0f, 1.2f, 0.18f},  // T, S, Z
+	{3200.0f, 1.5f, 0.18f},  // CH, J, SH, ZH
+	{4500.0f, 0.5f, 0.07f},  // P, F, V, TH, DH
+	{1500.0f, 0.6f, 0.06f},  // /H
+	{2000.0f, 1.0f, 0.11f},  // /X (the German ch)
 };
 constexpr float VOICED_HISS = 0.6f;  // Z, ZH, V, DH: the noise under the voice
 
@@ -66,6 +66,8 @@ struct Bandpass {
 
 std::vector<float> g_out;
 std::mt19937 g_rng(1);
+// the voice's tuning (nhv_sam_hifi_begin)
+float g_bright = 1, g_breath = 1, g_pitch = 1, g_hiss = 1;
 
 float rnd()
 {
@@ -74,8 +76,12 @@ float rnd()
 
 } // namespace
 
-extern "C" void nhv_sam_hifi_begin(void)
+extern "C" void nhv_sam_hifi_begin(float bright, float breath, float pitch, float hiss)
 {
+	g_bright = std::clamp(bright, 0.0f, 2.0f);
+	g_breath = std::clamp(breath, 0.0f, 3.0f);
+	g_pitch = std::clamp(pitch, 0.0f, 3.0f);
+	g_hiss = std::clamp(hiss, 0.0f, 3.0f);
 	g_out.clear();
 	g_rng.seed(1); // (the same line sounds the same every time)
 }
@@ -113,13 +119,15 @@ extern "C" void nhv_sam_hifi_frames(int count, int speed, const unsigned char *f
 		if (s >= next_pulse) {
 			float period = std::max(8.0f, lerp(pitches, i, f)) * STEP;
 			float t = s / RATE;
-			period *= 1 + DECLINE * s / total + VIBRATO * std::sin(2 * PI * VIBRATO_HZ * t)
-					+ JITTER * rnd();
+			period *= 1 + g_pitch * (DECLINE * s / total + VIBRATO * std::sin(2 * PI * VIBRATO_HZ * t)
+					+ JITTER * rnd());
 			next_pulse = s + period;
 			if (!hissed) {
-				float shimmer = 1 + SHIMMER * rnd();
+				float shimmer = 1 + g_pitch * SHIMMER * rnd();
+				// (brighter: the upper formants louder; duller: quieter)
+				const float weight[3] = {WEIGHT[0], WEIGHT[1] * g_bright, WEIGHT[2] * g_bright * g_bright};
 				for (int k = 0; k < 3; k++) {
-					float a = lerp(ampl[k], i, f) / 15.0f * WEIGHT[k];
+					float a = lerp(ampl[k], i, f) / 15.0f * weight[k];
 					if (a <= 0.001f)
 						continue;
 					float hz = std::min(lerp(freq[k], i, f) * HZ, RATE * 0.45f);
@@ -146,9 +154,9 @@ extern "C" void nhv_sam_hifi_frames(int count, int speed, const unsigned char *f
 		for (int k = 0; k < 5; k++) {
 			float want = 0;
 			if (kind >= 1 && kind - 1 == k)
-				want = HISS[k].level * (hissed ? 1.0f : VOICED_HISS);
+				want = g_hiss * HISS[k].level * (hissed ? 1.0f : VOICED_HISS);
 			if (k == 3)
-				want += BREATH * voiced;
+				want += g_breath * BREATH * voiced;
 			level[k] += (want - level[k]) * glide;
 			if (level[k] > 1e-4f)
 				v += level[k] * band[k].run(n) * 2.5f;
@@ -162,9 +170,10 @@ extern "C" int nhv_sam_hifi_take(float **out)
 	*out = nullptr;
 	if (g_out.empty())
 		return 0;
-	// no DC; the highest hiss rolled off (two one-poles at 6.5 kHz); peaks
-	// rounded off rather than clipped
-	const float a = std::exp(-2 * PI * 6500.0f / RATE);
+	// no DC; the highest hiss rolled off (two one-poles at 6.5 kHz, lower
+	// for a duller voice); peaks rounded off rather than clipped
+	const float cut = std::clamp(6500.0f * (0.5f + 0.5f * g_bright), 2500.0f, 10000.0f);
+	const float a = std::exp(-2 * PI * cut / RATE);
 	float x1 = 0, y1 = 0, l1 = 0, l2 = 0;
 	for (float &v : g_out) {
 		float y = v - x1 + 0.995f * y1;

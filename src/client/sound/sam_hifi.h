@@ -22,8 +22,11 @@
 extern "C" {
 #endif
 
-// (sam_unity.c) start a line: what's voiced next goes into a new buffer
-void nhv_sam_hifi_begin(void);
+// (sam_unity.c) start a line: what's voiced next goes into a new buffer.
+// The voice's tuning (each 1 as made; 0..2): brightness (the upper
+// formants, the highs kept), breath (the noise under the voice), pitch
+// movement (its drift and waver; 0: flat), hiss (the hissed consonants)
+void nhv_sam_hifi_begin(float bright, float breath, float pitch, float hiss);
 // (sam_unity.c) SAM's frames for one breath group, voiced and added on
 void nhv_sam_hifi_frames(int count, int speed, const unsigned char *flags, const unsigned char *f1,
 		const unsigned char *f2, const unsigned char *f3, const unsigned char *a1, const unsigned char *a2,
