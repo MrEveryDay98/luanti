@@ -434,7 +434,10 @@ static LightPair getSmoothLightCorner(const v3s16 &p,
 		skip_ambient_occlusion_night = true;
 	}
 
-	if (ambient_occlusion > 4) {
+	// (VoxHack: none at all unless nhv_ambient_occlusion - stepped light,
+	// texel light's, made its darkening hard wedges in the corners)
+	static thread_local const bool nhv_ao = g_settings->getBool("nhv_ambient_occlusion");
+	if (nhv_ao && ambient_occlusion > 4) {
 		static thread_local const float ao_gamma = rangelim(
 			g_settings->getFloat("ambient_occlusion_gamma"), 0.25, 4.0);
 
