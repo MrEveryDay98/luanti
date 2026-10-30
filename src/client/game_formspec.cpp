@@ -468,7 +468,8 @@ void GameFormSpec::showPauseMenu()
 	buttons.push_back({true, "btn_nhv_help", strgettext("Help")});
 	// VoxHack: the game's achievements and NetHack's own options
 	buttons.push_back({true, "btn_nhv_achievements", strgettext("Achievements")});
-	buttons.push_back({true, "btn_nhv_options", strgettext("NetHack Options")});
+	// (VoxHack's options and NetHack's, one screen: Luanti's Settings below)
+	buttons.push_back({true, "btn_nhv_options", strgettext("Options")});
 	// TRANSLATORS: Try to keep the translation short
 	buttons.push_back({false, "btn_settings", strgettext("Settings")});
 #ifndef __ANDROID__
