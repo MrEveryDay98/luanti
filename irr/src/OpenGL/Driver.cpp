@@ -1586,17 +1586,56 @@ void COpenGL3DriverBase::OnResize(const core::dimension2d<u32> &size)
 void COpenGL3DriverBase::OnWindowResize(const core::dimension2d<u32> &size)
 {
 	WindowSize = size;
-	OnResize(VirtualTarget ? VirtualSize : size);
+	applyVirtualSize();
 }
 
 // ---------------------------------------------------------------- VoxHack: the virtual screen
 
 void COpenGL3DriverBase::setVirtualScreenSize(const core::dimension2d<u32> &size)
 {
-	if (size == VirtualSize)
+	if (size == VirtualAsked)
 		return;
+	VirtualAsked = size;
+	applyVirtualSize();
+}
+
+void COpenGL3DriverBase::setVirtualScreenWholeScale(bool whole)
+{
+	if (whole == VirtualWhole)
+		return;
+	VirtualWhole = whole;
+	applyVirtualSize();
+}
+
+// the virtual screen's size: as asked; or, scaled up by whole pixels, a
+// little bigger or smaller - its shape kept - so that fills the window's
+// height (or width, whichever it meets first)
+core::dimension2d<u32> COpenGL3DriverBase::fittedVirtualSize() const
+{
+	core::dimension2d<u32> size = VirtualAsked;
+	if (!VirtualWhole || !size.Width || !size.Height || !WindowSize.Width || !WindowSize.Height)
+		return size;
+	f32 fit = core::min_((f32)WindowSize.Width / size.Width, (f32)WindowSize.Height / size.Height);
+	u32 n = (u32)core::max_(1.0f, std::round(fit));
+	f32 aspect = (f32)size.Width / size.Height;
+	u32 h = WindowSize.Height / n;
+	u32 w = (u32)std::round(h * aspect);
+	if (w * n > WindowSize.Width) {
+		w = WindowSize.Width / n;
+		h = (u32)std::round(w / aspect);
+	}
+	return core::dimension2d<u32>(core::max_(1u, w), core::max_(1u, h));
+}
+
+void COpenGL3DriverBase::applyVirtualSize()
+{
 	if (WindowSize.Width == 0)
 		WindowSize = ScreenSize;
+	const core::dimension2d<u32> size = fittedVirtualSize();
+	if (size == VirtualSize) {
+		OnResize(VirtualTarget ? VirtualSize : WindowSize);
+		return;
+	}
 	if (VirtualTarget) {
 		removeRenderTarget(VirtualTarget);
 		removeTexture(VirtualColor);

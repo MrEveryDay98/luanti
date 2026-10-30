@@ -144,7 +144,7 @@ public:
 	void setVirtualScreenSize(const core::dimension2d<u32> &size) override;
 	void OnWindowResize(const core::dimension2d<u32> &size) override;
 	core::dimension2d<u32> getVirtualScreenSize() const override { return VirtualSize; }
-	void setVirtualScreenWholeScale(bool whole) override { VirtualWhole = whole; }
+	void setVirtualScreenWholeScale(bool whole) override;
 	core::position2d<s32> windowToScreen(const core::position2d<s32> &p) const override;
 	core::position2d<s32> screenToWindow(const core::position2d<s32> &p) const override;
 
@@ -305,9 +305,12 @@ protected:
 	// that goes in the window
 	void bindScreen();
 	core::rect<s32> virtualScreenRect() const;
+	core::dimension2d<u32> fittedVirtualSize() const;
+	void applyVirtualSize();
 	void presentVirtualScreen();
 	core::dimension2d<u32> WindowSize;
 	core::dimension2d<u32> VirtualSize;
+	core::dimension2d<u32> VirtualAsked; // (the size asked for: VirtualSize is fitted to the window)
 	ITexture *VirtualColor = nullptr;
 	ITexture *VirtualDepth = nullptr;
 	IRenderTarget *VirtualTarget = nullptr;
