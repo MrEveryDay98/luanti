@@ -161,6 +161,19 @@ private:
 		f32 shade[3] = {0.4f, 0.4f, 0.45f};
 	} m_nhv_layer[2];
 	f32 m_nhv_horizon[4] = {0, 0, 0, 0};
+	// (VoxHack: the clouds' colour at dawn and dusk - rgb, how strongly)
+	f32 m_nhv_glow[4] = {1, 1, 1, 0};
+	// how far into dawn or dusk it is (0 not, 1 the sun on the horizon:
+	// about 4:50 and 19:10), times how strongly the sky colours them - 0
+	// for a sky that doesn't
+	f32 nhvDawn(f32 time_of_day) const
+	{
+		if (!m_nhv_daynight || m_nhv_glow[3] <= 0.0f)
+			return 0.0f;
+		f32 off = std::fmin(std::fabs(time_of_day - 0.2f), std::fabs(time_of_day - 0.8f));
+		f32 k = core::clamp(1.0f - off / 0.05f, 0.0f, 1.0f);
+		return m_nhv_glow[3] * k * k * (3.0f - 2.0f * k);
+	}
 
 	aabb3f m_box{{0.0f, 0.0f, 0.0f}};
 	video::SMaterial m_materials[SKY_MATERIAL_COUNT];

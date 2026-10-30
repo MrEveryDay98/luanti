@@ -72,6 +72,7 @@ struct NhvSkyUniforms {
 	f32 shade[2][4] = {{0.4f, 0.4f, 0.45f, 1}, {0.4f, 0.4f, 0.45f, 1}};
 	f32 horizon[4] = {0, 0, 0, 0};
 	f32 misc[4] = {0, 1, 0, 0};
+	f32 glow[4] = {1, 1, 1, 0}; // (the clouds tinted so: rgb, how strongly now)
 } g_nhv_sky;
 
 class NhvSkyUniformSetter : public IShaderUniformSetter {
@@ -81,6 +82,7 @@ class NhvSkyUniformSetter : public IShaderUniformSetter {
 	CachedPixelShaderSetting<f32, 4> m_shade0{"nhvSkyShade0"}, m_shade1{"nhvSkyShade1"};
 	CachedPixelShaderSetting<f32, 4> m_horizon{"nhvSkyHorizon"};
 	CachedPixelShaderSetting<f32, 4> m_misc{"nhvSkyMisc"};
+	CachedPixelShaderSetting<f32, 4> m_glow{"nhvSkyGlow"};
 public:
 	void onSetUniforms(video::IMaterialRendererServices *services) override
 	{
@@ -94,6 +96,7 @@ public:
 		m_shade1.set(g_nhv_sky.shade[1], services);
 		m_horizon.set(g_nhv_sky.horizon, services);
 		m_misc.set(g_nhv_sky.misc, services);
+		m_glow.set(g_nhv_sky.glow, services);
 	}
 };
 
@@ -204,6 +207,10 @@ void Sky::nhvUpdate()
 	m_nhv_pixels = nhvNum(rest, "px", 0);
 	m_nhv_daynight = nhvNum(rest, "dn", 0) > 0.5f;
 	m_nhv_bright = MYMAX(0.0f, nhvNum(rest, "bright", 1));
+	m_nhv_glow[0] = nhvNum(rest, "gr", 1);
+	m_nhv_glow[1] = nhvNum(rest, "gg", 1);
+	m_nhv_glow[2] = nhvNum(rest, "gb", 1);
+	m_nhv_glow[3] = core::clamp(nhvNum(rest, "ga", 0), 0.0f, 1.0f);
 	for (int i = 0; i < 2; i++) {
 		auto m = nhvPairs(parts[i]);
 		NhvLayer &L = m_nhv_layer[i];
@@ -261,6 +268,15 @@ void Sky::nhvDraw(video::IVideoDriver *driver)
 	g_nhv_sky.misc[0] = m_nhv_pixels;
 	// (by night the clouds are dark too)
 	g_nhv_sky.misc[1] = (m_nhv_daynight ? MYMAX(0.12f, m_time_brightness) : 1.0f) * m_nhv_bright;
+	// (and at dawn and dusk tinted as the sky says, and lit up by the low
+	// sun - not as dark as the hour: nhvDawn)
+	{
+		f32 dawn = nhvDawn(m_time_of_day);
+		for (int c = 0; c < 3; c++)
+			g_nhv_sky.glow[c] = m_nhv_glow[c];
+		g_nhv_sky.glow[3] = dawn;
+		g_nhv_sky.misc[1] = MYMAX(g_nhv_sky.misc[1], 0.9f * dawn * m_nhv_bright);
+	}
 
 	driver->setMaterial(m_nhv_material);
 	const video::SColor c(255, 255, 255, 255);
@@ -616,6 +632,21 @@ void Sky::update(float time_of_day, float time_brightness,
 		skycolor_bright.getGreen() * m_brightness,
 		skycolor_bright.getBlue() * m_brightness
 	);
+
+	// (VoxHack: a sky with its own dawn and dusk colours turns to them -
+	// most at about 4:50 and 19:10, as strongly as it says, lit up out of
+	// the hour's dimness: nhvDawn)
+	f32 dawn = nhvDawn(time_of_day);
+	if (dawn > 0.0f) {
+		auto toward = [dawn](video::SColor c, video::SColor to) {
+			return video::SColor(255,
+				c.getRed() + (to.getRed() - (f32)c.getRed()) * dawn,
+				c.getGreen() + (to.getGreen() - (f32)c.getGreen()) * dawn,
+				c.getBlue() + (to.getBlue() - (f32)c.getBlue()) * dawn);
+		};
+		m_bgcolor = toward(m_bgcolor, m_sky_params.sky_color.dawn_horizon);
+		m_skycolor = toward(m_skycolor, m_sky_params.sky_color.dawn_sky);
+	}
 
 	// Horizon coloring based on sun and moon direction during sunset and sunrise
 	video::SColor pointcolor = video::SColor(m_bgcolor.getAlpha(), 255, 255, 255);

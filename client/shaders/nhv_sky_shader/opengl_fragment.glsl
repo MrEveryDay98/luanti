@@ -15,6 +15,7 @@ uniform lowp vec4 nhvSkyShade0;   // rgb: the clouds' shadowed parts
 uniform lowp vec4 nhvSkyShade1;
 uniform lowp vec4 nhvSkyHorizon;  // rgb; a = how strongly it fades in
 uniform highp vec4 nhvSkyMisc;    // x: pixels per repeat (0 = smooth); y: brightness
+uniform lowp vec4 nhvSkyGlow;     // rgb: the clouds' colour at dawn and dusk; a: how strongly now
 
 VARYING_ highp vec3 vPos;
 
@@ -86,6 +87,8 @@ void main(void)
 	float low = 1.0 - smoothstep(0.05, 0.45, d.y);
 	col = mix(col, nhvSkyHorizon.rgb, low * nhvSkyHorizon.a);
 	a *= smoothstep(0.04, 0.28, d.y);
+	// (lit by the low sun: tinted its colour)
+	col *= mix(vec3(1.0), nhvSkyGlow.rgb * 1.5, nhvSkyGlow.a);
 
 	gl_FragColor = vec4(col * nhvSkyMisc.y, a);
 }
