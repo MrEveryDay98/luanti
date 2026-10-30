@@ -60,11 +60,15 @@ void set_light_curve(float gamma)
 	params.gamma = rangelim(gamma, 0.33f, 3.0f);
 
 	// Boundary values should be fixed
+	// (VoxHack: no sun - its light is the levels' own, and the brightest a
+	// light gives, LIGHT_MAX, is full brightness: a lit room's floor all
+	// lit, not a step short of it)
 	light_LUT[0] = 0;
 	light_LUT[LIGHT_SUN] = 255;
+	light_LUT[LIGHT_MAX] = 255;
 
-	for (size_t i = 1; i < LIGHT_SUN; i++) {
-		float brightness = params.get((float)i / LIGHT_SUN);
+	for (size_t i = 1; i < LIGHT_MAX; i++) {
+		float brightness = params.get((float)i / LIGHT_MAX);
 		// Strictly speaking, rangelim is not necessary here - if the implementation
 		// is conforming. But we don't want problems in any case.
 		light_LUT[i] = rangelim((s32)(255.0f * brightness), 0, 255);
