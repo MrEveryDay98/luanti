@@ -23,12 +23,25 @@ const float BANDWIDTH[3] = {90.0f, 110.0f, 170.0f};
 const float WEIGHT[3] = {1.0f, 2.2f, 3.0f};
 constexpr float ATTACK_S = 0.0012f;  // a pulse's soft start
 constexpr float GAIN = 0.9f;
-// the voice: drifting down over a breath group, wavering a little
-constexpr float DECLINE = 0.08f;     // the pitch, lower by the end (period longer)
+// the voice wavering a little
 constexpr float VIBRATO = 0.004f, VIBRATO_HZ = 5.1f;
 constexpr float JITTER = 0.006f;     // each pulse's period, a little off
 constexpr float SHIMMER = 0.03f;     // each pulse's loudness, a little off
 constexpr float BREATH = 0.008f;     // a breath of noise in the voice
+// intonation (each a share of the pitch; times the pitch movement):
+constexpr float PHRASE_FALL = 0.07f;    // a phrase starts this much higher, ends this much lower
+constexpr float COMMA_RISE = 0.12f;     // before a comma or a dash: rising, more to come
+constexpr float QUESTION_RISE = 0.25f;  // a question's end
+constexpr float STOP_FALL = 0.10f;      // a statement's end, settling
+constexpr float ACCENT = 0.11f;         // a stressed syllable's peak (early in it, then falling)
+constexpr float ACCENT_PEAK = 0.35f;
+constexpr float END_SPAN = 0.3f;        // how much of a phrase its end shapes
+constexpr float EXCLAIM_RANGE = 1.6f;   // an exclamation: all of it wider
+// whispering: the formants rung by breath, not the voice
+constexpr float WHISPER = 1.3f;
+
+// SAM's phonemes that are punctuation (its sign tables: ' ' . ? , -)
+enum { PH_PAUSE = 0, PH_STOP = 1, PH_QUESTION = 2, PH_COMMA = 3, PH_DASH = 4 };
 
 // the hissed consonants (SAM's kinds: sam's sampledConsonantFlag & 7, less 1):
 // a band of noise each
@@ -68,27 +81,99 @@ std::vector<float> g_out;
 std::mt19937 g_rng(1);
 // the voice's tuning (nhv_sam_hifi_begin)
 float g_bright = 1, g_breath = 1, g_pitch = 1, g_hiss = 1;
+bool g_whisper = false, g_exclaim = false;
 
 float rnd()
 {
 	return std::uniform_real_distribution<float>(-1.0f, 1.0f)(g_rng);
 }
 
+// the intonation: each frame's pitch, as a share more or less than SAM's -
+// phrase by phrase (between punctuation), each settling down from where it
+// starts, shaped at its end by what ends it, a peak on each stressed
+// syllable
+std::vector<float> intonation(int count, int phonemes, const unsigned char *index, const unsigned char *stress,
+		const unsigned char *length)
+{
+	std::vector<float> m(count, 0.0f);
+	const float range = g_pitch * (g_exclaim ? EXCLAIM_RANGE : 1.0f);
+	if (range <= 0 || phonemes <= 0)
+		return std::vector<float>(count, 1.0f);
+	// where each phoneme's frames start
+	std::vector<int> at(phonemes + 1, 0);
+	for (int j = 0; j < phonemes; j++)
+		at[j + 1] = std::min(count, at[j] + length[j]);
+	auto punct = [&](int j) { return index[j] >= PH_STOP && index[j] <= PH_DASH; };
+	int j = 0;
+	while (j < phonemes) {
+		if (punct(j) || index[j] == PH_PAUSE) {
+			j++;
+			continue;
+		}
+		// a phrase: to the next punctuation (or the breath group's end: a statement)
+		int a = j;
+		while (j < phonemes && !punct(j))
+			j++;
+		int end = j < phonemes ? index[j] : PH_STOP;
+		int fa = at[a], fb = at[j];
+		for (int k = fa; k < fb; k++) {
+			float x = fb - fa > 1 ? (float)(k - fa) / (fb - fa - 1) : 1.0f;
+			float e = std::max(0.0f, (x - (1 - END_SPAN)) / END_SPAN);
+			float v = PHRASE_FALL * (1 - 2 * x);
+			if (end == PH_COMMA || end == PH_DASH)
+				v += COMMA_RISE * e;
+			else if (end == PH_QUESTION)
+				v += QUESTION_RISE * e;
+			else
+				v -= STOP_FALL * e;
+			m[k] += range * v;
+		}
+		for (int s = a; s < j; s++) {
+			if (!stress[s])
+				continue;
+			int sa = at[s], sb = at[s + 1];
+			for (int k = sa; k < sb; k++) {
+				float u = (k - sa + 0.5f) / std::max(1, sb - sa);
+				float shape = u < ACCENT_PEAK ? std::sin(PI / 2 * u / ACCENT_PEAK)
+						: std::cos(PI / 2 * (u - ACCENT_PEAK) / (1 - ACCENT_PEAK));
+				m[k] += range * ACCENT * shape;
+			}
+		}
+	}
+	// (smoothed over a few frames: a voice glides)
+	std::vector<float> out(count);
+	for (int k = 0; k < count; k++) {
+		float sum = 0;
+		int n = 0;
+		for (int d = -2; d <= 2; d++) {
+			if (k + d >= 0 && k + d < count) {
+				sum += m[k + d];
+				n++;
+			}
+		}
+		out[k] = 1 + sum / n;
+	}
+	return out;
+}
+
 } // namespace
 
-extern "C" void nhv_sam_hifi_begin(float bright, float breath, float pitch, float hiss)
+extern "C" void nhv_sam_hifi_begin(const float *tuning)
 {
-	g_bright = std::clamp(bright, 0.0f, 2.0f);
-	g_breath = std::clamp(breath, 0.0f, 3.0f);
-	g_pitch = std::clamp(pitch, 0.0f, 3.0f);
-	g_hiss = std::clamp(hiss, 0.0f, 3.0f);
+	g_bright = std::clamp(tuning[0], 0.0f, 2.0f);
+	g_breath = std::clamp(tuning[1], 0.0f, 3.0f);
+	g_pitch = std::clamp(tuning[2], 0.0f, 3.0f);
+	g_hiss = std::clamp(tuning[3], 0.0f, 3.0f);
+	g_whisper = tuning[4] != 0;
+	g_exclaim = tuning[5] != 0;
 	g_out.clear();
 	g_rng.seed(1); // (the same line sounds the same every time)
 }
 
 extern "C" void nhv_sam_hifi_frames(int count, int speed, const unsigned char *flags, const unsigned char *f1,
 		const unsigned char *f2, const unsigned char *f3, const unsigned char *a1, const unsigned char *a2,
-		const unsigned char *a3, const unsigned char *pitches)
+		const unsigned char *a3, const unsigned char *pitches, int phonemes, const unsigned char *index,
+		const unsigned char *stress, const unsigned char *length)
 {
 	if (count <= 0)
 		return;
@@ -100,14 +185,18 @@ extern "C" void nhv_sam_hifi_frames(int count, int speed, const unsigned char *f
 		int j = std::min(i + 1, count - 1);
 		return t[i] + (t[j] - t[i]) * f;
 	};
+	const std::vector<float> tune = intonation(count, phonemes, index, stress, length);
+	// (brighter: the upper formants louder; duller: quieter)
+	const float weight[3] = {WEIGHT[0], WEIGHT[1] * g_bright, WEIGHT[2] * g_bright * g_bright};
 
 	std::vector<Grain> grains;
-	Bandpass band[5];
+	Bandpass band[5], whisper[3];
 	float level[5] = {0, 0, 0, 0, 0};
 	for (int k = 0; k < 5; k++)
 		band[k].set(HISS[k].centre, HISS[k].q);
 	const float glide = 1.0f - std::exp(-1.0f / (0.003f * RATE)); // (3 ms)
 	float next_pulse = 0;
+	float wamp[3] = {0, 0, 0};
 
 	for (int s = 0; s < total; s++) {
 		float pos = s / frame;
@@ -115,17 +204,30 @@ extern "C" void nhv_sam_hifi_frames(int count, int speed, const unsigned char *f
 		float f = pos - i;
 		int kind = flags[i] & 7;
 		bool hissed = (flags[i] & 248) != 0;  // a hissed consonant, no voice
-		// a glottal pulse: the three formants rung
-		if (s >= next_pulse) {
-			float period = std::max(8.0f, lerp(pitches, i, f)) * STEP;
+		float v = 0;
+		if (g_whisper) {
+			// whispered: breath through the three formants (their filters
+			// following them, every 32 samples)
+			if ((s & 31) == 0) {
+				for (int k = 0; k < 3; k++) {
+					float hz = std::clamp(lerp(freq[k], i, f) * HZ, 100.0f, RATE * 0.45f);
+					whisper[k].set(hz, hz / BANDWIDTH[k]);
+					wamp[k] = hissed ? 0.0f : lerp(ampl[k], i, f) / 15.0f * weight[k];
+				}
+			}
+			float n = rnd();
+			for (int k = 0; k < 3; k++)
+				v += WHISPER * wamp[k] * whisper[k].run(n);
+		} else if (s >= next_pulse) {
+			// a glottal pulse: the three formants rung
 			float t = s / RATE;
-			period *= 1 + g_pitch * (DECLINE * s / total + VIBRATO * std::sin(2 * PI * VIBRATO_HZ * t)
-					+ JITTER * rnd());
+			float period = std::max(8.0f, lerp(pitches, i, f)) * STEP;
+			float into = tune[i] + (tune[std::min(i + 1, count - 1)] - tune[i]) * f;
+			period /= std::max(0.5f, into);
+			period *= 1 + g_pitch * (VIBRATO * std::sin(2 * PI * VIBRATO_HZ * t) + JITTER * rnd());
 			next_pulse = s + period;
 			if (!hissed) {
 				float shimmer = 1 + g_pitch * SHIMMER * rnd();
-				// (brighter: the upper formants louder; duller: quieter)
-				const float weight[3] = {WEIGHT[0], WEIGHT[1] * g_bright, WEIGHT[2] * g_bright * g_bright};
 				for (int k = 0; k < 3; k++) {
 					float a = lerp(ampl[k], i, f) / 15.0f * weight[k];
 					if (a <= 0.001f)
@@ -136,7 +238,6 @@ extern "C" void nhv_sam_hifi_frames(int count, int speed, const unsigned char *f
 				}
 			}
 		}
-		float v = 0;
 		for (Grain &g : grains) {
 			float env = g.amp;
 			if (g.age < g.attack)
@@ -149,7 +250,7 @@ extern "C" void nhv_sam_hifi_frames(int count, int speed, const unsigned char *f
 		grains.erase(std::remove_if(grains.begin(), grains.end(),
 				[](const Grain &g) { return g.amp < 1e-4f; }), grains.end());
 		// the noise: each kind's band, faded in and out
-		float voiced = hissed ? 0.0f : std::min(1.0f, (lerp(a1, i, f) + lerp(a2, i, f)) / 15.0f);
+		float voiced = hissed || g_whisper ? 0.0f : std::min(1.0f, (lerp(a1, i, f) + lerp(a2, i, f)) / 15.0f);
 		float n = rnd();
 		for (int k = 0; k < 5; k++) {
 			float want = 0;

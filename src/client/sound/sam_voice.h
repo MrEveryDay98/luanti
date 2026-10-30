@@ -2,7 +2,7 @@
 //
 // A sound played with a name like
 //     nhv_sam:<speed>,<pitch>,<throat>,<mouth>,<sing>,<phonetic>,<smooth>,<tone>,<effects>
-//             [,<hifi>[,<brightness>,<breath>,<pitch movement>,<hiss>]]|<text>
+//             [,<hifi>[,<brightness>,<breath>,<pitch movement>,<hiss>[,<whisper>]]]|<text>
 // (flags 0|1; effects like "echo:delay=250/reverb:room=60", may be empty;
 // hifi: sam_hifi.h, tuned in percent, 100 as made)
 // isn't a file: the sound manager has SAM read the text there and then

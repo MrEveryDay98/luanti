@@ -56,14 +56,15 @@ static std::vector<short> samSpeak(const std::string &name)
 	// speed, pitch, throat, mouth, sing, phonetic, smooth, tone, then the
 	// effect chain (sam_speech.h), then hi-fi (left out: off) and its tuning
 	// in percent (brightness, breath, pitch movement, hiss; left out: 100)
+	// and whispered (0|1)
 	int v[8] = {72, 64, 128, 128, 0, 0, 0, 1};
-	int tune[4] = {100, 100, 100, 100};
+	int tune[5] = {100, 100, 100, 100, 0};
 	std::string effects;
 	bool hifi = false;
 	{
 		std::istringstream ss(name.substr(sizeof(SAM_PREFIX) - 1, bar - (sizeof(SAM_PREFIX) - 1)));
 		std::string f;
-		for (int i = 0; i < 14 && std::getline(ss, f, ','); i++) {
+		for (int i = 0; i < 15 && std::getline(ss, f, ','); i++) {
 			if (i < 8)
 				v[i] = std::atoi(f.c_str());
 			else if (i == 8)
@@ -79,6 +80,7 @@ static std::vector<short> samSpeak(const std::string &name)
 	s.hifi = hifi;
 	s.bright = tune[0] / 100.0f, s.breath = tune[1] / 100.0f, s.movement = tune[2] / 100.0f;
 	s.hiss = tune[3] / 100.0f;
+	s.whisper = tune[4] != 0;
 	s.speed = v[0], s.pitch = v[1], s.throat = v[2], s.mouth = v[3];
 	s.sing = v[4], s.phonetic = v[5], s.smooth = v[6], s.tone = v[7];
 	return nhvsam::speak(name.substr(bar + 1), s, dictionary());

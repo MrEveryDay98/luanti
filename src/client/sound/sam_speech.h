@@ -26,6 +26,7 @@ struct Settings {
 	bool hifi = false;      // voice SAM's frames anew, in full quality (sam_hifi.h),
 	// tuned (each 1 as made): brightness, breath, pitch movement, hiss
 	float bright = 1, breath = 1, movement = 1, hiss = 1;
+	bool whisper = false;   // hi-fi, whispered (a line's mood)
 	bool tone = true;       // exclamations are quicker and higher
 	// effects applied in order after SAM speaks:
 	// "echo:delay=250:decay=0.4/reverb:room=60:mix=35" (see sam_speech.cpp)

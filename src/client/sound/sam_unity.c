@@ -149,7 +149,8 @@ static void hifi_frames(unsigned char *flags, unsigned char *f1, unsigned char *
 	int i, count = 0;
 	for (i = 0; i < 60 && phonemeIndexOutput[i] != 255; i++)
 		count += phonemeLengthOutput[i];
-	nhv_sam_hifi_frames(count, speed, flags, f1, f2, f3, a1, a2, a3, pitches);
+	nhv_sam_hifi_frames(count, speed, flags, f1, f2, f3, a1, a2, a3, pitches, i, phonemeIndexOutput,
+			stressOutput, phonemeLengthOutput);
 }
 
 /* Spells a short piece of text (at most ~70 characters: SAM's buffers are
@@ -180,9 +181,9 @@ int nhv_sam_text_to_phonemes(const char *text, char *out, int out_size)
 
 /* Renders SAM phonemes (at most ~250 characters). On success *out is 8-bit
  * unsigned mono PCM at 22050 Hz, malloc'd (the caller frees it), and its
- * length is returned; 0 if SAM can't read them. With hifi (its tuning:
- * brightness, breath, pitch movement, hiss - sam_hifi.h), *hifi_out is the
- * line in hi-fi instead (float; malloc'd too) and that's its length. */
+ * length is returned; 0 if SAM can't read them. With hifi (its tuning,
+ * sam_hifi.h's nhv_sam_hifi_begin), *hifi_out is the line in hi-fi
+ * instead (float; malloc'd too) and that's its length. */
 int nhv_sam_render_phonemes(const char *phonemes, int spd, int ptch, int thrt, int mth, int sing,
 		unsigned char **out, const float *hifi, float **hifi_out)
 {
@@ -205,7 +206,7 @@ int nhv_sam_render_phonemes(const char *phonemes, int spd, int ptch, int thrt, i
 	SetInput(in);
 	debug = hifi ? 1 : 0;
 	if (hifi)
-		nhv_sam_hifi_begin(hifi[0], hifi[1], hifi[2], hifi[3]);
+		nhv_sam_hifi_begin(hifi);
 	if (!SAMMain()) {
 		free(buffer);
 		buffer = NULL;

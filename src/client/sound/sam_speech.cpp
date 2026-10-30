@@ -643,10 +643,11 @@ std::vector<short> speak(const std::string &text, const Settings &s, const Dicti
 		}
 		unsigned char *buf = nullptr;
 		float *hifi = nullptr;
-		const float tuning[4] = {s.bright, s.breath, s.movement, s.hiss};
+		const float tuning[6] = {s.bright, s.breath, s.movement, s.hiss, s.whisper ? 1.0f : 0.0f,
+				p.exclaim ? 1.0f : 0.0f};
 		int n = nhv_sam_render_phonemes(p.phonemes.c_str(), std::clamp(speed, 1, 255), std::clamp(pitch, 1, 255),
 				std::clamp(s.throat, 1, 255), std::clamp(s.mouth, 1, 255), s.sing, &buf,
-				s.hifi ? tuning : nullptr, &hifi);
+				s.hifi || s.whisper ? tuning : nullptr, &hifi);
 		if (n <= 0)
 			continue;
 		if (!pcm.empty())
