@@ -67,6 +67,8 @@ uniform float nhvTexelLight;
 // (the pattern: 0 Bayer 4x4, 1 Bayer 2x2, 2 Bayer 8x8, 3 lines, 4 noise -
 // game.cpp; each a threshold 0..1 for a texture pixel p)
 uniform float nhvTexelPattern;
+// (how many steps of light: nhv_texel_steps)
+uniform float nhvTexelSteps;
 float nhvBayer2(vec2 p)
 {
 	p = floor(mod(p, 2.0));
@@ -106,11 +108,8 @@ vec3 nhvTexelLit(vec3 light, vec2 uv, vec2 texsize)
 		float sy = (tx.x * d.y - tx.y * d.x) / det;
 		lc = max(light + dFdx(light) * sx + dFdy(light) * sy, vec3(0.0));
 	}
-	// (always in steps - the shading is this alone: retro mode's Light,
-	// else 8)
-	float bands = nhvRetro.x > 0.0 ? nhvRetro.z : 0.0;
-	if (bands < 1.0)
-		bands = 8.0;
+	// (always in steps - the shading is this alone - as many as set)
+	float bands = max(nhvTexelSteps, 1.0);
 	float l = max(lc.r, max(lc.g, lc.b));
 	if (l <= 0.001)
 		return lc;
