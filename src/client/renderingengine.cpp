@@ -24,6 +24,7 @@
 #include "render/factory.h"
 #include "filesys.h"
 #include "irrlicht_changes/static_text.h"
+#include "irrlicht_changes/CGUITTFont.h" // (VoxHack: the loading screen's font)
 #include "irr_ptr.h"
 
 RenderingEngine *RenderingEngine::s_singleton = nullptr;
@@ -304,102 +305,80 @@ bool RenderingEngine::setWindowIcon()
 	Text will be removed when the screen is drawn the next time.
 	Additionally, a progressbar can be drawn when percent is set between 0 and 100.
 */
+// VoxHack: the loading screen - whatever is loading, however far: black,
+// and "LOADING..." in white, in VoxHack's retro font, slanted (each
+// letter drawn in thin strips, each shifted on from the one below: a
+// stepped, pixel italic), its letters hopping up one after another in a
+// wave, as Symphony of the Night's "Now Loading" does
+static gui::CGUITTFont *nhv_load_font = nullptr;
+static u32 nhv_load_font_size = 0;
+
+static gui::IGUIFont *nhv_loading_font(gui::IGUIEnvironment *guienv, u32 size)
+{
+	if (nhv_load_font && nhv_load_font_size == size)
+		return nhv_load_font;
+	static gui::SGUITTFace *face = nullptr;
+	if (!face) {
+		std::string path = porting::path_share + DIR_DELIM "games" DIR_DELIM "nethackvoxel"
+				DIR_DELIM "mods" DIR_DELIM "nhv" DIR_DELIM "fonts" DIR_DELIM "nhv_retro.ttf";
+		face = gui::SGUITTFace::loadFace(path.c_str());
+	}
+	if (!face)
+		return g_fontengine->getFont();
+	if (nhv_load_font)
+		nhv_load_font->drop();
+	// (not smoothed: crisp pixels)
+	nhv_load_font = gui::CGUITTFont::createTTFont(guienv, face, size, false, true);
+	nhv_load_font_size = size;
+	return nhv_load_font ? (gui::IGUIFont *)nhv_load_font : g_fontengine->getFont();
+}
+
 void RenderingEngine::draw_load_screen(const std::wstring &text,
 		gui::IGUIEnvironment *guienv, ITextureSource *tsrc, float dtime,
 		int percent, float *indef_pos, const std::wstring &bottom_text)
 {
 	v2u32 screensize = getWindowSize();
-
-	v2s32 textsize(g_fontengine->getTextWidth(text), g_fontengine->getLineHeight());
-	v2s32 center(screensize.X / 2, screensize.Y / 2);
-	core::rect<s32> textrect(center - textsize / 2, center + textsize / 2);
-
-	gui::IGUIStaticText *guitext =
-			gui::StaticText::add(guienv, text, textrect, false, false);
-	guitext->setTextAlignment(gui::EGUIA_CENTER, gui::EGUIA_UPPERLEFT);
-
 	auto *driver = get_video_driver();
+	driver->beginScene(true, true, video::SColor(255, 0, 0, 0));
 
-	driver->setFog(m_menu_sky_color);
-	driver->beginScene(true, true, m_menu_sky_color);
+	const u32 size = std::max<u32>(12, screensize.Y / 14);
+	gui::IGUIFont *font = nhv_loading_font(guienv, size);
+	const std::wstring word = L"LOADING...";
+	const f32 t = porting::getTimeMs() / 1000.0f;
+	const s32 height = font->getDimension(L"L").Height;
+	const f32 slant = 0.25f;                 // (pixels right per pixel up)
+	const s32 hop = height * 0.35f;          // (how high a letter hops)
+	const s32 strip = std::max<s32>(1, height / 12);
+	const video::SColor white(255, 255, 255, 255);
 
-	if (g_settings->getBool("menu_clouds")) {
-		g_menuclouds->step(dtime * 3);
-		g_menucloudsmgr->drawAll();
+	// the letters' places, centred (with a little room between them)
+	std::vector<s32> widths;
+	s32 total = 0;
+	for (wchar_t c : word) {
+		s32 w = font->getDimension(std::wstring(1, c).c_str()).Width + height / 10;
+		widths.push_back(w);
+		total += w;
 	}
-
-	int percent_min = 0;
-	int percent_max = percent;
-	if (indef_pos) {
-		*indef_pos = fmodf(*indef_pos + (dtime * 50.0f), 140.0f);
-		percent_max = std::min((int) *indef_pos, 100);
-		percent_min = std::max((int) *indef_pos - 40, 0);
-	}
-	// draw progress bar
-	u32 imgW = 0, imgH = 0;
-	if ((percent_min >= 0) && (percent_max <= 100)) {
-		video::ITexture *progress_img = tsrc->getTexture("progress_bar.png");
-		video::ITexture *progress_img_bg =
-				tsrc->getTexture("progress_bar_bg.png");
-
-		if (progress_img && progress_img_bg) {
-#ifndef __ANDROID__
-			const core::dimension2d<u32> &img_size =
-					progress_img_bg->getSize();
-			float density = g_settings->getFloat("gui_scaling", 0.5f, 20.0f) *
-					getDisplayDensity();
-			imgW = rangelim(img_size.Width, 200, 600) * density;
-			imgH = rangelim(img_size.Height, 24, 72) * density;
-#else
-			const core::dimension2d<u32> img_size(256, 48);
-			float imgRatio = (float)img_size.Height / img_size.Width;
-			imgW = screensize.X / 2.2f;
-			imgH = floor(imgW * imgRatio);
-#endif
-			v2s32 img_pos((screensize.X - imgW) / 2,
-					(screensize.Y - imgH) / 2);
-
-			draw2DImageFilterScaled(get_video_driver(), progress_img_bg,
-					core::rect<s32>(img_pos.X, img_pos.Y,
-							img_pos.X + imgW,
-							img_pos.Y + imgH),
-					core::rect<s32>(0, 0, img_size.Width,
-							img_size.Height),
-					0, 0, true);
-
-			draw2DImageFilterScaled(get_video_driver(), progress_img,
-					core::rect<s32>(img_pos.X + (percent_min * imgW) / 100, img_pos.Y,
-							img_pos.X + (percent_max * imgW) / 100,
-							img_pos.Y + imgH),
-					core::rect<s32>(percent_min * img_size.Width / 100, 0,
-							percent_max * img_size.Width / 100,
-							img_size.Height),
-					0, 0, true);
+	s32 x = (s32)screensize.X / 2 - total / 2;
+	const s32 base_y = (s32)screensize.Y / 2 - height / 2;
+	for (size_t i = 0; i < word.size(); i++) {
+		// (each in its turn: a hop, then waiting while the others go)
+		f32 phase = t * 4.0f - i * 0.55f;
+		f32 up = std::max(0.0f, std::sin(phase));
+		s32 y = base_y - (s32)(up * up * hop);
+		std::wstring c(1, word[i]);
+		for (s32 r = 0; r < height; r += strip) {
+			s32 dx = (s32)((height - r) * slant);
+			// (each strip a pixel into the next: clipped edge to edge, a row was
+			// lost between them - dark seams across the letters)
+			core::rect<s32> clip(x - height, y + r, x + widths[i] + height, y + r + strip + 1);
+			core::rect<s32> at(x + dx, y, x + dx + widths[i] + height, y + height);
+			font->draw(c.c_str(), at, white, false, false, &clip);
 		}
+		x += widths[i];
 	}
 
-	gui::IGUIStaticText *gui_bottom_text = nullptr;
-	if (!bottom_text.empty()) {
-		auto line_height = g_fontengine->getLineHeight();
-		const v2s32 bottom_textsize = v2s32::from(v2u32(
-				g_fontengine->getFont()->getDimension(bottom_text.c_str())));
-		s32 padding = line_height * 0.5f;
-
-		v2s32 offset(
-			imgW == 0 ? bottom_textsize.X * -0.5f : imgW * -0.5f + padding,
-			std::max<s32>(imgH, textsize.Y) * 0.5f + padding
-		);
-		v2s32 pos = center + offset;
-
-		core::rect<s32> rect(pos, pos + bottom_textsize);
-		gui_bottom_text = gui::StaticText::add(guienv, bottom_text, rect, false, false);
-	}
-
-	guienv->drawAll();
 	driver->endScene();
-	guitext->remove();
-	if (gui_bottom_text)
-		gui_bottom_text->remove();
 }
 
 std::vector<video::E_DRIVER_TYPE> RenderingEngine::getSupportedVideoDrivers()
