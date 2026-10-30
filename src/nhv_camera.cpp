@@ -24,6 +24,24 @@ void set(v3f pos)
 	known = true;
 }
 
+static v3f looking(0, 0, 1);
+static bool look_known = false;
+
+void set_look(v3f dir)
+{
+	std::lock_guard<std::mutex> guard(lock);
+	looking = dir;
+	look_known = true;
+}
+
+bool get_look(v3f *dir)
+{
+	std::lock_guard<std::mutex> guard(lock);
+	if (look_known)
+		*dir = looking;
+	return look_known;
+}
+
 bool get(v3f *pos)
 {
 	std::lock_guard<std::mutex> guard(lock);

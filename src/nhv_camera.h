@@ -17,6 +17,11 @@ namespace nhv_camera
 void set(v3f pos);
 // server: where the camera is (false: not known yet)
 bool get(v3f *pos);
+// client: the way it's looking now (a unit vector); server: that (false: not
+// known yet) - a cutscene's flown camera keeps what's round it loaded
+// (intro_play.lua)
+void set_look(v3f dir);
+bool get_look(v3f *dir);
 
 // server (core.nhv_camera_roll): tilt the view this many degrees to the
 // side (0: level) - struggling in the Plane of Air's thin air; client: how

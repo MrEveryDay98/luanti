@@ -636,17 +636,21 @@ int ModApiNetHack::l_nh_glyph_info(lua_State *L)
 	return 1;
 }
 
-// nhv_camera() -> where the client's camera is (a vector, nodes), or nil
-// (nhv_camera.h; not NetHack's: works with no game loaded)
+// nhv_camera() -> where the client's camera is (a vector, nodes), and the
+// way it's looking (a unit vector) - or nil (nhv_camera.h; not NetHack's:
+// works with no game loaded)
 int ModApiNetHack::l_nhv_camera(lua_State *L)
 {
-	v3f p;
+	v3f p, d;
 	if (!nhv_camera::get(&p)) {
 		lua_pushnil(L);
 		return 1;
 	}
 	push_v3f(L, p);
-	return 1;
+	if (!nhv_camera::get_look(&d))
+		return 1;
+	push_v3f(L, d);
+	return 2;
 }
 
 // core.nh_get_bubbles() -> {{x=, y=, w=, h=}...}: the Plane of Water's air

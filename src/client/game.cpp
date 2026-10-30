@@ -2926,6 +2926,7 @@ void Game::updateCamera(f32 dtime)
 	camera->step(dtime);
 	// (VoxHack: where it is, for the game's sprites to face - nhv_camera.h)
 	nhv_camera::set(camera->getPosition() / BS);
+	nhv_camera::set_look(camera->getDirection());
 
 	if (!m_flags.disable_camera_update) {
 		client->getEnv().getClientMap().updateCamera(camera->getPosition(),
