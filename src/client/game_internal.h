@@ -26,6 +26,9 @@
 
 /* DO NOT INCLUDE THIS FROM OUTSIDE GAME.CPP */
 
+// VoxHack: the game's own fog is on (client/game.cpp: nhv_set_fog)
+bool nhvFogOwn();
+
 class Game;
 class GameUI;
 class SoundMaker;
@@ -226,6 +229,10 @@ protected:
 
 	inline bool fogEnabled()
 	{
+		// (VoxHack: the game's own fog - the opening's - is part of the
+		// scene, there whatever the setting: client/game.cpp, nhv_set_fog)
+		if (nhvFogOwn())
+			return true;
 		// Client setting only takes effect if fog distance unlimited or debug priv
 		if (sky->getFogDistance() < 0 || client->checkPrivilege("debug"))
 			return m_cache_enable_fog;

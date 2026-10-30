@@ -15,6 +15,7 @@ uniform vec3 cameraOffset;
 uniform lowp vec4 fogColor;
 uniform float fogDistance;
 uniform float fogShadingParameter;
+uniform float nhvFogMax;
 
 VARYING_ highp vec3 worldPosition;
 VARYING_ highp vec2 vHalf;
@@ -74,7 +75,7 @@ void main(void)
 	}
 	if (a <= 0.0)
 		discard;
-	float clarity = clamp(fogShadingParameter
-		- fogShadingParameter * length(eyeVec) / fogDistance, 0.0, 1.0);
+	float clarity = max(clamp(fogShadingParameter
+		- fogShadingParameter * length(eyeVec) / fogDistance, 0.0, 1.0), 1.0 - nhvFogMax);
 	gl_FragColor = vec4(0.0, 0.0, 0.0, a * clarity);
 }

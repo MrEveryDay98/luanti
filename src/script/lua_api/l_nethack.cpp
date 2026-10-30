@@ -695,6 +695,18 @@ int ModApiNetHack::l_nhv_hero_light(lua_State *L)
 	return 0;
 }
 
+// core.nhv_fog(distance, max): a fog of the game's own - as far as distance
+// (nodes) without cutting the view short there, never thicker than max
+// (0..1, 1 if not given); core.nhv_fog(-1) or nil: none (client/game.cpp)
+void nhv_set_fog(float distance, float max);
+int ModApiNetHack::l_nhv_fog(lua_State *L)
+{
+	float distance = lua_isnumber(L, 1) ? (float)lua_tonumber(L, 1) : -1.0f;
+	float max = lua_isnumber(L, 2) ? (float)lua_tonumber(L, 2) : 1.0f;
+	nhv_set_fog(distance, max);
+	return 0;
+}
+
 // core.nhv_map_scroll(px, instant): the big map's pictures (HUD style 256)
 // moved px pixels left, the client easing them there - at once if instant
 // (client/hud.h; the client is in this same program)
@@ -1268,6 +1280,7 @@ void ModApiNetHack::Initialize(lua_State *L, int top)
 	API_FCT(nhv_sam_seconds);
 	API_FCT(nhv_map_scroll);
 	API_FCT(nhv_hero_light);
+	API_FCT(nhv_fog);
 	API_FCT(nh_tile_count);
 	API_FCT(nh_cmap_name);
 	API_FCT(nh_cmap_tile);

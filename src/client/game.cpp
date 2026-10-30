@@ -72,6 +72,21 @@ void nhv_set_hero_light(float level)
 	s_nhv_hero_light = level;
 }
 
+// VoxHack: a fog of the game's own (core.nhv_fog - the opening's): as far
+// as this (nodes; < 0: none - the sky's, as Luanti's) without hiding what's
+// further (it's still drawn: the view as far as the settings say), and
+// never thicker than max (0..1)
+static float s_nhv_fog_distance = -1.0f, s_nhv_fog_max = 1.0f;
+void nhv_set_fog(float distance, float max)
+{
+	s_nhv_fog_distance = distance;
+	s_nhv_fog_max = std::clamp(max, 0.0f, 1.0f);
+}
+bool nhvFogOwn()
+{
+	return s_nhv_fog_distance >= 0.0f;
+}
+
 class GameGlobalShaderUniformSetter : public IShaderUniformSetter
 {
 	Sky *m_sky;
@@ -138,6 +153,8 @@ class GameGlobalShaderUniformSetter : public IShaderUniformSetter
 	// the hero's light: where (near the camera: cameraOffset), how bright;
 	// and the light curve to light by
 	CachedPixelShaderSetting<float, 4> m_nhv_hero_light_pixel{"nhvHeroLight"};
+	// (the most the fog hides: 1 all - nhv_set_fog)
+	CachedPixelShaderSetting<float> m_nhv_fog_max_pixel{"nhvFogMax"};
 	CachedPixelShaderSetting<float, 4> m_nhv_light_curve_pixel{"nhvLightCurve"};
 	CachedPixelShaderSetting<float, 3> m_nhv_light_boost_pixel{"nhvLightBoost"};
 	float m_nhv_wave = 0.0f, m_nhv_hallu = 0.0f;
@@ -281,6 +298,8 @@ public:
 				hero[3] = s_nhv_hero_light;
 			}
 			m_nhv_hero_light_pixel.set(hero, services);
+			float fog_max = s_nhv_fog_distance >= 0.0f ? s_nhv_fog_max : 1.0f;
+			m_nhv_fog_max_pixel.set(&fog_max, services);
 			float abcg[4], boost[3];
 			get_light_curve(abcg, boost);
 			m_nhv_light_curve_pixel.set(abcg, services);
@@ -3780,6 +3799,10 @@ void Game::updateFrame(ProfilerGraph *graph, RunStats *stats, f32 dtime,
 	} else {
 		runData.fog_range = draw_control->wanted_range * BS;
 	}
+	// (VoxHack: the game's own fog - nhv_set_fog: as far as it says, the
+	// view not cut short there)
+	if (s_nhv_fog_distance >= 0.0f)
+		runData.fog_range = s_nhv_fog_distance * BS;
 
 	/*
 		Calculate general brightness

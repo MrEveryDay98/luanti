@@ -69,6 +69,7 @@ uniform float nhvTexelLight;
 uniform float nhvTexelPattern;
 // (how many steps of light: nhv_texel_steps)
 uniform float nhvTexelSteps;
+uniform float nhvFogMax; // (the most the fog hides: 1 all - game.cpp)
 // (how finely: 1 the texture's own pixels, 0.5 half as fine - nhv_texel_half)
 uniform float nhvTexelScale;
 float nhvBayer2(vec2 p)
@@ -582,6 +583,8 @@ void main(void)
 	// Note: clarity = (1 - fogginess)
 	float clarity = clamp(fogShadingParameter
 		- fogShadingParameter * length(eyeVec) / fogDistance, 0.0, 1.0);
+	// (VoxHack: never thicker than the game's own fog says - nhvFogMax)
+	clarity = max(clarity, 1.0 - nhvFogMax);
 	float fogColorMax = max(max(fogColor.r, fogColor.g), fogColor.b);
 	// Prevent zero division.
 	if (fogColorMax < 0.0000001) fogColorMax = 1.0;
