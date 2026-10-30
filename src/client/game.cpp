@@ -112,6 +112,10 @@ class GameGlobalShaderUniformSetter : public IShaderUniformSetter
 	// smooth), palette (0 full, 1 VGA's 256, 2 EGA's 16)
 	CachedPixelShaderSetting<float, 4> m_nhv_retro_pixel{"nhvRetro"};
 	float m_nhv_retro[4] = {0.0f, 0.0f, 0.0f, 0.0f};
+	// VoxHack light per texture pixel (nodes and objects shaders): 0 off,
+	// 1 on, 2 dithered
+	CachedPixelShaderSetting<float> m_nhv_texel_pixel{"nhvTexelLight"};
+	float m_nhv_texel = 0.0f;
 	float m_nhv_wave = 0.0f, m_nhv_hallu = 0.0f;
 	// VoxHack: the setting nhv_brightness (0..1, wizard mode's /brightness),
 	// read a few times a second
@@ -206,8 +210,11 @@ public:
 				m_nhv_retro[2] = std::clamp((float)g_settings->getS32("nhv_retro_bands"), 0.0f, 64.0f);
 				const std::string pal = g_settings->get("nhv_retro_palette");
 				m_nhv_retro[3] = pal == "full" ? 0.0f : pal == "ega" ? 2.0f : 1.0f;
+				const std::string texel = g_settings->get("nhv_texel_light");
+				m_nhv_texel = texel == "dither" ? 2.0f : texel == "on" ? 1.0f : 0.0f;
 			}
 			m_nhv_retro_pixel.set(m_nhv_retro, services);
+			m_nhv_texel_pixel.set(&m_nhv_texel, services);
 			// (full brightness, or wizard mode's partial: unlit colours mixed in)
 			float fullbright = (f & HUD_FLAG_NHV_FULLBRIGHT) ? 1.0f : m_nhv_brightness;
 			m_nhv_fullbright_pixel.set(&fullbright, services);

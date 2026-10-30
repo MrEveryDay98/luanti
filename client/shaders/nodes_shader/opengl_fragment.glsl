@@ -65,6 +65,47 @@ vec3 nhvBandedLight(vec3 light)
 	return light * (max(floor(l * bands + 0.5), 1.0) / bands) / l;
 }
 
+// VoxHack: light per texture pixel (the setting nhv_texel_light: 0 off, 1
+// per pixel, 2 per pixel dithered - game.cpp) - each of a texture's pixels
+// lit as at its middle, like a lightmap: light and shadow move in steps of
+// the texture's own pixels. In steps (retro mode's Light, or 8 dithered),
+// dithering picks each pixel's step by a pattern laid on the texture.
+uniform float nhvTexelLight;
+float nhvTexelBayer(vec2 p)
+{
+	const float m[16] = float[16](0., 8., 2., 10., 12., 4., 14., 6., 3., 11., 1., 9., 15., 7., 13., 5.);
+	int x = int(mod(p.x, 4.0)), y = int(mod(p.y, 4.0));
+	return (m[y * 4 + x] + 0.5) / 16.0;
+}
+vec3 nhvTexelLit(vec3 light, vec2 uv, vec2 texsize)
+{
+	if (nhvTexelLight <= 0.0)
+		return nhvBandedLight(light);
+	// (the light at the pixel's middle: across a face it changes evenly,
+	// so from here by its change over the texture - the screen's
+	// derivatives of light and of the texture position, solved for it)
+	vec2 t = uv * texsize;
+	vec2 d = floor(t) + 0.5 - t;
+	vec2 tx = dFdx(t), ty = dFdy(t);
+	float det = tx.x * ty.y - tx.y * ty.x;
+	vec3 lc = light;
+	if (abs(det) > 1e-8) {
+		float sx = (ty.y * d.x - ty.x * d.y) / det;
+		float sy = (tx.x * d.y - tx.y * d.x) / det;
+		lc = max(light + dFdx(light) * sx + dFdy(light) * sy, vec3(0.0));
+	}
+	float bands = nhvRetro.x > 0.0 ? nhvRetro.z : 0.0;
+	if (nhvTexelLight > 1.5 && bands < 1.0)
+		bands = 8.0;
+	if (bands < 1.0)
+		return lc;
+	float l = max(lc.r, max(lc.g, lc.b));
+	if (l <= 0.001)
+		return lc;
+	float threshold = nhvTexelLight > 1.5 ? nhvTexelBayer(floor(t)) : 0.5;
+	return lc * (max(floor(l * bands + threshold), 1.0) / bands) / l;
+}
+
 CENTROID_ VARYING_ mediump vec2 varTexCoord;
 // Conditional because 'flat' is not available on old GLSL
 #ifdef USE_ARRAY_TEXTURE
@@ -483,7 +524,12 @@ void main(void)
 		base = mix(base, crack, crack.a);
 	}
 
-	vec4 col = vec4(base.rgb * nhvBandedLight(varColor.rgb), 1.0);
+#ifdef USE_ARRAY_TEXTURE
+	vec2 nhv_texsize = vec2(textureSize(baseTexture, 0).xy);
+#else
+	vec2 nhv_texsize = vec2(textureSize(baseTexture, 0));
+#endif
+	vec4 col = vec4(base.rgb * nhvTexelLit(varColor.rgb, uv, nhv_texsize), 1.0);
 
 #ifdef ENABLE_DYNAMIC_SHADOWS
 	// Fragment normal, can differ from vNormal which is derived from vertex normals.
