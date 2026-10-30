@@ -282,25 +282,10 @@ bool CGUIComboBox::OnEvent(const SEvent &event)
 				break;
 			}
 			case EMIE_MOUSE_WHEEL: {
-				// Try scrolling parent first
-				if (IGUIElement::OnEvent(event))
-					return true;
-
-				s32 oldSelected = Selected;
-				setSelected(Selected + ((event.MouseInput.Wheel < 0) ? 1 : -1));
-
-				if (Selected < 0)
-					setSelected(0);
-
-				if (Selected >= (s32)Items.size())
-					setSelected((s32)Items.size() - 1);
-
-				if (Selected != oldSelected) {
-					sendSelectionChangedEvent();
-					return true;
-				}
-
-				return false;
+				// VoxHack: the wheel over a closed dropdown doesn't change
+				// what's chosen (too easily done by accident) - it scrolls
+				// what it's in, if anything
+				return IGUIElement::OnEvent(event);
 			}
 			default:
 				break;
