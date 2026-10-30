@@ -457,6 +457,12 @@ bool COpenGL3DriverBase::beginScene(u16 clearFlag, SColor clearColor, f32 clearD
 	if (ContextManager)
 		ContextManager->activateContext(videoData, true);
 
+	// (VoxHack: the virtual screen, if there is one)
+	if (VirtualTarget) {
+		bindScreen();
+		setViewPortRaw(ScreenSize.Width, ScreenSize.Height);
+	}
+
 	clearBuffers(clearFlag, clearColor, clearDepth, clearStencil);
 
 	return true;
@@ -465,6 +471,9 @@ bool COpenGL3DriverBase::beginScene(u16 clearFlag, SColor clearColor, f32 clearD
 bool COpenGL3DriverBase::endScene()
 {
 	CNullDriver::endScene();
+
+	if (VirtualTarget)
+		presentVirtualScreen();
 
 	GL.Flush();
 
@@ -1572,6 +1581,120 @@ void COpenGL3DriverBase::OnResize(const core::dimension2d<u32> &size)
 	Transformation3DChanged = true;
 }
 
+// (VoxHack: with a virtual screen, the window's size changes, not the
+// screen's)
+void COpenGL3DriverBase::OnWindowResize(const core::dimension2d<u32> &size)
+{
+	WindowSize = size;
+	OnResize(VirtualTarget ? VirtualSize : size);
+}
+
+// ---------------------------------------------------------------- VoxHack: the virtual screen
+
+void COpenGL3DriverBase::setVirtualScreenSize(const core::dimension2d<u32> &size)
+{
+	if (size == VirtualSize)
+		return;
+	if (WindowSize.Width == 0)
+		WindowSize = ScreenSize;
+	if (VirtualTarget) {
+		removeRenderTarget(VirtualTarget);
+		removeTexture(VirtualColor);
+		removeTexture(VirtualDepth);
+		VirtualTarget = nullptr;
+		VirtualColor = VirtualDepth = nullptr;
+	}
+	VirtualSize = size;
+	if (size.Width && size.Height) {
+		VirtualColor = addRenderTargetTexture(size, "nhv_virtual_screen", ECF_A8R8G8B8);
+		VirtualDepth = addRenderTargetTexture(size, "nhv_virtual_screen_depth",
+				queryTextureFormat(ECF_D24S8) ? ECF_D24S8 : ECF_D24);
+		VirtualTarget = addRenderTarget();
+		if (VirtualColor && VirtualDepth && VirtualTarget) {
+			VirtualTarget->setTexture(VirtualColor, VirtualDepth);
+		} else {
+			os::Printer::log("Virtual screen: couldn't make its picture", ELL_ERROR);
+			if (VirtualTarget)
+				removeRenderTarget(VirtualTarget);
+			if (VirtualColor)
+				removeTexture(VirtualColor);
+			if (VirtualDepth)
+				removeTexture(VirtualDepth);
+			VirtualTarget = nullptr;
+			VirtualColor = VirtualDepth = nullptr;
+			VirtualSize = core::dimension2d<u32>(0, 0);
+		}
+	}
+	OnResize(VirtualTarget ? VirtualSize : WindowSize);
+}
+
+// "the screen": the virtual screen's picture, or the window
+void COpenGL3DriverBase::bindScreen()
+{
+	if (VirtualTarget) {
+		auto *rt = static_cast<COpenGL3RenderTarget *>(VirtualTarget);
+		CacheHandler->setFBO(rt->getBufferID());
+		rt->update();
+	} else {
+		CacheHandler->setFBO(0);
+	}
+}
+
+// where the virtual screen goes in the window: as big as fits, its shape
+// kept, in the middle
+core::rect<s32> COpenGL3DriverBase::virtualScreenRect() const
+{
+	if (!VirtualSize.Width || !WindowSize.Width)
+		return core::rect<s32>(0, 0, WindowSize.Width, WindowSize.Height);
+	f32 scale = core::min_((f32)WindowSize.Width / VirtualSize.Width, (f32)WindowSize.Height / VirtualSize.Height);
+	s32 w = (s32)(VirtualSize.Width * scale), h = (s32)(VirtualSize.Height * scale);
+	s32 x = ((s32)WindowSize.Width - w) / 2, y = ((s32)WindowSize.Height - h) / 2;
+	return core::rect<s32>(x, y, x + w, y + h);
+}
+
+core::position2d<s32> COpenGL3DriverBase::windowToScreen(const core::position2d<s32> &p) const
+{
+	if (!VirtualTarget)
+		return p;
+	core::rect<s32> r = virtualScreenRect();
+	return core::position2d<s32>(
+			(s32)((p.X - r.UpperLeftCorner.X) * (f32)VirtualSize.Width / core::max_(1, r.getWidth())),
+			(s32)((p.Y - r.UpperLeftCorner.Y) * (f32)VirtualSize.Height / core::max_(1, r.getHeight())));
+}
+
+core::position2d<s32> COpenGL3DriverBase::screenToWindow(const core::position2d<s32> &p) const
+{
+	if (!VirtualTarget)
+		return p;
+	core::rect<s32> r = virtualScreenRect();
+	return core::position2d<s32>(
+			r.UpperLeftCorner.X + (s32)(p.X * (f32)r.getWidth() / VirtualSize.Width),
+			r.UpperLeftCorner.Y + (s32)(p.Y * (f32)r.getHeight() / VirtualSize.Height));
+}
+
+// the frame's picture, scaled up into the window (sharp pixels: the 2D
+// material's nearest filtering), black round it
+void COpenGL3DriverBase::presentVirtualScreen()
+{
+	core::dimension2d<u32> screen = ScreenSize;
+	IRenderTarget *target = CurrentRenderTarget;
+	bool override2D = OverrideMaterial2DEnabled;
+	CacheHandler->setFBO(0);
+	CurrentRenderTarget = nullptr;
+	CurrentRenderTargetSize = core::dimension2d<u32>(0, 0);
+	ScreenSize = WindowSize;
+	OverrideMaterial2DEnabled = false;
+	setViewPortRaw(WindowSize.Width, WindowSize.Height);
+	Transformation3DChanged = true;
+	clearBuffers(ECBF_COLOR | ECBF_DEPTH, SColor(255, 0, 0, 0), 1.0f, 0);
+	draw2DImage(VirtualColor, virtualScreenRect(),
+			core::rect<s32>(0, 0, VirtualSize.Width, VirtualSize.Height), nullptr, nullptr, false);
+	ScreenSize = screen;
+	CurrentRenderTarget = target;
+	OverrideMaterial2DEnabled = override2D;
+	Transformation3DChanged = true;
+}
+
 //! Returns type of video driver
 E_DRIVER_TYPE COpenGL3DriverBase::getDriverType() const
 {
@@ -1740,7 +1863,7 @@ bool COpenGL3DriverBase::setRenderTargetEx(IRenderTarget *target, u16 clearFlag,
 
 		setViewPortRaw(destRenderTargetSize.Width, destRenderTargetSize.Height);
 	} else {
-		CacheHandler->setFBO(0);
+		bindScreen(); // (VoxHack: the virtual screen, if there is one)
 
 		destRenderTargetSize = core::dimension2d<u32>(0, 0);
 

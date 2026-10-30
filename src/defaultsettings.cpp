@@ -147,6 +147,8 @@ void set_default_settings()
 	settings->setDefault("keymap_nhv_pay", "SYSTEM_SCANCODE_19"); // KEY_KEY_P (NetHack Voxel: pay)
 	settings->setDefault("keymap_nhv_look", "MOUSE_BUTTON_2"); // MMB (NetHack Voxel: look at)
 	settings->setDefault("nhv_flat_sprites", "false"); // NetHack Voxel: sprites as flat cards, not voxel models
+	settings->setDefault("nhv_retro", "false"); // VoxHack: retro mode - 800x600 scaled up, VGA's 256 colours, banded light
+	settings->setDefault("nhv_retro_dither", "true"); // VoxHack: retro mode's colours dithered
 	settings->setDefault("nhv_send_all_directions", "false"); // VoxHack: send blocks behind the camera too (server/clientiface.cpp)
 	settings->setDefault("nhv_sky", ""); // NetHack Voxel: the Quake-style sky shown now (set by the game)
 	settings->setDefault("keymap_nhv_enhance", "SYSTEM_SCANCODE_10"); // KEY_KEY_G (NetHack Voxel: enhance skills)

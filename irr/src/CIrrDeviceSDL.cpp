@@ -455,7 +455,7 @@ CIrrDeviceSDL::CIrrDeviceSDL(const SIrrlichtCreationParameters &param) :
 
 	if (VideoDriver) {
 		createGUIAndScene();
-		VideoDriver->OnResize(core::dimension2d<u32>(Width, Height));
+		VideoDriver->OnWindowResize(core::dimension2d<u32>(Width, Height));
 	}
 }
 
@@ -784,7 +784,7 @@ bool CIrrDeviceSDL::run()
 		updateSizeAndScale();
 		if (old_w != Width || old_h != Height) {
 			if (VideoDriver)
-				VideoDriver->OnResize(core::dimension2d<u32>(Width, Height));
+				VideoDriver->OnWindowResize(core::dimension2d<u32>(Width, Height));
 		}
 		if (old_scale_x != ScaleX || old_scale_y != ScaleY) {
 			irrevent.EventType = EET_APPLICATION_EVENT;
@@ -814,6 +814,11 @@ bool CIrrDeviceSDL::run()
 			{
 				MouseX = static_cast<s32>(SDL_event.motion.x * ScaleX);
 				MouseY = static_cast<s32>(SDL_event.motion.y * ScaleY);
+				// (VoxHack: on the virtual screen, if there is one)
+				if (VideoDriver) {
+					core::position2d<s32> p = VideoDriver->windowToScreen(core::position2d<s32>(MouseX, MouseY));
+					MouseX = p.X, MouseY = p.Y;
+				}
 			} else {
 				MouseX += MouseXRel;
 				MouseY += MouseYRel;
@@ -904,6 +909,11 @@ bool CIrrDeviceSDL::run()
 				irrevent.MouseInput.ButtonStates = MouseButtonStates;
 				irrevent.MouseInput.X = static_cast<s32>(SDL_event.button.x * ScaleX);
 				irrevent.MouseInput.Y = static_cast<s32>(SDL_event.button.y * ScaleY);
+				if (VideoDriver) {
+					core::position2d<s32> p = VideoDriver->windowToScreen(
+							core::position2d<s32>(irrevent.MouseInput.X, irrevent.MouseInput.Y));
+					irrevent.MouseInput.X = p.X, irrevent.MouseInput.Y = p.Y;
+				}
 				irrevent.MouseInput.Shift = shift;
 				irrevent.MouseInput.Control = control;
 				postEventFromUser(irrevent);

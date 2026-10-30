@@ -10,6 +10,7 @@
 
 #include "IrrlichtDevice.h"
 #include "CIrrDeviceStub.h"
+#include "IVideoDriver.h" // (VoxHack: the virtual screen, for the cursor)
 #include "ICursorControl.h"
 
 #ifdef _IRR_USE_SDL3_
@@ -160,7 +161,8 @@ public:
 		//! Sets the new position of the cursor.
 		void setPosition(f32 x, f32 y) override
 		{
-			setPosition((s32)(x * Device->Width), (s32)(y * Device->Height));
+			core::dimension2d<u32> screen = screenSize();
+			setPosition((s32)(x * screen.Width), (s32)(y * screen.Height));
 		}
 
 		//! Sets the new position of the cursor.
@@ -176,9 +178,13 @@ public:
 			// On Android, this somehow results in a camera jump when enabling
 			// relative mouse mode and it isn't supported anyway.
 			// For Emscripten, browsers don't allow moving the pointer at all.
+			// (VoxHack: from the virtual screen, if there is one)
+			core::position2d<s32> w(x, y);
+			if (Device->VideoDriver)
+				w = Device->VideoDriver->screenToWindow(w);
 			SDL_WarpMouseInWindow(Device->Window,
-					static_cast<int>(x / Device->ScaleX),
-					static_cast<int>(y / Device->ScaleY));
+					static_cast<int>(w.X / Device->ScaleX),
+					static_cast<int>(w.Y / Device->ScaleY));
 #endif
 #ifdef _IRR_USE_SDL3_
 			if (SDL_GetWindowRelativeMouseMode(Device->Window)) {
@@ -204,8 +210,9 @@ public:
 		{
 			if (updateCursor)
 				updateCursorPos();
-			return core::position2d<f32>(CursorPos.X / (f32)Device->Width,
-					CursorPos.Y / (f32)Device->Height);
+			core::dimension2d<u32> screen = screenSize();
+			return core::position2d<f32>(CursorPos.X / (f32)screen.Width,
+					CursorPos.Y / (f32)screen.Height);
 		}
 
 		void setReferenceRect(core::rect<s32> *rect = 0) override
@@ -247,6 +254,14 @@ public:
 		}
 
 	private:
+		// (VoxHack: the screen - the virtual one, if there is one)
+		core::dimension2d<u32> screenSize() const
+		{
+			if (Device->VideoDriver)
+				return Device->VideoDriver->getScreenSize();
+			return core::dimension2d<u32>(Device->Width, Device->Height);
+		}
+
 		void updateCursorPos()
 		{
 			CursorPos.X = Device->MouseX;

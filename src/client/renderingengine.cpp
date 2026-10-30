@@ -339,6 +339,7 @@ void RenderingEngine::draw_load_screen(const std::wstring &text,
 		gui::IGUIEnvironment *guienv, ITextureSource *tsrc, float dtime,
 		int percent, float *indef_pos, const std::wstring &bottom_text)
 {
+	nhvApplyRetro();
 	v2u32 screensize = getWindowSize();
 	auto *driver = get_video_driver();
 	driver->beginScene(true, true, video::SColor(255, 0, 0, 0));
@@ -453,6 +454,20 @@ void RenderingEngine::finalize()
 }
 
 extern bool nhv_full_res; // (render/plain.cpp)
+extern bool nhv_retro; // (render/plain.cpp)
+
+void RenderingEngine::nhvApplyRetro()
+{
+	static const v2u32 RETRO_SCREEN(800, 600);
+	bool retro = g_settings->getBool("nhv_retro");
+	get_video_driver()->setVirtualScreenSize(retro ? core::dimension2du(RETRO_SCREEN.X, RETRO_SCREEN.Y)
+			: core::dimension2du(0, 0));
+	if (retro != nhv_retro) {
+		// (the render resolution changes with it: render/plain.cpp)
+		nhv_retro = retro;
+		m_rebuild_core = true;
+	}
+}
 
 void RenderingEngine::draw_scene(video::SColor skycolor, bool show_hud,
 		bool draw_wield_tool, bool draw_crosshair)

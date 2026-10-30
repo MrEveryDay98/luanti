@@ -44,6 +44,20 @@ VARYING_ vec3 worldPosition;
 VARYING_ lowp vec4 varColor;
 // NetHack Voxel: 1 = full brightness (no light or shadow)
 uniform float nhvFullbright;
+// VoxHack retro mode: on, dithered (0 or 1 each) - light in a few steps,
+// not smooth
+uniform vec2 nhvRetro;
+vec3 nhvBandedLight(vec3 light)
+{
+	if (nhvRetro.x <= 0.0)
+		return light;
+	const float BANDS = 6.0;
+	float l = max(light.r, max(light.g, light.b));
+	if (l <= 0.001)
+		return light;
+	return light * (max(floor(l * BANDS + 0.5), 1.0) / BANDS) / l;
+}
+
 CENTROID_ VARYING_ mediump vec2 varTexCoord;
 #ifdef USE_ARRAY_TEXTURE
 flat VARYING_ uint varTexLayer;
@@ -387,7 +401,7 @@ void main(void)
 		discard;
 #endif
 
-	vec4 col = vec4(base.rgb * varColor.rgb, 1.0);
+	vec4 col = vec4(base.rgb * nhvBandedLight(varColor.rgb), 1.0);
 	col.rgb *= vIDiff;
 
 #ifdef ENABLE_DYNAMIC_SHADOWS

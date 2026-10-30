@@ -940,6 +940,20 @@ public:
 	Usually, there is no need to call this method. */
 	virtual void OnResize(const core::dimension2d<u32> &size) = 0;
 
+	//! VoxHack: a "virtual screen" - the screen is this size (getScreenSize,
+	//! drawing to the screen), drawn into a picture that's scaled up into
+	//! the window at the end of each frame, sharp pixels, black bars round
+	//! it. (0, 0): off. Set it between frames.
+	virtual void setVirtualScreenSize(const core::dimension2d<u32> &size) {}
+	//! VoxHack: the window was resized (OnResize is also how the engine's
+	//! render pipeline sets the size it draws at)
+	virtual void OnWindowResize(const core::dimension2d<u32> &size) { OnResize(size); }
+	virtual core::dimension2d<u32> getVirtualScreenSize() const { return core::dimension2d<u32>(0, 0); }
+	//! VoxHack: a point in the window (pixels) as a point on the screen,
+	//! and back (the same without a virtual screen)
+	virtual core::position2d<s32> windowToScreen(const core::position2d<s32> &p) const { return p; }
+	virtual core::position2d<s32> screenToWindow(const core::position2d<s32> &p) const { return p; }
+
 	//! Adds a new material renderer to the video device.
 	/** Use this method to extend the VideoDriver with new material
 	types. To extend the engine using this method do the following:

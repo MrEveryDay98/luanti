@@ -115,12 +115,14 @@ std::unique_ptr<RenderStep> create3DStage(Client *client, v2f scale, bool with_w
 }
 
 // NetHack Voxel: full resolution while the hud flag nhv_full_res is set
-// (renderingengine.cpp rebuilds the pipeline when it changes)
+// (renderingengine.cpp rebuilds the pipeline when it changes) - and in
+// retro mode, where the screen is 800x600 already (renderingengine.cpp)
 bool nhv_full_res = false;
+bool nhv_retro = false;
 
 static v2f getDownscaleFactor()
 {
-	u16 undersampling = nhv_full_res ? 1 : MYMAX(g_settings->getU16("undersampling"), 1);
+	u16 undersampling = nhv_full_res || nhv_retro ? 1 : MYMAX(g_settings->getU16("undersampling"), 1);
 	return v2f(1.0f / undersampling);
 }
 

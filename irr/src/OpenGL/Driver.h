@@ -140,6 +140,13 @@ public:
 	//! Only used internally by the engine
 	void OnResize(const core::dimension2d<u32> &size) override;
 
+	// VoxHack: the virtual screen (IVideoDriver.h)
+	void setVirtualScreenSize(const core::dimension2d<u32> &size) override;
+	void OnWindowResize(const core::dimension2d<u32> &size) override;
+	core::dimension2d<u32> getVirtualScreenSize() const override { return VirtualSize; }
+	core::position2d<s32> windowToScreen(const core::position2d<s32> &p) const override;
+	core::position2d<s32> screenToWindow(const core::position2d<s32> &p) const override;
+
 	//! Returns type of video driver
 	E_DRIVER_TYPE getDriverType() const override;
 
@@ -292,6 +299,17 @@ protected:
 
 	//! Same as `CacheHandler->setViewport`, but also sets `ViewPort`
 	virtual void setViewPortRaw(u32 width, u32 height);
+
+	// VoxHack: the virtual screen - where "the screen" is drawn, and where
+	// that goes in the window
+	void bindScreen();
+	core::rect<s32> virtualScreenRect() const;
+	void presentVirtualScreen();
+	core::dimension2d<u32> WindowSize;
+	core::dimension2d<u32> VirtualSize;
+	ITexture *VirtualColor = nullptr;
+	ITexture *VirtualDepth = nullptr;
+	IRenderTarget *VirtualTarget = nullptr;
 
 	virtual u16 getMaxJointTransforms() const override
 	{

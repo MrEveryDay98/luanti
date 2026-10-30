@@ -107,6 +107,10 @@ class GameGlobalShaderUniformSetter : public IShaderUniformSetter
 	CachedPixelShaderSetting<float, 3> m_nhv_fx_pixel{"nhvFx"};
 	// NetHack Voxel full brightness (nodes and objects shaders): 0 or 1
 	CachedPixelShaderSetting<float> m_nhv_fullbright_pixel{"nhvFullbright"};
+	// VoxHack retro mode (nodes and objects shaders: banded light; second
+	// stage: VGA's colours): on, dithered (0 or 1 each)
+	CachedPixelShaderSetting<float, 2> m_nhv_retro_pixel{"nhvRetro"};
+	float m_nhv_retro[2] = {0.0f, 0.0f};
 	float m_nhv_wave = 0.0f, m_nhv_hallu = 0.0f;
 	// VoxHack: the setting nhv_brightness (0..1, wizard mode's /brightness),
 	// read a few times a second
@@ -193,7 +197,10 @@ public:
 				m_nhv_brightness_read = now_ms;
 				m_nhv_brightness = g_settings->exists("nhv_brightness")
 						? std::clamp(g_settings->getFloat("nhv_brightness"), 0.0f, 1.0f) : 0.0f;
+				m_nhv_retro[0] = g_settings->getBool("nhv_retro") ? 1.0f : 0.0f;
+				m_nhv_retro[1] = g_settings->getBool("nhv_retro_dither") ? 1.0f : 0.0f;
 			}
+			m_nhv_retro_pixel.set(m_nhv_retro, services);
 			// (full brightness, or wizard mode's partial: unlit colours mixed in)
 			float fullbright = (f & HUD_FLAG_NHV_FULLBRIGHT) ? 1.0f : m_nhv_brightness;
 			m_nhv_fullbright_pixel.set(&fullbright, services);
@@ -3971,6 +3978,7 @@ void Game::drawScene(ProfilerGraph *graph, RunStats *stats)
 		Drawing
 	*/
 	TimeTaker tt_draw("Draw scene", nullptr, PRECISION_MICRO);
+	m_rendering_engine->nhvApplyRetro(); // (VoxHack: retro mode's screen)
 	this->driver->beginScene(true, true, sky_color);
 
 	const LocalPlayer *player = this->client->getEnv().getLocalPlayer();

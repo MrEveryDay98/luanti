@@ -129,6 +129,11 @@ public:
 			float dtime = 0, int percent = 0, float *indef_pos = nullptr,
 			const std::wstring &bottom_text = {});
 
+	// VoxHack: retro mode (the setting nhv_retro) on or off - the screen
+	// 800x600, scaled up into the window (IVideoDriver's virtual screen).
+	// Before a frame's beginScene.
+	void nhvApplyRetro();
+
 	void draw_scene(video::SColor skycolor, bool show_hud,
 			bool draw_wield_tool, bool draw_crosshair);
 
