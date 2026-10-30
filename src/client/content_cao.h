@@ -324,6 +324,14 @@ public:
 		return m_prop.infotext == "nhv:xray";
 	}
 
+	// VoxHack: one marked "nhv:texel" (a shadow on the floor) is kept on
+	// the floor's texture pixels, a 16th of a block, wherever it's moving
+	// through: across and along, never between two
+	bool nhvTexelSnap() const
+	{
+		return m_prop.infotext == "nhv:texel";
+	}
+
 	void updateMeshCulling();
 
 private:

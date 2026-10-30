@@ -819,6 +819,14 @@ void GenericCAO::addToScene(ITextureSource *tsrc, scene::ISceneManager *smgr)
 
 	if (scene::ISceneNode *node = getSceneNode()) {
 		node->setParent(m_matrixnode);
+		// (VoxHack: a shadow lies right on the floor, drawn over it - not
+		// raised off it, which would put it off the floor's pixels from aside)
+		if (nhvTexelSnap()) {
+			node->forEachMaterial([] (auto &mat) {
+				mat.PolygonOffsetDepthBias = -4.0f;
+				mat.PolygonOffsetSlopeScale = -4.0f;
+			});
+		}
 
 		if (auto shadow = RenderingEngine::get_shadow_renderer())
 			shadow->addNodeToShadowList(node);
@@ -996,8 +1004,13 @@ void GenericCAO::updateNodePos()
 	if (node) {
 		assert(m_matrixnode);
 		v3s16 camera_offset = m_env->getCameraOffset();
-		v3f pos = pos_translator.val_current -
-				intToFloat(camera_offset, BS);
+		v3f pos = pos_translator.val_current;
+		if (nhvTexelSnap()) {
+			const float texel = BS / 16.0f;
+			pos.X = std::round(pos.X / texel) * texel;
+			pos.Z = std::round(pos.Z / texel) * texel;
+		}
+		pos -= intToFloat(camera_offset, BS);
 		getPosRotMatrix().setTranslation(pos);
 		if (node != m_spritenode) { // rotate if not a sprite
 			v3f rot = m_is_local_player ? -m_rotation : -rot_translator.val_current;
