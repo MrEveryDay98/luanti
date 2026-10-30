@@ -495,7 +495,10 @@ void GameFormSpec::showPauseMenu()
 	const double menu_h = std::max(7.275, ypos + buttons.size() * (button_height + spacing) + 0.3);
 	const double button_x = (menu_w - button_w) / 2;
 
-	os << "formspec_version[2]size[" << menu_w << "," << menu_h << ",true]";
+	// (VoxHack: retro mode's small screen - the menu fitted to it, not a
+	// fixed size that would run off it)
+	const bool fit = g_settings->getBool("nhv_retro");
+	os << "formspec_version[2]size[" << menu_w << "," << menu_h << (fit ? "]" : ",true]");
 
 	if (simple_singleplayer_mode) {
 		os << "style_type[label;halign=center;valign=center]";
