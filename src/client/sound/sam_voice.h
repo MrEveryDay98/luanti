@@ -22,4 +22,7 @@ bool isSamVoiceName(const std::string &name);
 // nullptr if SAM isn't built in or can't read the text
 std::shared_ptr<ISoundDataOpen> openSamVoice(const std::string &name);
 
+// how long that line takes to say, in seconds (0: it can't be said)
+float samVoiceSeconds(const std::string &name);
+
 } // namespace sound

@@ -3,6 +3,7 @@
 
 #include "nhv_levelready.h"
 #include "nhv_camera.h"
+#include "client/sound/sam_voice.h"
 #include "server.h"
 #include "mapblock.h"
 #include "lua_api/l_nethack.h"
@@ -537,6 +538,7 @@ int ModApiNetHack::l_nh_get_hero(lua_State *L)
 	set_int(L, "dx", h.dx); set_int(L, "dy", h.dy);
 	set_str(L, "name", h.name); set_str(L, "rank", h.rank);
 	set_str(L, "align", h.align);
+	set_str(L, "god", h.god);
 	set_str(L, "dungeon_name", h.dungeon_name);
 	set_str(L, "level_desc", h.level_desc);
 	return 1;
@@ -680,6 +682,15 @@ int ModApiNetHack::l_nhv_player_drift(lua_State *L)
 {
 	nhv_camera::set_drift(read_v3f(L, 1));
 	return 0;
+}
+
+// core.nhv_sam_seconds(name): how long a SAM line ("nhv_sam:...|text", as
+// played: sound/sam_voice.h) takes to say - rendered here, the client
+// being in this same program - 0 if it can't be said
+int ModApiNetHack::l_nhv_sam_seconds(lua_State *L)
+{
+	lua_pushnumber(L, sound::samVoiceSeconds(luaL_checkstring(L, 1)));
+	return 1;
 }
 
 // core.nhv_camera_orbit({center=, radius=, height=, speed=, angle=,
@@ -1191,6 +1202,7 @@ void ModApiNetHack::Initialize(lua_State *L, int top)
 	API_FCT(nhv_player_drift);
 	API_FCT(nhv_bubble_floor);
 	API_FCT(nhv_camera_orbit);
+	API_FCT(nhv_sam_seconds);
 	API_FCT(nh_tile_count);
 	API_FCT(nh_cmap_name);
 	API_FCT(nh_cmap_tile);

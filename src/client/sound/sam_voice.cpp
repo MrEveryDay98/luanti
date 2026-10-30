@@ -46,18 +46,13 @@ static const nhvsam::Dictionary *dictionary()
 }
 #endif
 
-std::shared_ptr<ISoundDataOpen> openSamVoice(const std::string &name)
+#ifdef NHV_HAVE_SAM
+// the line a name holds, said: its PCM (empty if it can't be)
+static std::vector<short> samSpeak(const std::string &name)
 {
-#ifndef NHV_HAVE_SAM
-	static bool warned = false;
-	if (!warned)
-		warningstream << "Audio: a line is set to be spoken by SAM, but this build has no SAM" << std::endl;
-	warned = true;
-	return nullptr;
-#else
 	size_t bar = name.find('|');
 	if (bar == std::string::npos)
-		return nullptr;
+		return {};
 	// speed, pitch, throat, mouth, sing, phonetic, smooth, tone, then the
 	// effect chain (sam_speech.h)
 	int v[8] = {72, 64, 128, 128, 0, 0, 0, 1};
@@ -76,9 +71,31 @@ std::shared_ptr<ISoundDataOpen> openSamVoice(const std::string &name)
 	s.effects = effects;
 	s.speed = v[0], s.pitch = v[1], s.throat = v[2], s.mouth = v[3];
 	s.sing = v[4], s.phonetic = v[5], s.smooth = v[6], s.tone = v[7];
-	std::vector<short> pcm = nhvsam::speak(name.substr(bar + 1), s, dictionary());
+	return nhvsam::speak(name.substr(bar + 1), s, dictionary());
+}
+#endif
+
+float samVoiceSeconds(const std::string &name)
+{
+#ifdef NHV_HAVE_SAM
+	return (float)samSpeak(name).size() / nhvsam::RATE;
+#else
+	return 0.0f;
+#endif
+}
+
+std::shared_ptr<ISoundDataOpen> openSamVoice(const std::string &name)
+{
+#ifndef NHV_HAVE_SAM
+	static bool warned = false;
+	if (!warned)
+		warningstream << "Audio: a line is set to be spoken by SAM, but this build has no SAM" << std::endl;
+	warned = true;
+	return nullptr;
+#else
+	std::vector<short> pcm = samSpeak(name);
 	if (pcm.empty()) {
-		warningstream << "Audio: SAM couldn't say \"" << name.substr(bar + 1) << "\"" << std::endl;
+		warningstream << "Audio: SAM couldn't say \"" << name.substr(name.find('|') + 1) << "\"" << std::endl;
 		return nullptr;
 	}
 
