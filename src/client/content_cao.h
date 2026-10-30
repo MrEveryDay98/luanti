@@ -325,8 +325,8 @@ public:
 	}
 
 	// VoxHack: one marked "nhv:shadow" is a thing's shadow on the floor: its
-	// upright sprite the thing's picture, laid out as the light throws it
-	// (updateNodePos) and drawn on the floor's texture pixels, whole ones
+	// upright sprite the thing's picture, cast as the light throws it
+	// (nhvLayOutShadow) on the floor's texture pixels, whole ones
 	// (nhv_shadow_shader)
 	void nhvLayOutShadow(v3f foot);
 	bool nhvShadow() const

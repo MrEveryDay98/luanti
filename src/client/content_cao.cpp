@@ -1002,30 +1002,42 @@ void GenericCAO::updateNametag()
 	}
 }
 
-// VoxHack: a shadow (nhvShadow) laid out from where its thing stands (foot:
-// its position) - the thing's picture, turned as it is (yaw), thrown along
-// the ground away from the light (roll: which way, round from +z), as long
-// as visual_size.z times its height; a little bigger all round
-// (nhv_shadow_shader's NHV_PAD), the shader keeping to the picture
+// VoxHack: a shadow (nhvShadow): its thing stands at foot (its position),
+// turned as it is (yaw); it's its picture (visual_size x, y) as a voxel
+// model visual_size.z thick (0: a flat sprite), lit from the sun at an
+// elevation (pitch) and from a direction (roll: round from +z, the way the
+// shadows point). The sheet is a box round all the floor the shadow can
+// fall on, nhv_shadow_shader finding it there; what that needs it gets in
+// the sheet's matrix, where the sheet (flat: z 0) doesn't use it - its
+// third column: the yaw (radians) and the throw along the floor for a
+// height (x, z), the thickness
 void GenericCAO::nhvLayOutShadow(v3f foot)
 {
-	const f32 pad = 1.5f;
 	const v3f rot = rot_translator.val_current;
 	core::matrix4 turn;
 	setPitchYawRoll(turn, v3f(0.0f, -rot.Y, 0.0f));
 	const v3f across = turn.rotateAndScaleVect(v3f(1.0f, 0.0f, 0.0f));
+	const v3f normal(-across.Z, 0.0f, across.X);
+	const f32 elevation = core::clamp(rot.X, 5.0f, 90.0f) * core::DEGTORAD;
 	const f32 away = rot.Z * core::DEGTORAD;
-	const v3f along = v3f(std::sin(away), 0.0f, std::cos(away)) * m_prop.visual_size.Z;
+	const v3f along = v3f(std::sin(away), 0.0f, std::cos(away)) / std::tan(elevation);
+	const f32 w = std::max(0.01f, BS * m_prop.visual_size.X);
+	const f32 h = std::max(0.01f, BS * m_prop.visual_size.Y);
+	const f32 thick = std::max(0.0f, BS * m_prop.visual_size.Z);
+	const f32 margin = BS / 16.0f;
+	const f32 ex = std::fabs(across.X) * w / 2 + std::fabs(normal.X) * thick / 2 + std::fabs(along.X) * h / 2 + margin;
+	const f32 ez = std::fabs(across.Z) * w / 2 + std::fabs(normal.Z) * thick / 2 + std::fabs(along.Z) * h / 2 + margin;
 	core::matrix4 &m = getPosRotMatrix();
 	m.makeIdentity();
-	m[0] = across.X * pad;
-	m[1] = across.Y * pad;
-	m[2] = across.Z * pad;
-	m[4] = along.X * pad;
-	m[5] = along.Y * pad;
-	m[6] = along.Z * pad;
-	m[9] = 1.0f;
-	m.setTranslation(foot + along * (BS * m_prop.visual_size.Y / 2.0f));
+	m[0] = ex / (w / 2); // (the sheet's across: along x)
+	m[4] = 0.0f;
+	m[5] = 0.0f;
+	m[6] = ez / (h / 2); // (its up: along z)
+	m[8] = std::atan2(across.Z, across.X);
+	m[9] = along.X;
+	m[10] = along.Z;
+	m[11] = thick;
+	m.setTranslation(foot + along * (h / 2));
 }
 
 void GenericCAO::updateNodePos()

@@ -3,16 +3,13 @@
 uniform mat4 mWorld;
 
 VARYING_ highp vec3 worldPosition;
-// (the sheet's half size and which way its picture runs across and down:
-// the same at every corner)
-VARYING_ highp vec4 vSheet;
+// (the thing's picture's half size: the sheet's corners, before the matrix)
+VARYING_ highp vec2 vHalf;
 VARYING_ highp vec3 eyeVec;
 
 void main(void)
 {
-	highp vec2 at = inVertexPosition.xy;
-	highp vec2 uv = inTexCoord0.xy;
-	vSheet = vec4(abs(at), sign((uv - 0.5) * at));
+	vHalf = abs(inVertexPosition.xy);
 	worldPosition = (mWorld * inVertexPosition).xyz;
 	gl_Position = mWorldViewProj * inVertexPosition;
 	eyeVec = -(mWorldView * inVertexPosition).xyz;
