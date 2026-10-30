@@ -10,6 +10,8 @@
 #include <cmath>
 #include "settings.h"
 #include "porting.h"
+
+extern bool nhv_retro; // (render/plain.cpp: retro mode)
 #include "util/numeric.h"
 #include "log.h"
 #include "client.h"
@@ -545,6 +547,17 @@ void Hud::drawLuaElements(const v3s16 &camera_offset, bool only_unhidable,
 				core::dimension2di imgsize(texture->getOriginalSize());
 				v2s32 dstsize(imgsize.Width * e->scale.X * m_scale_factor,
 				              imgsize.Height * e->scale.Y * m_scale_factor);
+				// (VoxHack: retro mode's are whole screen pixels to a picture's
+				// pixel - sharp, every pixel the same - nearest to the size)
+				if (nhv_retro) {
+					for (int i = 0; i < 2; i++) {
+						f32 s = (i ? e->scale.Y : e->scale.X) * m_scale_factor;
+						s32 &d = i ? dstsize.Y : dstsize.X;
+						s32 px = i ? imgsize.Height : imgsize.Width;
+						if (s >= 1.0f) // (a picture drawn smaller than itself stays so)
+							d = px * (s32)std::round(s);
+					}
+				}
 				if (e->scale.X < 0)
 					dstsize.X = m_screensize.X * (e->scale.X * -0.01);
 				if (e->scale.Y < 0)
