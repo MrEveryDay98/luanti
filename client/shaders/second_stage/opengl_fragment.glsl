@@ -38,22 +38,25 @@ float nhvBayer(vec2 p)
 
 // (one colour tried: the nearest so far kept)
 #define NHV_TRY(r, g, b) { vec3 p_ = vec3(r, g, b); vec3 d_ = c - p_; float e_ = dot(w, d_ * d_); if (e_ < bd) { bd = e_; best = p_; } }
-// the nearest of NetHack's tiles' 16 colours (the tile sheet's palette:
-// the game's own colours come out as they are) - each channel counted
-// alike: with so few colours, weighting by brightness turns everything
-// grey; this keeps the hue
-vec3 nhvEga(vec3 c)
+// the 16 colours of NetHack's tiles: no shades between - a colour is its
+// tile colour (the nearest by hue, however bright it is), and how dark it is
+// is how much of it dithers to black (threshold: the dither pattern's
+// value here, or a half without dithering)
+#define NHV_HUE(R_, G_, B_) { vec3 p_ = vec3(R_, G_, B_); float pm_ = max(p_.r, max(p_.g, p_.b)); vec3 d_ = n - p_ / pm_; float e_ = dot(d_, d_) + 0.05 * (m - pm_) * (m - pm_); if (e_ < bd) { bd = e_; best = p_; bm = pm_; } }
+vec3 nhvTiles16(vec3 c, float threshold)
 {
-	const vec3 w = vec3(1.0);
-	vec3 best = vec3(0.0);
-	float bd = 1e9;
-	NHV_TRY(0.000, 0.000, 0.000) NHV_TRY(0.569, 0.278, 0.000) NHV_TRY(0.424, 0.569, 0.714)
-	NHV_TRY(0.800, 0.310, 0.000) NHV_TRY(0.843, 0.843, 0.843) NHV_TRY(1.000, 0.000, 0.000)
-	NHV_TRY(1.000, 0.424, 0.000) NHV_TRY(1.000, 1.000, 1.000) NHV_TRY(0.000, 0.000, 1.000)
-	NHV_TRY(1.000, 0.714, 0.569) NHV_TRY(0.282, 0.424, 0.424) NHV_TRY(0.000, 0.714, 1.000)
-	NHV_TRY(0.000, 0.569, 0.000) NHV_TRY(1.000, 1.000, 0.000) NHV_TRY(1.000, 0.000, 1.000)
-	NHV_TRY(0.424, 1.000, 0.000)
-	return best;
+	float m = max(c.r, max(c.g, c.b));
+	if (m < 0.02)
+		return vec3(0.0);
+	vec3 n = c / m;
+	vec3 best = vec3(1.0);
+	float bd = 1e9, bm = 1.0;
+	NHV_HUE(0.569, 0.278, 0.000) NHV_HUE(0.424, 0.569, 0.714) NHV_HUE(0.800, 0.310, 0.000)
+	NHV_HUE(0.843, 0.843, 0.843) NHV_HUE(1.000, 0.000, 0.000) NHV_HUE(1.000, 0.424, 0.000)
+	NHV_HUE(1.000, 1.000, 1.000) NHV_HUE(0.000, 0.000, 1.000) NHV_HUE(1.000, 0.714, 0.569)
+	NHV_HUE(0.282, 0.424, 0.424) NHV_HUE(0.000, 0.714, 1.000) NHV_HUE(0.000, 0.569, 0.000)
+	NHV_HUE(1.000, 1.000, 0.000) NHV_HUE(1.000, 0.000, 1.000) NHV_HUE(0.424, 1.000, 0.000)
+	return threshold < clamp(m / bm, 0.0, 1.0) ? best : vec3(0.0);
 }
 
 // the nearest of the 256 colours: VGA's default palette, its first 16
@@ -301,11 +304,17 @@ void main(void)
 
 	// VoxHack retro mode: its palette's colours - dithered, the ordered
 	// pattern standing in for the colours between (wider for EGA's few)
+	if (nhvRetro.x > 0.0 && nhvRetro.w > 1.5) {
+		// (the 16: dithered to black as it darkens - the amount: how far
+		// the pattern reaches from a plain half)
+		float t = 0.5 + (nhvBayer(gl_FragCoord.xy) - 0.5) * clamp(nhvRetro.y, 0.0, 1.0);
+		gl_FragColor = vec4(nhvTiles16(color.rgb, t), 1.0);
+		return;
+	}
 	if (nhvRetro.x > 0.0 && nhvRetro.w > 0.0) {
-		float spread = nhvRetro.w > 1.5 ? 0.36 : 0.12;
 		if (nhvRetro.y > 0.0)
-			color.rgb = clamp(color.rgb + (nhvBayer(gl_FragCoord.xy) - 0.5) * spread * nhvRetro.y, 0.0, 1.0);
-		gl_FragColor = vec4(nhvRetro.w > 1.5 ? nhvEga(color.rgb) : nhvVga(color.rgb), 1.0);
+			color.rgb = clamp(color.rgb + (nhvBayer(gl_FragCoord.xy) - 0.5) * 0.12 * nhvRetro.y, 0.0, 1.0);
+		gl_FragColor = vec4(nhvVga(color.rgb), 1.0);
 		return;
 	}
 
