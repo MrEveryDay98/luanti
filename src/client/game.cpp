@@ -269,6 +269,12 @@ public:
 			float hero[4] = {0.0f, 0.0f, 0.0f, 0.0f};
 			if (LocalPlayer *lp = m_client->getEnv().getLocalPlayer()) {
 				v3f head = lp->getPosition() + v3f(0.0f, 1.5f * BS, 0.0f) - offset;
+				// (a cutscene flying the camera: the light goes with it -
+				// nhv_camera.h)
+				std::vector<nhv_camera::PathPoint> path;
+				u64 at_ms;
+				if (nhv_camera::get_path(&path, &at_ms))
+					head = m_client->getCamera()->getPosition() - offset;
 				hero[0] = head.X;
 				hero[1] = head.Y;
 				hero[2] = head.Z;
