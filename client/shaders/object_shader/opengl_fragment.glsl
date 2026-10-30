@@ -94,7 +94,9 @@ float nhvTexelThreshold(vec2 p)
 	return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
 }
 // VoxHack: the hero's light (game.cpp), worked out here: from the player's
-// head exactly (not a light block, block by block) - as bright as a light
+// head exactly (not a light block, block by block) - (things: all of one
+// evenly, as Luanti lights them - no normal: in third person the light's
+// inside your own model) - as bright as a light
 // that level would make it (Luanti's light curve: nhvLightCurve,
 // nhvLightBoost), a level less a block away; faces turned away from it
 // unlit; sides darker than tops, as Luanti shades them
@@ -510,7 +512,7 @@ void main(void)
 #else
 	vec2 nhv_texsize = vec2(textureSize(baseTexture, 0));
 #endif
-	vec4 col = vec4(base.rgb * nhvTexelLit(varColor.rgb, uv, nhv_texsize, worldPosition, vNormal), 1.0);
+	vec4 col = vec4(base.rgb * nhvTexelLit(varColor.rgb, uv, nhv_texsize, worldPosition, vec3(0.0)), 1.0);
 	col.rgb *= vIDiff;
 
 #ifdef ENABLE_DYNAMIC_SHADOWS
