@@ -792,10 +792,16 @@ void Camera::wield(const ItemStack &item, bool animate)
 	}
 }
 
+extern bool nhv_retro; // (render/plain.cpp)
+
 void Camera::drawWieldedTool(core::matrix4* translation)
 {
 	// Clear Z buffer so that the wielded tool stays in front of world geometry
-	m_wieldmgr->getVideoDriver()->clearBuffers(video::ECBF_DEPTH);
+	// (VoxHack: in retro mode the world's depth is kept - its colours tell
+	// the sky by it, second_stage - and the tool drawn in the nearest
+	// thousandth of the depth instead, below)
+	if (!nhv_retro)
+		m_wieldmgr->getVideoDriver()->clearBuffers(video::ECBF_DEPTH);
 
 	// Draw the wielded node (in a separate scene manager)
 	scene::ICameraSceneNode* cam = m_wieldmgr->getActiveCamera();
@@ -803,6 +809,14 @@ void Camera::drawWieldedTool(core::matrix4* translation)
 	cam->setFOV(72.0*M_PI/180.0);
 	cam->setNearValue(10);
 	cam->setFarValue(1000);
+	if (nhv_retro) {
+		// (clip z' = k z + (k - 1) w: depths 0..k, in front of everything)
+		const f32 k = 0.001f;
+		core::matrix4 proj = cam->getProjectionMatrix();
+		for (int r = 0; r < 4; r++)
+			proj[r * 4 + 2] = k * proj[r * 4 + 2] + (k - 1.0f) * proj[r * 4 + 3];
+		cam->setProjectionMatrix(proj, false);
+	}
 	if (translation != NULL)
 	{
 		core::matrix4 startMatrix = cam->getAbsoluteTransformation();

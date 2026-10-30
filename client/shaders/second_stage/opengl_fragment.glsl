@@ -1,5 +1,6 @@
 #define rendered texture0
 #define bloom texture1
+#define nhvDepth texture3
 
 #ifdef GL_ES
 // Dithering requires sufficient floating-point precision
@@ -14,6 +15,8 @@ struct ExposureParams {
 
 uniform sampler2D rendered;
 uniform sampler2D bloom;
+// (VoxHack: the depth - nothing drawn there, the sky: retro mode)
+uniform sampler2D nhvDepth;
 
 uniform vec2 texelSize0;
 
@@ -38,17 +41,16 @@ float nhvBayer(vec2 p)
 
 // (one colour tried: the nearest so far kept)
 #define NHV_TRY(r, g, b) { vec3 p_ = vec3(r, g, b); vec3 d_ = c - p_; float e_ = dot(w, d_ * d_); if (e_ < bd) { bd = e_; best = p_; } }
-// the 16 colours of NetHack's tiles: no shades between - a colour is its
-// tile colour (the nearest by hue, however bright it is), and how dark it is
-// is how much of it dithers to black (threshold: the dither pattern's
-// value here, or a half without dithering)
+// NetHack's tiles' colours, as the nearest by hue (however bright it is):
+// best, its brightness bm; m, the pixel's
 #define NHV_HUE(R_, G_, B_) { vec3 p_ = vec3(R_, G_, B_); float pm_ = max(p_.r, max(p_.g, p_.b)); vec3 d_ = n - p_ / pm_; float e_ = dot(d_, d_) + 0.05 * (m - pm_) * (m - pm_); if (e_ < bd) { bd = e_; best = p_; bm = pm_; } }
-vec3 nhvTiles16(vec3 c, float threshold)
+
+// 16 colours: the tiles' own, no shading - a colour is its tile colour at
+// full strength; dim, half of it black (a checker, dithered); dark, black
+vec3 nhvTiles16(vec3 c, bool dither)
 {
 	float m = max(c.r, max(c.g, c.b));
-	if (m < 0.02)
-		return vec3(0.0);
-	vec3 n = c / m;
+	vec3 n = c / max(m, 0.0001);
 	vec3 best = vec3(1.0);
 	float bd = 1e9, bm = 1.0;
 	NHV_HUE(0.569, 0.278, 0.000) NHV_HUE(0.424, 0.569, 0.714) NHV_HUE(0.800, 0.310, 0.000)
@@ -56,6 +58,50 @@ vec3 nhvTiles16(vec3 c, float threshold)
 	NHV_HUE(1.000, 1.000, 1.000) NHV_HUE(0.000, 0.000, 1.000) NHV_HUE(1.000, 0.714, 0.569)
 	NHV_HUE(0.282, 0.424, 0.424) NHV_HUE(0.000, 0.714, 1.000) NHV_HUE(0.000, 0.569, 0.000)
 	NHV_HUE(1.000, 1.000, 0.000) NHV_HUE(1.000, 0.000, 1.000) NHV_HUE(0.424, 1.000, 0.000)
+	float t = m / bm;
+	if (t >= 0.4)
+		return best;
+	if (dither && t >= 0.15 && mod(floor(gl_FragCoord.x) + floor(gl_FragCoord.y), 2.0) < 0.5)
+		return best;
+	return t >= 0.25 && !dither ? best : vec3(0.0);
+}
+
+// 256 colours: the tiles' 15 colours each in 16 brightnesses (and black) -
+// a colour keeps its tile colour, only how bright it is steps (threshold:
+// the dither pattern's value here, or a half without dithering)
+vec3 nhvTiles256(vec3 c, float threshold)
+{
+	if (max(c.r, max(c.g, c.b)) < 0.01)
+		return vec3(0.0);
+	float m = max(c.r, max(c.g, c.b));
+	vec3 n = c / max(m, 0.0001);
+	vec3 best = vec3(1.0);
+	float bd = 1e9, bm = 1.0;
+	NHV_HUE(0.569, 0.278, 0.000) NHV_HUE(0.424, 0.569, 0.714) NHV_HUE(0.800, 0.310, 0.000)
+	NHV_HUE(0.843, 0.843, 0.843) NHV_HUE(1.000, 0.000, 0.000) NHV_HUE(1.000, 0.424, 0.000)
+	NHV_HUE(1.000, 1.000, 1.000) NHV_HUE(0.000, 0.000, 1.000) NHV_HUE(1.000, 0.714, 0.569)
+	NHV_HUE(0.282, 0.424, 0.424) NHV_HUE(0.000, 0.714, 1.000) NHV_HUE(0.000, 0.569, 0.000)
+	NHV_HUE(1.000, 1.000, 0.000) NHV_HUE(1.000, 0.000, 1.000) NHV_HUE(0.424, 1.000, 0.000)
+	float level = clamp(floor(clamp(m / bm, 0.0, 1.0) * 15.0 + threshold), 0.0, 15.0);
+	return best * level / 15.0;
+}
+
+// the sky's own 16 colours in 16-colour mode: EGA's (its blues, magentas
+// and greys) - like the tiles', its colour by hue, and how dark it is
+// dithered to black (threshold: the dither pattern's value here)
+vec3 nhvSky16(vec3 c, float threshold)
+{
+	float m = max(c.r, max(c.g, c.b));
+	if (m < 0.02)
+		return vec3(0.0);
+	vec3 n = c / m;
+	vec3 best = vec3(1.0);
+	float bd = 1e9, bm = 1.0;
+	NHV_HUE(0.000, 0.000, 0.667) NHV_HUE(0.000, 0.667, 0.000) NHV_HUE(0.000, 0.667, 0.667)
+	NHV_HUE(0.667, 0.000, 0.000) NHV_HUE(0.667, 0.000, 0.667) NHV_HUE(0.667, 0.333, 0.000)
+	NHV_HUE(0.667, 0.667, 0.667) NHV_HUE(0.333, 0.333, 0.333) NHV_HUE(0.333, 0.333, 1.000)
+	NHV_HUE(0.333, 1.000, 0.333) NHV_HUE(0.333, 1.000, 1.000) NHV_HUE(1.000, 0.333, 0.333)
+	NHV_HUE(1.000, 0.333, 1.000) NHV_HUE(1.000, 1.000, 0.333) NHV_HUE(1.000, 1.000, 1.000)
 	return threshold < clamp(m / bm, 0.0, 1.0) ? best : vec3(0.0);
 }
 
@@ -304,17 +350,23 @@ void main(void)
 
 	// VoxHack retro mode: its palette's colours - dithered, the ordered
 	// pattern standing in for the colours between (wider for EGA's few)
-	if (nhvRetro.x > 0.0 && nhvRetro.w > 1.5) {
-		// (the 16: dithered to black as it darkens - the amount: how far
-		// the pattern reaches from a plain half)
-		float t = 0.5 + (nhvBayer(gl_FragCoord.xy) - 0.5) * clamp(nhvRetro.y, 0.0, 1.0);
-		gl_FragColor = vec4(nhvTiles16(color.rgb, t), 1.0);
-		return;
-	}
+	// VoxHack retro mode: the tiles' colours (16, or 256 in their shades) -
+	// the sky its own (EGA's 16, or the 256 of VGA's palette); dithered or not
 	if (nhvRetro.x > 0.0 && nhvRetro.w > 0.0) {
-		if (nhvRetro.y > 0.0)
-			color.rgb = clamp(color.rgb + (nhvBayer(gl_FragCoord.xy) - 0.5) * 0.12 * nhvRetro.y, 0.0, 1.0);
-		gl_FragColor = vec4(nhvVga(color.rgb), 1.0);
+		// (the sky: nothing drawn, the depth as cleared - exactly 1; the world is
+		// near it too, far off, so nothing less will do)
+		bool sky = texture2D(nhvDepth, uv).r >= 1.0;
+		bool dither = nhvRetro.y > 0.0;
+		float t = dither ? 0.5 + (nhvBayer(gl_FragCoord.xy) - 0.5) * clamp(nhvRetro.y, 0.0, 1.0) : 0.5;
+		vec3 c = color.rgb;
+		if (sky && nhvRetro.w > 1.5) {
+			c = nhvSky16(c, t);
+		} else if (sky) {
+			c = nhvVga(clamp(c + (t - 0.5) * 0.12, 0.0, 1.0));
+		} else {
+			c = nhvRetro.w > 1.5 ? nhvTiles16(c, dither) : nhvTiles256(c, t);
+		}
+		gl_FragColor = vec4(c, 1.0);
 		return;
 	}
 
