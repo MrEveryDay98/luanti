@@ -324,12 +324,14 @@ public:
 		return m_prop.infotext == "nhv:xray";
 	}
 
-	// VoxHack: one marked "nhv:texel" (a shadow on the floor) is kept on
-	// the floor's texture pixels, a 16th of a block, wherever it's moving
-	// through: across and along, never between two
-	bool nhvTexelSnap() const
+	// VoxHack: one marked "nhv:shadow" is a thing's shadow on the floor: its
+	// upright sprite the thing's picture, laid out as the light throws it
+	// (updateNodePos) and drawn on the floor's texture pixels, whole ones
+	// (nhv_shadow_shader)
+	void nhvLayOutShadow(v3f foot);
+	bool nhvShadow() const
 	{
-		return m_prop.infotext == "nhv:texel";
+		return m_prop.infotext == "nhv:shadow";
 	}
 
 	void updateMeshCulling();

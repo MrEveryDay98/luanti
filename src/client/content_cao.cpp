@@ -593,6 +593,12 @@ void GenericCAO::addToScene(ITextureSource *tsrc, scene::ISceneManager *smgr)
 		enum_to_string(es_ObjectVisual, m_prop.visual)<< std::endl;
 
 	auto updateMaterialType = [this](bool hw_skin) {
+		if (nhvShadow()) {
+			IShaderSource *shader_source = m_client->getShaderSource();
+			m_material_type = shader_source->getShaderInfo(
+					shader_source->getShaderRaw("nhv_shadow_shader", true)).material;
+			return;
+		}
 		if (m_prop.visual != OBJECTVISUAL_NODE &&
 				m_prop.visual != OBJECTVISUAL_WIELDITEM &&
 				m_prop.visual != OBJECTVISUAL_ITEM)
@@ -820,11 +826,13 @@ void GenericCAO::addToScene(ITextureSource *tsrc, scene::ISceneManager *smgr)
 	if (scene::ISceneNode *node = getSceneNode()) {
 		node->setParent(m_matrixnode);
 		// (VoxHack: a shadow lies right on the floor, drawn over it - not
-		// raised off it, which would put it off the floor's pixels from aside)
-		if (nhvTexelSnap()) {
+		// raised off it, which would put it off the floor's pixels from
+		// aside - and doesn't hide another one there)
+		if (nhvShadow()) {
 			node->forEachMaterial([] (auto &mat) {
 				mat.PolygonOffsetDepthBias = -4.0f;
 				mat.PolygonOffsetSlopeScale = -4.0f;
+				mat.ZWriteEnable = video::EZW_OFF;
 			});
 		}
 
@@ -994,6 +1002,32 @@ void GenericCAO::updateNametag()
 	}
 }
 
+// VoxHack: a shadow (nhvShadow) laid out from where its thing stands (foot:
+// its position) - the thing's picture, turned as it is (yaw), thrown along
+// the ground away from the light (roll: which way, round from +z), as long
+// as visual_size.z times its height; a little bigger all round
+// (nhv_shadow_shader's NHV_PAD), the shader keeping to the picture
+void GenericCAO::nhvLayOutShadow(v3f foot)
+{
+	const f32 pad = 1.5f;
+	const v3f rot = rot_translator.val_current;
+	core::matrix4 turn;
+	setPitchYawRoll(turn, v3f(0.0f, -rot.Y, 0.0f));
+	const v3f across = turn.rotateAndScaleVect(v3f(1.0f, 0.0f, 0.0f));
+	const f32 away = rot.Z * core::DEGTORAD;
+	const v3f along = v3f(std::sin(away), 0.0f, std::cos(away)) * m_prop.visual_size.Z;
+	core::matrix4 &m = getPosRotMatrix();
+	m.makeIdentity();
+	m[0] = across.X * pad;
+	m[1] = across.Y * pad;
+	m[2] = across.Z * pad;
+	m[4] = along.X * pad;
+	m[5] = along.Y * pad;
+	m[6] = along.Z * pad;
+	m[9] = 1.0f;
+	m.setTranslation(foot + along * (BS * m_prop.visual_size.Y / 2.0f));
+}
+
 void GenericCAO::updateNodePos()
 {
 	if (getParent() != NULL)
@@ -1005,10 +1039,9 @@ void GenericCAO::updateNodePos()
 		assert(m_matrixnode);
 		v3s16 camera_offset = m_env->getCameraOffset();
 		v3f pos = pos_translator.val_current;
-		if (nhvTexelSnap()) {
-			const float texel = BS / 16.0f;
-			pos.X = std::round(pos.X / texel) * texel;
-			pos.Z = std::round(pos.Z / texel) * texel;
+		if (nhvShadow()) {
+			nhvLayOutShadow(pos - intToFloat(camera_offset, BS));
+			return;
 		}
 		pos -= intToFloat(camera_offset, BS);
 		getPosRotMatrix().setTranslation(pos);
