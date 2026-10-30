@@ -100,10 +100,50 @@ float nhvTexelThreshold(vec2 p)
 	// (noise: the same for a pixel every time, different from its neighbours)
 	return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
 }
-vec3 nhvTexelLit(vec3 light, vec2 uv, vec2 texsize)
+// VoxHack: the hero's light (game.cpp), worked out here: from the player's
+// head exactly (not a light block, block by block) - as bright as a light
+// that level would make it (Luanti's light curve: nhvLightCurve,
+// nhvLightBoost), a level less a block away; faces turned away from it
+// unlit; sides darker than tops, as Luanti shades them
+uniform vec4 nhvHeroLight; // (x, y, z near the camera, level; 0: none)
+uniform vec4 nhvLightCurve;
+uniform vec3 nhvLightBoost;
+float nhvDecodeLight(float x)
+{
+	if (x >= 1.0)
+		return 1.0;
+	x = max(x, 0.0);
+	float b = ((nhvLightCurve.x * x + nhvLightCurve.y) * x + nhvLightCurve.z) * x;
+	float k = (x - nhvLightBoost.y) / max(nhvLightBoost.z, 1e-4);
+	b += nhvLightBoost.x * exp(-0.5 * k * k);
+	if (b <= 0.0)
+		return 0.0;
+	return pow(min(b, 1.0), nhvLightCurve.w);
+}
+vec3 nhvHeroLit(vec3 wpos, vec3 normal)
+{
+	if (nhvHeroLight.w <= 0.0)
+		return vec3(0.0);
+	vec3 to = nhvHeroLight.xyz - wpos;
+	float nl = length(normal);
+	if (nl > 0.001 && dot(normal, to) <= 0.0)
+		return vec3(0.0);
+	float level = nhvHeroLight.w - max(length(to) / 10.0 - 0.5, 0.0);
+	if (level <= 0.0)
+		return vec3(0.0);
+	vec3 n2 = nl > 0.001 ? normal * normal / (nl * nl) : vec3(0.0, 1.0, 0.0);
+	float shade = 1.0;
+	if (nl > 0.001 && normal.y < 0.0)
+		shade = 0.670820 * n2.x + 0.447213 * n2.y + 0.836660 * n2.z;
+	else if (n2.x > 1e-3 || n2.z > 1e-3)
+		shade = 0.670820 * n2.x + n2.y + 0.836660 * n2.z;
+	return vec3(min(nhvDecodeLight(level / 14.0) * shade * 1.04, 1.0));
+}
+
+vec3 nhvTexelLit(vec3 light, vec2 uv, vec2 texsize, vec3 wpos, vec3 normal)
 {
 	if (nhvTexelLight <= 0.0)
-		return nhvBandedLight(light);
+		return nhvBandedLight(max(light, nhvHeroLit(wpos, normal)));
 	// (the light at the pixel's middle: across a face it changes evenly,
 	// so from here by its change over the texture - the screen's
 	// derivatives of light and of the texture position, solved for it)
@@ -112,11 +152,14 @@ vec3 nhvTexelLit(vec3 light, vec2 uv, vec2 texsize)
 	vec2 tx = dFdx(t), ty = dFdy(t);
 	float det = tx.x * ty.y - tx.y * ty.x;
 	vec3 lc = light;
+	vec3 wc = wpos;
 	if (abs(det) > 1e-8) {
 		float sx = (ty.y * d.x - ty.x * d.y) / det;
 		float sy = (tx.x * d.y - tx.y * d.x) / det;
 		lc = max(light + dFdx(light) * sx + dFdy(light) * sy, vec3(0.0));
+		wc = wpos + dFdx(wpos) * sx + dFdy(wpos) * sy;
 	}
+	lc = max(lc, nhvHeroLit(wc, normal));
 	// (always in steps - the shading is this alone - as many as set)
 	float bands = max(nhvTexelSteps, 1.0);
 	float l = max(lc.r, max(lc.g, lc.b));
@@ -549,7 +592,7 @@ void main(void)
 #else
 	vec2 nhv_texsize = vec2(textureSize(baseTexture, 0));
 #endif
-	vec4 col = vec4(base.rgb * nhvTexelLit(varColor.rgb, uv, nhv_texsize), 1.0);
+	vec4 col = vec4(base.rgb * nhvTexelLit(varColor.rgb, uv, nhv_texsize, worldPosition, vNormal), 1.0);
 
 #ifdef ENABLE_DYNAMIC_SHADOWS
 	// Fragment normal, can differ from vNormal which is derived from vertex normals.

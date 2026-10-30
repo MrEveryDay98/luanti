@@ -42,6 +42,19 @@ float LightCurve::get(float x) const
 	return powf(brightness, 1.0f / gamma);
 }
 
+static LightCurve s_curve; // (VoxHack: the last set, get_light_curve)
+
+void get_light_curve(float abcg[4], float boost[3])
+{
+	abcg[0] = s_curve.a;
+	abcg[1] = s_curve.b;
+	abcg[2] = s_curve.c;
+	abcg[3] = 1.0f / s_curve.gamma;
+	boost[0] = s_curve.boost;
+	boost[1] = s_curve.center;
+	boost[2] = s_curve.sigma;
+}
+
 void set_light_curve(float gamma)
 {
 	LightCurve params;
@@ -58,6 +71,8 @@ void set_light_curve(float gamma)
 	params.sigma = rangelim(g_settings->getFloat("lighting_boost_spread"), 0.0f, 0.4f);
 	// gamma correction
 	params.gamma = rangelim(gamma, 0.33f, 3.0f);
+
+	s_curve = params;
 
 	// Boundary values should be fixed
 	// (VoxHack: no sun - its light is the levels' own, and the brightest a

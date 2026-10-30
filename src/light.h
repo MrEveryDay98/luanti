@@ -53,6 +53,11 @@ float decode_light_f(float light_f);
 // Update light value table using the specified gamma
 void set_light_curve(float gamma);
 
+// VoxHack: the curve's numbers (set_light_curve's), for the shaders' light
+// worked out there (the hero's, at its exact place): the polynomial a, b,
+// c and 1/gamma; the boost, its centre and spread
+void get_light_curve(float abcg[4], float boost[3]);
+
 #endif
 
 // 0 <= daylight_factor <= 1000

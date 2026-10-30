@@ -54,6 +54,7 @@
 #include <ICameraSceneNode.h>
 #include "util/tracy_wrapper.h"
 #include "item_visuals_manager.h"
+#include "light.h"
 
 #if USE_SOUND
 	#include "client/sound/sound_openal.h"
@@ -61,6 +62,15 @@
 
 typedef s32 SamplerLayer_t;
 
+
+// VoxHack: the light the hero carries, how bright (a light level, 0
+// none): core.nhv_hero_light; the shaders light round the player's head
+// with it, exactly where it is (not a light block, block by block)
+static float s_nhv_hero_light = 0.0f;
+void nhv_set_hero_light(float level)
+{
+	s_nhv_hero_light = level;
+}
 
 class GameGlobalShaderUniformSetter : public IShaderUniformSetter
 {
@@ -125,6 +135,11 @@ class GameGlobalShaderUniformSetter : public IShaderUniformSetter
 	// and how finely: 1 the textures' pixels, 0.5 half as fine (8x8 a 16x16 one)
 	CachedPixelShaderSetting<float> m_nhv_texel_scale_pixel{"nhvTexelScale"};
 	float m_nhv_texel_scale = 1.0f;
+	// the hero's light: where (near the camera: cameraOffset), how bright;
+	// and the light curve to light by
+	CachedPixelShaderSetting<float, 4> m_nhv_hero_light_pixel{"nhvHeroLight"};
+	CachedPixelShaderSetting<float, 4> m_nhv_light_curve_pixel{"nhvLightCurve"};
+	CachedPixelShaderSetting<float, 3> m_nhv_light_boost_pixel{"nhvLightBoost"};
 	float m_nhv_wave = 0.0f, m_nhv_hallu = 0.0f;
 	// VoxHack: the setting nhv_brightness (0..1, wizard mode's /brightness),
 	// read a few times a second
@@ -249,6 +264,22 @@ public:
 		v3f offset = intToFloat(m_client->getCamera()->getOffset(), BS);
 		m_camera_offset_pixel.set(offset, services);
 		m_camera_offset_vertex.set(offset, services);
+
+		{
+			float hero[4] = {0.0f, 0.0f, 0.0f, 0.0f};
+			if (LocalPlayer *lp = m_client->getEnv().getLocalPlayer()) {
+				v3f head = lp->getPosition() + v3f(0.0f, 1.5f * BS, 0.0f) - offset;
+				hero[0] = head.X;
+				hero[1] = head.Y;
+				hero[2] = head.Z;
+				hero[3] = s_nhv_hero_light;
+			}
+			m_nhv_hero_light_pixel.set(hero, services);
+			float abcg[4], boost[3];
+			get_light_curve(abcg, boost);
+			m_nhv_light_curve_pixel.set(abcg, services);
+			m_nhv_light_boost_pixel.set(boost, services);
+		}
 
 		v3f camera_position = m_client->getCamera()->getPosition();
 		m_camera_position_pixel.set(camera_position, services);

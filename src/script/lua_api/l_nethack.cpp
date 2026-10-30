@@ -685,6 +685,16 @@ int ModApiNetHack::l_nhv_player_drift(lua_State *L)
 	return 0;
 }
 
+// core.nhv_hero_light(level): the light the hero carries (a light level, 0
+// none), lit round the player's head by the shaders (client/game.cpp; the
+// client is in this same program)
+void nhv_set_hero_light(float level);
+int ModApiNetHack::l_nhv_hero_light(lua_State *L)
+{
+	nhv_set_hero_light((float)luaL_checknumber(L, 1));
+	return 0;
+}
+
 // core.nhv_map_scroll(px, instant): the big map's pictures (HUD style 256)
 // moved px pixels left, the client easing them there - at once if instant
 // (client/hud.h; the client is in this same program)
@@ -1214,6 +1224,7 @@ void ModApiNetHack::Initialize(lua_State *L, int top)
 	API_FCT(nhv_camera_orbit);
 	API_FCT(nhv_sam_seconds);
 	API_FCT(nhv_map_scroll);
+	API_FCT(nhv_hero_light);
 	API_FCT(nh_tile_count);
 	API_FCT(nh_cmap_name);
 	API_FCT(nh_cmap_tile);
