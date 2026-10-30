@@ -69,6 +69,8 @@ uniform float nhvTexelLight;
 uniform float nhvTexelPattern;
 // (how many steps of light: nhv_texel_steps)
 uniform float nhvTexelSteps;
+// (how finely: 1 the texture's own pixels, 0.5 half as fine - nhv_texel_half)
+uniform float nhvTexelScale;
 float nhvBayer2(vec2 p)
 {
 	p = floor(mod(p, 2.0));
@@ -98,7 +100,7 @@ vec3 nhvTexelLit(vec3 light, vec2 uv, vec2 texsize)
 	// (the light at the pixel's middle: across a face it changes evenly,
 	// so from here by its change over the texture - the screen's
 	// derivatives of light and of the texture position, solved for it)
-	vec2 t = uv * texsize;
+	vec2 t = uv * texsize * nhvTexelScale;
 	vec2 d = floor(t) + 0.5 - t;
 	vec2 tx = dFdx(t), ty = dFdy(t);
 	float det = tx.x * ty.y - tx.y * ty.x;

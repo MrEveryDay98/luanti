@@ -156,6 +156,7 @@ void set_default_settings()
 	settings->setDefault("nhv_texel_light", "off"); // VoxHack: light per texture pixel: off, on, dither
 	settings->setDefault("nhv_texel_pattern", "bayer4"); // VoxHack: its dithering: bayer2, bayer4, bayer8, lines, noise
 	settings->setDefault("nhv_texel_steps", "8"); // VoxHack: its steps of light
+	settings->setDefault("nhv_texel_half", "false"); // VoxHack: and at half the textures' resolution
 	settings->setDefault("nhv_ambient_occlusion", "false"); // VoxHack: blocks' corners darkened where they meet
 	settings->setDefault("nhv_send_all_directions", "false"); // VoxHack: send blocks behind the camera too (server/clientiface.cpp)
 	settings->setDefault("nhv_sky", ""); // NetHack Voxel: the Quake-style sky shown now (set by the game)

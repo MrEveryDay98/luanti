@@ -122,6 +122,9 @@ class GameGlobalShaderUniformSetter : public IShaderUniformSetter
 	// and its steps of light
 	CachedPixelShaderSetting<float> m_nhv_texel_steps_pixel{"nhvTexelSteps"};
 	float m_nhv_texel_steps = 8.0f;
+	// and how finely: 1 the textures' pixels, 0.5 half as fine (8x8 a 16x16 one)
+	CachedPixelShaderSetting<float> m_nhv_texel_scale_pixel{"nhvTexelScale"};
+	float m_nhv_texel_scale = 1.0f;
 	float m_nhv_wave = 0.0f, m_nhv_hallu = 0.0f;
 	// VoxHack: the setting nhv_brightness (0..1, wizard mode's /brightness),
 	// read a few times a second
@@ -222,11 +225,13 @@ public:
 				m_nhv_texel_pattern = pattern == "bayer2" ? 1.0f : pattern == "bayer8" ? 2.0f
 						: pattern == "lines" ? 3.0f : pattern == "noise" ? 4.0f : 0.0f;
 				m_nhv_texel_steps = std::clamp((float)g_settings->getS32("nhv_texel_steps"), 1.0f, 64.0f);
+				m_nhv_texel_scale = g_settings->getBool("nhv_texel_half") ? 0.5f : 1.0f;
 			}
 			m_nhv_retro_pixel.set(m_nhv_retro, services);
 			m_nhv_texel_pixel.set(&m_nhv_texel, services);
 			m_nhv_texel_pattern_pixel.set(&m_nhv_texel_pattern, services);
 			m_nhv_texel_steps_pixel.set(&m_nhv_texel_steps, services);
+			m_nhv_texel_scale_pixel.set(&m_nhv_texel_scale, services);
 			// (full brightness, or wizard mode's partial: unlit colours mixed in)
 			float fullbright = (f & HUD_FLAG_NHV_FULLBRIGHT) ? 1.0f : m_nhv_brightness;
 			m_nhv_fullbright_pixel.set(&fullbright, services);
