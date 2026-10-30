@@ -307,11 +307,13 @@ bool RenderingEngine::setWindowIcon()
 */
 // VoxHack: the loading screen - whatever is loading, however far: black,
 // and "LOADING..." in white, in VoxHack's retro font, slanted (each
-// letter drawn in thin strips, each shifted on from the one below: a
-// stepped, pixel italic), its letters hopping up one after another in a
-// wave, as Symphony of the Night's "Now Loading" does
+// letter drawn upright once into a picture, then copied to the screen a
+// row of pixels at a time, each row shifted on from the one below: a
+// pixel italic, every row whole), its letters hopping up one after another
+// in a wave, as Symphony of the Night's "Now Loading" does
 static gui::CGUITTFont *nhv_load_font = nullptr;
 static u32 nhv_load_font_size = 0;
+static u32 nhv_load_letters_size = 0; // (the picture of the letters: for this size)
 
 static gui::IGUIFont *nhv_loading_font(gui::IGUIEnvironment *guienv, u32 size)
 {
@@ -341,14 +343,15 @@ void RenderingEngine::draw_load_screen(const std::wstring &text,
 	auto *driver = get_video_driver();
 	driver->beginScene(true, true, video::SColor(255, 0, 0, 0));
 
-	const u32 size = std::max<u32>(12, screensize.Y / 14);
+	// (a whole number of the font's pixels: it's drawn on a grid of 14, and at
+	// any size between, FreeType leaves rows of holes across the letters)
+	const u32 size = std::max<u32>(1, (screensize.Y / 14 + 7) / 14) * 14;
 	gui::IGUIFont *font = nhv_loading_font(guienv, size);
 	const std::wstring word = L"LOADING...";
 	const f32 t = porting::getTimeMs() / 1000.0f;
 	const s32 height = font->getDimension(L"L").Height;
 	const f32 slant = 0.25f;                 // (pixels right per pixel up)
 	const s32 hop = height * 0.35f;          // (how high a letter hops)
-	const s32 strip = std::max<s32>(1, height / 12);
 	const video::SColor white(255, 255, 255, 255);
 
 	// the letters' places, centred (with a little room between them)
@@ -359,23 +362,55 @@ void RenderingEngine::draw_load_screen(const std::wstring &text,
 		widths.push_back(w);
 		total += w;
 	}
+	// the letters drawn upright into a picture, side by side (once for each
+	// size of the screen)
+	// (found by name each time: never a picture the driver has let go of)
+	video::ITexture *nhv_load_letters = driver->findTexture("nhv_loading");
+	if (nhv_load_letters && nhv_load_letters_size != size) {
+		driver->removeTexture(nhv_load_letters);
+		nhv_load_letters = nullptr;
+	}
+	if (!nhv_load_letters && driver->queryFeature(video::EVDF_RENDER_TO_TARGET)) {
+		nhv_load_letters = driver->addRenderTargetTexture(
+				core::dimension2du(total, height), "nhv_loading", video::ECF_A8R8G8B8);
+		nhv_load_letters_size = size;
+		if (nhv_load_letters) {
+			driver->setRenderTarget(nhv_load_letters, video::ECBF_COLOR | video::ECBF_DEPTH,
+					video::SColor(0, 0, 0, 0));
+			s32 lx = 0;
+			for (size_t i = 0; i < word.size(); i++) {
+				std::wstring c(1, word[i]);
+				font->draw(c.c_str(), core::rect<s32>(lx, 0, lx + widths[i], height), white);
+				lx += widths[i];
+			}
+			driver->setRenderTarget(nullptr, video::ECBF_NONE);
+		}
+	}
+
 	s32 x = (s32)screensize.X / 2 - total / 2;
+	s32 src_x = 0;
 	const s32 base_y = (s32)screensize.Y / 2 - height / 2;
 	for (size_t i = 0; i < word.size(); i++) {
 		// (each in its turn: a hop, then waiting while the others go)
 		f32 phase = t * 4.0f - i * 0.55f;
 		f32 up = std::max(0.0f, std::sin(phase));
 		s32 y = base_y - (s32)(up * up * hop);
-		std::wstring c(1, word[i]);
-		for (s32 r = 0; r < height; r += strip) {
-			s32 dx = (s32)((height - r) * slant);
-			// (each strip a pixel into the next: clipped edge to edge, a row was
-			// lost between them - dark seams across the letters)
-			core::rect<s32> clip(x - height, y + r, x + widths[i] + height, y + r + strip + 1);
-			core::rect<s32> at(x + dx, y, x + dx + widths[i] + height, y + height);
-			font->draw(c.c_str(), at, white, false, false, &clip);
+		if (nhv_load_letters) {
+			// (a row of pixels at a time, exactly: no seams; the picture's rows
+			// are kept bottom first)
+			for (s32 r = 0; r < height; r++) {
+				s32 dx = (s32)((height - r) * slant);
+				s32 sr = height - 1 - r;
+				driver->draw2DImage(nhv_load_letters, core::position2d<s32>(x + dx, y + r),
+						core::rect<s32>(src_x, sr, src_x + widths[i], sr + 1), nullptr, white, true);
+			}
+		} else {
+			// (no drawing into pictures: upright)
+			std::wstring c(1, word[i]);
+			font->draw(c.c_str(), core::rect<s32>(x, y, x + widths[i], y + height), white);
 		}
 		x += widths[i];
+		src_x += widths[i];
 	}
 
 	driver->endScene();
