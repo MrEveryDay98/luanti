@@ -267,6 +267,16 @@ private:
 	s32 m_digging_button = -1;
 
 	// NetHack Voxel camera lock
+public:
+	// the game set where you look (set_look) while it's locked: the view
+	// held there from now on
+	void nhvLockTo(f32 yaw, f32 pitch)
+	{
+		m_nhv_locked = true;
+		m_nhv_locked_yaw = yaw;
+		m_nhv_locked_pitch = pitch;
+	}
+private:
 	bool m_nhv_locked = false;
 	f32 m_nhv_locked_yaw = 0.0f;
 	f32 m_nhv_locked_pitch = 0.0f;

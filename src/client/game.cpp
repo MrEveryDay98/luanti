@@ -2467,6 +2467,11 @@ void Game::handleClientEvent_PlayerForceMove(ClientEvent *event, CameraOrientati
 {
 	cam->camera_yaw = event->player_force_move.yaw;
 	cam->camera_pitch = event->player_force_move.pitch;
+	// (VoxHack: the view locked - the title screen - turned there too: the
+	// mouse moved before it was locked can't leave it looking elsewhere)
+	LocalPlayer *player = client->getEnv().getLocalPlayer();
+	if (camera && player && (player->hud_flags & HUD_FLAG_NHV_CAMERA_LOCK))
+		camera->nhvLockTo(cam->camera_yaw, cam->camera_pitch);
 }
 
 void Game::handleClientEvent_DeathscreenLegacy(ClientEvent *event, CameraOrientation *cam)
