@@ -106,11 +106,11 @@ vec3 nhvTexelLit(vec3 light, vec2 uv, vec2 texsize)
 		float sy = (tx.x * d.y - tx.y * d.x) / det;
 		lc = max(light + dFdx(light) * sx + dFdy(light) * sy, vec3(0.0));
 	}
+	// (always in steps - the shading is this alone: retro mode's Light,
+	// else 8)
 	float bands = nhvRetro.x > 0.0 ? nhvRetro.z : 0.0;
-	if (nhvTexelLight > 1.5 && bands < 1.0)
-		bands = 8.0;
 	if (bands < 1.0)
-		return lc;
+		bands = 8.0;
 	float l = max(lc.r, max(lc.g, lc.b));
 	if (l <= 0.001)
 		return lc;

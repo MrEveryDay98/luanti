@@ -28,6 +28,9 @@ uniform vec3 nhvFx;
 // VoxHack retro mode: on, dithering amount, light steps, palette (0 full,
 // 1 VGA, 2 EGA) - game.cpp
 uniform vec4 nhvRetro;
+// VoxHack light per texture pixel (game.cpp): on, its shading and dithering
+// are the world's - no more here
+uniform float nhvTexelLight;
 
 
 
@@ -363,6 +366,8 @@ void main(void)
 			c = nhvSky16(c, t);
 		} else if (sky) {
 			c = nhvVga(clamp(c + (t - 0.5) * 0.12, 0.0, 1.0));
+		} else if (nhvTexelLight > 0.0) {
+			c = nhvRetro.w > 1.5 ? nhvTiles16(c, false) : nhvTiles256(c, 0.5);
 		} else {
 			c = nhvRetro.w > 1.5 ? nhvTiles16(c, dither) : nhvTiles256(c, t);
 		}
