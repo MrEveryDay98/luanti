@@ -21,6 +21,9 @@
 #define HUD_STYLE_BOLD   1
 #define HUD_STYLE_ITALIC 2
 #define HUD_STYLE_MONO   4
+// VoxHack: moved across with the big map as it scrolls (client/hud.h's
+// nhv_map_scroll: one shift for them all, eased smoothly every frame)
+#define HUD_STYLE_NHV_MAP_SCROLL 256
 
 // Note that these visibility flags do not determine if the hud items are
 // actually drawn, but rather, whether to draw the item should the rest

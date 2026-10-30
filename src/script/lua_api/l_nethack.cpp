@@ -4,6 +4,7 @@
 #include "nhv_levelready.h"
 #include "nhv_camera.h"
 #include "client/sound/sam_voice.h"
+#include "client/hud.h"
 #include "server.h"
 #include "mapblock.h"
 #include "lua_api/l_nethack.h"
@@ -684,6 +685,15 @@ int ModApiNetHack::l_nhv_player_drift(lua_State *L)
 	return 0;
 }
 
+// core.nhv_map_scroll(px, instant): the big map's pictures (HUD style 256)
+// moved px pixels left, the client easing them there - at once if instant
+// (client/hud.h; the client is in this same program)
+int ModApiNetHack::l_nhv_map_scroll(lua_State *L)
+{
+	nhv_set_map_scroll((float)luaL_checknumber(L, 1), lua_toboolean(L, 2));
+	return 0;
+}
+
 // core.nhv_sam_seconds(name): how long a SAM line ("nhv_sam:...|text", as
 // played: sound/sam_voice.h) takes to say - rendered here, the client
 // being in this same program - 0 if it can't be said
@@ -1203,6 +1213,7 @@ void ModApiNetHack::Initialize(lua_State *L, int top)
 	API_FCT(nhv_bubble_floor);
 	API_FCT(nhv_camera_orbit);
 	API_FCT(nhv_sam_seconds);
+	API_FCT(nhv_map_scroll);
 	API_FCT(nh_tile_count);
 	API_FCT(nh_cmap_name);
 	API_FCT(nh_cmap_tile);

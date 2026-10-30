@@ -71,11 +71,30 @@ vec3 nhvBandedLight(vec3 light)
 // the texture's own pixels. In steps (retro mode's Light, or 8 dithered),
 // dithering picks each pixel's step by a pattern laid on the texture.
 uniform float nhvTexelLight;
-float nhvTexelBayer(vec2 p)
+// (the pattern: 0 Bayer 4x4, 1 Bayer 2x2, 2 Bayer 8x8, 3 lines, 4 noise -
+// game.cpp; each a threshold 0..1 for a texture pixel p)
+uniform float nhvTexelPattern;
+float nhvBayer2(vec2 p)
 {
-	const float m[16] = float[16](0., 8., 2., 10., 12., 4., 14., 6., 3., 11., 1., 9., 15., 7., 13., 5.);
-	int x = int(mod(p.x, 4.0)), y = int(mod(p.y, 4.0));
-	return (m[y * 4 + x] + 0.5) / 16.0;
+	p = floor(mod(p, 2.0));
+	return fract(p.x * 0.5 + p.y * p.y * 0.75);
+}
+float nhvBayer4(vec2 p)
+{
+	return nhvBayer2(floor(p * 0.5)) * 0.25 + nhvBayer2(p);
+}
+float nhvTexelThreshold(vec2 p)
+{
+	if (nhvTexelPattern < 0.5)
+		return nhvBayer4(p) + 0.5 / 16.0;
+	if (nhvTexelPattern < 1.5)
+		return nhvBayer2(p) + 0.5 / 4.0;
+	if (nhvTexelPattern < 2.5)
+		return nhvBayer4(floor(p * 0.5)) * 0.25 + nhvBayer2(p) + 0.5 / 64.0;
+	if (nhvTexelPattern < 3.5)
+		return (mod(p.y, 4.0) + 0.5) / 4.0; // (lines across)
+	// (noise: the same for a pixel every time, different from its neighbours)
+	return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
 }
 vec3 nhvTexelLit(vec3 light, vec2 uv, vec2 texsize)
 {
@@ -102,7 +121,7 @@ vec3 nhvTexelLit(vec3 light, vec2 uv, vec2 texsize)
 	float l = max(lc.r, max(lc.g, lc.b));
 	if (l <= 0.001)
 		return lc;
-	float threshold = nhvTexelLight > 1.5 ? nhvTexelBayer(floor(t)) : 0.5;
+	float threshold = nhvTexelLight > 1.5 ? nhvTexelThreshold(floor(t)) : 0.5;
 	return lc * (max(floor(l * bands + threshold), 1.0) / bands) / l;
 }
 

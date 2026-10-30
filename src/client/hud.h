@@ -31,6 +31,11 @@ namespace video
 	class IVideoDriver;
 }
 
+// VoxHack: the big map's scroll - pixels its pictures (HUD_STYLE_NHV_MAP_SCROLL)
+// are moved left by: the game sets where it's going (instant: there at once),
+// the frames ease it there
+void nhv_set_map_scroll(float px, bool instant);
+
 class Hud
 {
 public:

@@ -116,6 +116,9 @@ class GameGlobalShaderUniformSetter : public IShaderUniformSetter
 	// 1 on, 2 dithered
 	CachedPixelShaderSetting<float> m_nhv_texel_pixel{"nhvTexelLight"};
 	float m_nhv_texel = 0.0f;
+	// its dithering pattern: 0 Bayer 4x4, 1 2x2, 2 8x8, 3 lines, 4 noise
+	CachedPixelShaderSetting<float> m_nhv_texel_pattern_pixel{"nhvTexelPattern"};
+	float m_nhv_texel_pattern = 0.0f;
 	float m_nhv_wave = 0.0f, m_nhv_hallu = 0.0f;
 	// VoxHack: the setting nhv_brightness (0..1, wizard mode's /brightness),
 	// read a few times a second
@@ -212,9 +215,13 @@ public:
 				m_nhv_retro[3] = pal == "full" ? 0.0f : pal == "ega" ? 2.0f : 1.0f;
 				const std::string texel = g_settings->get("nhv_texel_light");
 				m_nhv_texel = texel == "dither" ? 2.0f : texel == "on" ? 1.0f : 0.0f;
+				const std::string pattern = g_settings->get("nhv_texel_pattern");
+				m_nhv_texel_pattern = pattern == "bayer2" ? 1.0f : pattern == "bayer8" ? 2.0f
+						: pattern == "lines" ? 3.0f : pattern == "noise" ? 4.0f : 0.0f;
 			}
 			m_nhv_retro_pixel.set(m_nhv_retro, services);
 			m_nhv_texel_pixel.set(&m_nhv_texel, services);
+			m_nhv_texel_pattern_pixel.set(&m_nhv_texel_pattern, services);
 			// (full brightness, or wizard mode's partial: unlit colours mixed in)
 			float fullbright = (f & HUD_FLAG_NHV_FULLBRIGHT) ? 1.0f : m_nhv_brightness;
 			m_nhv_fullbright_pixel.set(&fullbright, services);
@@ -1748,6 +1755,10 @@ void Game::processItemSelection(u16 *new_playeritem)
 		// (Q invokes the wielded item, when it can be: "/nhvkey invoke")
 		if (wasKeyDown(KeyType::NHV_INVOKE))
 			client->sendChatMessage(L"/nhvkey invoke");
+		// (the mouse wheel: "/nhvkey wheel <notches>", up positive - the big
+		// map scrolls by it)
+		if (s32 wheel = input->getMouseWheel())
+			client->sendChatMessage(L"/nhvkey wheel " + std::to_wstring(wheel));
 		return;
 	}
 	u16 max_item = player->getMaxHotbarItemcount();

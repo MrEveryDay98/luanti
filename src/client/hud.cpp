@@ -9,6 +9,7 @@
 #include <iostream>
 #include <cmath>
 #include "settings.h"
+#include "porting.h"
 #include "util/numeric.h"
 #include "log.h"
 #include "client.h"
@@ -339,9 +340,35 @@ bool Hud::calculateScreenPos(const v3s16 &camera_offset, HudElement *e, v2s32 *p
 	return true;
 }
 
+// ---------------------------------------------------------------- VoxHack: the big map's scroll
+static float s_map_scroll_target = 0.0f, s_map_scroll = 0.0f;
+static u64 s_map_scroll_time = 0;
+
+void nhv_set_map_scroll(float px, bool instant)
+{
+	s_map_scroll_target = px;
+	if (instant)
+		s_map_scroll = px;
+}
+
+// where it is this frame: eased toward where it's going (a quick glide)
+static s32 nhv_map_scroll_now()
+{
+	u64 now = porting::getTimeMs();
+	float dt = s_map_scroll_time ? std::min(0.1f, (now - s_map_scroll_time) / 1000.0f) : 0.0f;
+	if (now != s_map_scroll_time) {
+		s_map_scroll_time = now;
+		s_map_scroll += (s_map_scroll_target - s_map_scroll) * (1.0f - std::exp(-dt * 10.0f));
+		if (std::fabs(s_map_scroll_target - s_map_scroll) < 0.25f)
+			s_map_scroll = s_map_scroll_target;
+	}
+	return (s32)std::lround(s_map_scroll);
+}
+
 void Hud::drawLuaElements(const v3s16 &camera_offset, bool only_unhidable,
 		bool above_gui)
 {
+	const s32 map_scroll = nhv_map_scroll_now();
 	const u32 text_height = g_fontengine->getTextHeight();
 	gui::IGUIFont *const font = g_fontengine->getFont();
 
@@ -386,6 +413,8 @@ void Hud::drawLuaElements(const v3s16 &camera_offset, bool only_unhidable,
 
 		v2s32 pos(floor(e->pos.X * (float) m_screensize.X + 0.5),
 				floor(e->pos.Y * (float) m_screensize.Y + 0.5));
+		if (e->style & HUD_STYLE_NHV_MAP_SCROLL)
+			pos.X -= map_scroll; // (VoxHack: across with the big map)
 		switch (e->type) {
 			case HUD_ELEM_TEXT: {
 				unsigned int font_size = g_fontengine->getDefaultFontSize();
