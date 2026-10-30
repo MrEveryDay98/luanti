@@ -28,6 +28,18 @@ void Draw3D::run(PipelineContext &context)
 		context.hud->drawBlockBounds();
 		context.hud->drawSelectionMesh();
 	}
+	extern bool nhv_retro;
+	auto *from = dynamic_cast<TextureBufferOutput *>(m_target);
+	auto *to = dynamic_cast<TextureBufferOutput *>(m_depth_copy);
+	video::IRenderTarget *world = from ? from->peekIrrRenderTarget() : nullptr;
+	if (nhv_retro && world && to) {
+		// (the copy made ready - that activates it - the world copied into
+		// it, then the world's picture drawn on again, not cleared)
+		auto *driver = context.device->getVideoDriver();
+		video::IRenderTarget *copy = to->getIrrRenderTarget(context);
+		driver->blitRenderTarget(world, copy);
+		driver->setRenderTargetEx(world, video::ECBF_NONE);
+	}
 	if (m_with_wield && context.draw_wield_tool)
 		context.client->getCamera()->drawWieldedTool();
 }

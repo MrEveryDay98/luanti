@@ -177,6 +177,9 @@ public:
 	void activate(PipelineContext &context) override;
 
 	video::IRenderTarget *getIrrRenderTarget(PipelineContext &context);
+	// VoxHack: the render target as it is - not activated (nor cleared) for
+	// it; null until it has been once
+	video::IRenderTarget *peekIrrRenderTarget() const { return render_target; }
 
 private:
 	static const u8 NO_DEPTH_TEXTURE = 255;

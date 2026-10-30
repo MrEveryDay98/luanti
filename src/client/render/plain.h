@@ -23,8 +23,13 @@ public:
 	virtual void reset(PipelineContext &context) override {}
 	virtual void run(PipelineContext &context) override;
 
+	// VoxHack: in retro mode, the world (its depth) copied here before the
+	// wielded item clears the depth - the sky told by it (second_stage)
+	void setDepthCopy(RenderTarget *copy) { m_depth_copy = copy; }
+
 private:
 	RenderTarget *m_target {nullptr};
+	RenderTarget *m_depth_copy {nullptr};
 	bool m_with_wield;
 };
 

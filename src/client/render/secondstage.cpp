@@ -108,6 +108,9 @@ RenderStep *addPostProcessing(RenderPipeline *pipeline, RenderStep *previousStep
 	static const u8 TEXTURE_MSAA_DEPTH = 8;
 
 	static const u8 TEXTURE_SCALE_DOWN = 10;
+	// VoxHack: the world before the wielded item (retro mode's sky: plain.h)
+	static const u8 TEXTURE_NHV_WORLD = 30;
+	static const u8 TEXTURE_NHV_WORLD_DEPTH = 31;
 	static const u8 TEXTURE_SCALE_UP = 20;
 
 	// because bloom_format is floating point
@@ -167,6 +170,11 @@ RenderStep *addPostProcessing(RenderPipeline *pipeline, RenderStep *previousStep
 	buffer->setTexture(TEXTURE_EXPOSURE_1, core::dimension2du(1,1), "exposure_1", color_format, /*clear:*/ true);
 	buffer->setTexture(TEXTURE_EXPOSURE_2, core::dimension2du(1,1), "exposure_2", color_format, /*clear:*/ true);
 	buffer->setTexture(TEXTURE_DEPTH, scale, "3d_depthmap", depth_format);
+	buffer->setTexture(TEXTURE_NHV_WORLD, scale, "nhv_world", color_format);
+	buffer->setTexture(TEXTURE_NHV_WORLD_DEPTH, scale, "nhv_world_depth", depth_format);
+	if (auto *draw3d = dynamic_cast<Draw3D *>(previousStep))
+		draw3d->setDepthCopy(pipeline->createOwned<TextureBufferOutput>(buffer,
+				std::vector<u8> { TEXTURE_NHV_WORLD }, TEXTURE_NHV_WORLD_DEPTH));
 
 	// attach buffer to the previous step
 	if (enable_msaa) {
@@ -293,9 +301,10 @@ RenderStep *addPostProcessing(RenderPipeline *pipeline, RenderStep *previousStep
 
 	// final merge
 	shader_id = client->getShaderSource()->getShaderRaw("second_stage");
-	// (VoxHack: and the depth - retro mode tells the sky by it)
+	// (VoxHack: and the world's depth before the wielded item - retro mode
+	// tells the sky by it)
 	PostProcessingStep *effect = pipeline->createOwned<PostProcessingStep>(shader_id,
-			std::vector<u8> { final_stage_source, TEXTURE_SCALE_UP, TEXTURE_EXPOSURE_2, TEXTURE_DEPTH });
+			std::vector<u8> { final_stage_source, TEXTURE_SCALE_UP, TEXTURE_EXPOSURE_2, TEXTURE_NHV_WORLD_DEPTH });
 	pipeline->addStep(effect);
 	if (enable_ssaa)
 		effect->setBilinearFilter(0, true);
