@@ -3,6 +3,7 @@
 // Copyright (C) 2010-2013 celeron55, Perttu Ahola <celeron55@gmail.com>
 
 #include "content_cao.h"
+#include "nhv_camera.h"
 #include <IBillboardSceneNode.h>
 #include <ICameraSceneNode.h>
 #include <IMeshManipulator.h>
@@ -1059,6 +1060,14 @@ void GenericCAO::updateNodePos()
 		getPosRotMatrix().setTranslation(pos);
 		if (node != m_spritenode) { // rotate if not a sprite
 			v3f rot = m_is_local_player ? -m_rotation : -rot_translator.val_current;
+			// (VoxHack: a billboard turned to the camera here, every frame -
+			// its yaw from the game is how far round from facing it)
+			v3f cam;
+			if (nhvBillboard() && nhv_camera::get(&cam)) {
+				v3f d = cam * BS - pos_translator.val_current;
+				f32 yaw = std::atan2(-d.X, d.Z) * core::RADTODEG + rot_translator.val_current.Y;
+				rot = v3f(0.0f, -yaw, 0.0f);
+			}
 			setPitchYawRoll(getPosRotMatrix(), rot);
 		}
 	}

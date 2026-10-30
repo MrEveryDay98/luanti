@@ -749,6 +749,48 @@ int ModApiNetHack::l_nhv_camera_orbit(lua_State *L)
 	return 0;
 }
 
+// core.nhv_camera_path({{t=, pos=, yaw=, pitch=, cut=}...}): the camera
+// flown along a path from now, placed by the client every frame (t: seconds
+// from now; pos: the eyes, nodes; yaw, pitch: radians, as the player's look;
+// cut: jumped to) - nhv_camera.h; core.nhv_camera_path(nil): stop
+int ModApiNetHack::l_nhv_camera_path(lua_State *L)
+{
+	if (!lua_istable(L, 1)) {
+		nhv_camera::stop_path();
+		return 0;
+	}
+	std::vector<nhv_camera::PathPoint> pts;
+	size_t n = lua_objlen(L, 1);
+	for (size_t i = 1; i <= n; i++) {
+		lua_rawgeti(L, 1, i);
+		if (lua_istable(L, -1)) {
+			nhv_camera::PathPoint p;
+			lua_getfield(L, -1, "pos");
+			p.pos = read_v3f(L, -1);
+			lua_pop(L, 1);
+			auto num = [L](const char *k) {
+				lua_getfield(L, -1, k);
+				float v = lua_isnumber(L, -1) ? (float)lua_tonumber(L, -1) : 0.0f;
+				lua_pop(L, 1);
+				return v;
+			};
+			p.t = num("t");
+			p.yaw = num("yaw");
+			p.pitch = num("pitch");
+			lua_getfield(L, -1, "cut");
+			p.cut = lua_toboolean(L, -1);
+			lua_pop(L, 1);
+			pts.push_back(p);
+		}
+		lua_pop(L, 1);
+	}
+	if (pts.empty())
+		nhv_camera::stop_path();
+	else
+		nhv_camera::set_path(pts);
+	return 0;
+}
+
 // core.nhv_bubble_floor({{x=, z=, rx=, rz=, vx=, vz=}...}, floor_y): the
 // Plane of Water's bubbles on the floor, drawn by the client (nil or {}:
 // none) - nhv_camera.h, client/nhv_bubble_floor.cpp
@@ -1222,6 +1264,7 @@ void ModApiNetHack::Initialize(lua_State *L, int top)
 	API_FCT(nhv_player_drift);
 	API_FCT(nhv_bubble_floor);
 	API_FCT(nhv_camera_orbit);
+	API_FCT(nhv_camera_path);
 	API_FCT(nhv_sam_seconds);
 	API_FCT(nhv_map_scroll);
 	API_FCT(nhv_hero_light);

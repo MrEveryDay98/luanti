@@ -328,6 +328,13 @@ public:
 	// upright sprite the thing's picture, cast as the light throws it
 	// (nhvLayOutShadow) on the floor's texture pixels, whole ones
 	// (nhv_shadow_shader)
+	// VoxHack: one marked "nhv:billboard" (the opening's trees) is turned to
+	// face the camera by the client, every frame (updateNodePos)
+	bool nhvBillboard() const
+	{
+		return m_prop.infotext == "nhv:billboard";
+	}
+
 	void nhvLayOutShadow(v3f foot);
 	bool nhvShadow() const
 	{

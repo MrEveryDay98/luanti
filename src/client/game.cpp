@@ -4051,6 +4051,13 @@ void Game::drawScene(ProfilerGraph *graph, RunStats *stats)
 	bool draw_wield_tool = (this->m_game_ui->m_flags.show_hud &&
 			(player->hud_flags & HUD_FLAG_WIELDITEM_VISIBLE) &&
 			(this->camera->getCameraMode() == CAMERA_MODE_FIRST));
+	{
+		// (VoxHack: not while a cutscene flies the camera - nhv_camera.h)
+		std::vector<nhv_camera::PathPoint> path;
+		u64 at_ms;
+		if (nhv_camera::get_path(&path, &at_ms))
+			draw_wield_tool = false;
+	}
 	bool draw_crosshair = (
 			(player->hud_flags & HUD_FLAG_CROSSHAIR_VISIBLE) &&
 			(this->camera->getCameraMode() != CAMERA_MODE_THIRD_FRONT));

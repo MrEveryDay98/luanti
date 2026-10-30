@@ -54,6 +54,24 @@ struct Orbit {
 	float radius = 5, height = 4, speed = 0, angle = 0, look_y = 1;
 	u64 at_ms = 0; // (when it started: the client's angle goes on from there)
 };
+// server (core.nhv_camera_path): the camera flown along a path - a
+// cutscene's (the game's opening: intro_play.lua) - placed by the client
+// every frame, so it moves smoothly: points with when it's there (seconds
+// from the start), where (the eyes, nodes) and how it looks (yaw, pitch:
+// the player's look, radians); a smooth curve through them, but a point
+// that's a cut is jumped to at its time. After the last it stays there.
+// Off: the camera is the player's again.
+struct PathPoint {
+	float t = 0;
+	v3f pos;
+	float yaw = 0, pitch = 0;
+	bool cut = false;
+};
+void set_path(const std::vector<PathPoint> &points);
+void stop_path();
+// (false: no path; at_ms: when it started)
+bool get_path(std::vector<PathPoint> *points, u64 *at_ms);
+
 void set_orbit(const Orbit &o);
 void set_orbit_look(float look_y);
 void stop_orbit();

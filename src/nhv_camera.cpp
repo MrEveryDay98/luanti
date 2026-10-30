@@ -73,6 +73,30 @@ bool get_bubbles(std::vector<Bubble> *list, float *floor_y, u64 *at_ms)
 	return !bubbles.empty();
 }
 
+static std::vector<PathPoint> path;
+static u64 path_at = 0;
+
+void set_path(const std::vector<PathPoint> &points)
+{
+	std::lock_guard<std::mutex> guard(lock);
+	path = points;
+	path_at = porting::getTimeMs();
+}
+
+void stop_path()
+{
+	std::lock_guard<std::mutex> guard(lock);
+	path.clear();
+}
+
+bool get_path(std::vector<PathPoint> *points, u64 *at_ms)
+{
+	std::lock_guard<std::mutex> guard(lock);
+	*points = path;
+	*at_ms = path_at;
+	return !path.empty();
+}
+
 static Orbit orbit;
 
 void set_orbit(const Orbit &o)

@@ -549,6 +549,53 @@ void Camera::update(LocalPlayer* player, f32 frametime, f32 tool_reload_ratio)
 		}
 	}
 
+	// (VoxHack: a cutscene's camera flown along a path - nhv_camera::get_path
+	// - placed here every frame: a smooth curve through its points, jumping
+	// to a point that's a cut)
+	{
+		std::vector<nhv_camera::PathPoint> pts;
+		u64 at_ms;
+		if (nhv_camera::get_path(&pts, &at_ms)) {
+			f32 t = (porting::getTimeMs() - at_ms) / 1000.0f;
+			size_t i = 0;
+			while (i + 1 < pts.size() && pts[i + 1].t <= t)
+				i++;
+			v3f pos = pts[i].pos;
+			f32 yaw = pts[i].yaw, pitch = pts[i].pitch;
+			if (i + 1 < pts.size() && !pts[i + 1].cut && pts[i + 1].t > pts[i].t) {
+				// (Catmull-Rom: the points either side, where there's no cut
+				// between - otherwise this one, again)
+				const auto &p1 = pts[i], &p2 = pts[i + 1];
+				const auto &p0 = (i > 0 && !p1.cut) ? pts[i - 1] : p1;
+				const auto &p3 = (i + 2 < pts.size() && !pts[i + 2].cut) ? pts[i + 2] : p2;
+				f32 u = (t - p1.t) / (p2.t - p1.t);
+				auto cr = [u](f32 a, f32 b, f32 c, f32 d) {
+					return 0.5f * ((2.0f * b) + (c - a) * u + (2.0f * a - 5.0f * b + 4.0f * c - d) * u * u
+							+ (3.0f * b - a - 3.0f * c + d) * u * u * u);
+				};
+				// (angles the short way round from this point's)
+				auto near_to = [](f32 a, f32 to) {
+					while (a - to > core::PI)
+						a -= 2.0f * core::PI;
+					while (a - to < -core::PI)
+						a += 2.0f * core::PI;
+					return a;
+				};
+				f32 y1 = p1.yaw, y2 = near_to(p2.yaw, y1);
+				f32 y0 = near_to(p0.yaw, y1), y3 = near_to(p3.yaw, y2);
+				pos = v3f(cr(p0.pos.X, p1.pos.X, p2.pos.X, p3.pos.X),
+						cr(p0.pos.Y, p1.pos.Y, p2.pos.Y, p3.pos.Y),
+						cr(p0.pos.Z, p1.pos.Z, p2.pos.Z, p3.pos.Z));
+				yaw = cr(y0, y1, y2, y3);
+				pitch = cr(p0.pitch, p1.pitch, p2.pitch, p3.pitch);
+			}
+			m_camera_position = pos * BS;
+			m_camera_direction = v3f(-std::sin(yaw) * std::cos(pitch), -std::sin(pitch),
+					std::cos(yaw) * std::cos(pitch));
+			abs_cam_up = v3f(0, 1, 0);
+		}
+	}
+
 	// NetHack Voxel: shaking (a kick landing): a quick jitter, dying away
 	v3f nhv_shake;
 	if (m_nhv_shake > 0.0f) {
