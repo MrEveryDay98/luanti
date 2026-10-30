@@ -10,7 +10,7 @@
 extern "C" {
 int nhv_sam_text_to_phonemes(const char *text, char *out, int out_size);
 int nhv_sam_render_phonemes(const char *phonemes, int spd, int ptch, int thrt, int mth, int sing,
-		unsigned char **out);
+		unsigned char **out, int hifi, float **hifi_out);
 }
 
 namespace nhvsam {
@@ -642,16 +642,24 @@ std::vector<short> speak(const std::string &text, const Settings &s, const Dicti
 			pitch -= 6;
 		}
 		unsigned char *buf = nullptr;
+		float *hifi = nullptr;
 		int n = nhv_sam_render_phonemes(p.phonemes.c_str(), std::clamp(speed, 1, 255), std::clamp(pitch, 1, 255),
-				std::clamp(s.throat, 1, 255), std::clamp(s.mouth, 1, 255), s.sing, &buf);
+				std::clamp(s.throat, 1, 255), std::clamp(s.mouth, 1, 255), s.sing, &buf, s.hifi, &hifi);
 		if (n <= 0)
 			continue;
 		if (!pcm.empty())
 			pcm.insert(pcm.end(), GAP, 0);
 		size_t at = pcm.size();
-		for (int i = 0; i < n; i++)
-			pcm.push_back((short)(((int)buf[i] - 128) * 256));
-		std::free(buf);
+		if (hifi) {
+			// (hi-fi: sam_hifi.h)
+			for (int i = 0; i < n; i++)
+				pcm.push_back((short)std::clamp(hifi[i] * 32767.0f, -32768.0f, 32767.0f));
+			std::free(hifi);
+		} else {
+			for (int i = 0; i < n; i++)
+				pcm.push_back((short)(((int)buf[i] - 128) * 256));
+			std::free(buf);
+		}
 		// soft edges, so pieces don't click
 		int fade = std::min(FADE, n / 2);
 		for (int i = 0; i < fade; i++) {

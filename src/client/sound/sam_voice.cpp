@@ -54,21 +54,25 @@ static std::vector<short> samSpeak(const std::string &name)
 	if (bar == std::string::npos)
 		return {};
 	// speed, pitch, throat, mouth, sing, phonetic, smooth, tone, then the
-	// effect chain (sam_speech.h)
+	// effect chain (sam_speech.h), then hi-fi (left out: off)
 	int v[8] = {72, 64, 128, 128, 0, 0, 0, 1};
 	std::string effects;
+	bool hifi = false;
 	{
 		std::istringstream ss(name.substr(sizeof(SAM_PREFIX) - 1, bar - (sizeof(SAM_PREFIX) - 1)));
 		std::string f;
-		for (int i = 0; i < 9 && std::getline(ss, f, ','); i++) {
+		for (int i = 0; i < 10 && std::getline(ss, f, ','); i++) {
 			if (i < 8)
 				v[i] = std::atoi(f.c_str());
-			else
+			else if (i == 8)
 				effects = f;
+			else
+				hifi = std::atoi(f.c_str()) != 0;
 		}
 	}
 	nhvsam::Settings s;
 	s.effects = effects;
+	s.hifi = hifi;
 	s.speed = v[0], s.pitch = v[1], s.throat = v[2], s.mouth = v[3];
 	s.sing = v[4], s.phonetic = v[5], s.smooth = v[6], s.tone = v[7];
 	return nhvsam::speak(name.substr(bar + 1), s, dictionary());

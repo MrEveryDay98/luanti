@@ -1,8 +1,9 @@
 // VoxHack: lines spoken live by SAM (Software Automatic Mouth).
 //
 // A sound played with a name like
-//     nhv_sam:<speed>,<pitch>,<throat>,<mouth>,<sing>,<phonetic>,<smooth>,<tone>,<effects>|<text>
-// (flags 0|1; effects like "echo:delay=250/reverb:room=60", may be empty)
+//     nhv_sam:<speed>,<pitch>,<throat>,<mouth>,<sing>,<phonetic>,<smooth>,<tone>,<effects>[,<hifi>]|<text>
+// (flags 0|1; effects like "echo:delay=250/reverb:room=60", may be empty;
+// hifi: sam_hifi.h)
 // isn't a file: the sound manager has SAM read the text there and then
 // (sam_speech.h: the pronunciation dictionary named by the setting
 // nhv_sam_dict, numbers as words...) and plays the result like any

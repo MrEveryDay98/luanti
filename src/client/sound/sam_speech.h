@@ -23,6 +23,7 @@ struct Settings {
 	bool sing = false;      // SAM's sing mode: the pitch follows the phonemes
 	bool phonetic = false;  // the whole text is SAM phonemes
 	bool smooth = false;    // soften SAM's 8-bit edge
+	bool hifi = false;      // voice SAM's frames anew, in full quality (sam_hifi.h)
 	bool tone = true;       // exclamations are quicker and higher
 	// effects applied in order after SAM speaks:
 	// "echo:delay=250:decay=0.4/reverb:room=60:mix=35" (see sam_speech.cpp)

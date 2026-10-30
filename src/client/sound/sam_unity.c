@@ -117,22 +117,40 @@
 #define wait1 nhv_sam_wait1
 #define wait2 nhv_sam_wait2
 
-int debug = 0; /* (main.c, which isn't used, defines it) */
+#include "sam_hifi.h"
 
-/* debug.c's printing only runs with debug on; it isn't built (its table
- * declarations don't match SamTabs.h in one translation unit). (No
- * #include "debug.h" here: that would find the engine's.) */
+/* SAM's debug flag means hi-fi here (sam_hifi.h): render.c calls
+ * PrintOutput (below) with its finished frames only when it's on - where
+ * hi-fi takes them. Its debug messages say nothing: printf is silenced. */
+int debug = 0; /* (main.c, which isn't used, defines it) */
+#define printf(...) ((void)0)
+
+/* debug.c's printing isn't built (its table declarations don't match
+ * SamTabs.h in one translation unit). (No #include "debug.h" here: that
+ * would find the engine's.) */
 void PrintPhonemes(unsigned char *a, unsigned char *b, unsigned char *c) { (void)a; (void)b; (void)c; }
+static void hifi_frames(unsigned char *flags, unsigned char *f1, unsigned char *f2, unsigned char *f3,
+		unsigned char *a1, unsigned char *a2, unsigned char *a3, unsigned char *pitches);
 void PrintOutput(unsigned char *a, unsigned char *b, unsigned char *c, unsigned char *d, unsigned char *e,
 		unsigned char *f, unsigned char *g, unsigned char *h)
 {
-	(void)a; (void)b; (void)c; (void)d; (void)e; (void)f; (void)g; (void)h;
+	hifi_frames(a, b, c, d, e, f, g, h);
 }
 void PrintRule(int offset) { (void)offset; }
 
 #include "reciter.c"
 #include "render.c"
 #include "sam.c"
+
+/* the frames of a breath group, to hi-fi: as many as its phonemes last */
+static void hifi_frames(unsigned char *flags, unsigned char *f1, unsigned char *f2, unsigned char *f3,
+		unsigned char *a1, unsigned char *a2, unsigned char *a3, unsigned char *pitches)
+{
+	int i, count = 0;
+	for (i = 0; i < 60 && phonemeIndexOutput[i] != 255; i++)
+		count += phonemeLengthOutput[i];
+	nhv_sam_hifi_frames(count, speed, flags, f1, f2, f3, a1, a2, a3, pitches);
+}
 
 /* Spells a short piece of text (at most ~70 characters: SAM's buffers are
  * 256 bytes once it's spelled out) as SAM phonemes, into out (out_size >=
@@ -162,9 +180,11 @@ int nhv_sam_text_to_phonemes(const char *text, char *out, int out_size)
 
 /* Renders SAM phonemes (at most ~250 characters). On success *out is 8-bit
  * unsigned mono PCM at 22050 Hz, malloc'd (the caller frees it), and its
- * length is returned; 0 if SAM can't read them. */
+ * length is returned; 0 if SAM can't read them. With hifi, *hifi_out is
+ * the line in hi-fi instead (float, sam_hifi.h; malloc'd too) and that's
+ * its length. */
 int nhv_sam_render_phonemes(const char *phonemes, int spd, int ptch, int thrt, int mth, int sing,
-		unsigned char **out)
+		unsigned char **out, int hifi, float **hifi_out)
 {
 	char in[256];
 	size_t n;
@@ -183,10 +203,20 @@ int nhv_sam_render_phonemes(const char *phonemes, int spd, int ptch, int thrt, i
 	SetMouth((unsigned char)mth);
 	singmode = sing ? 1 : 0; /* (EnableSingmode() can't turn it off again) */
 	SetInput(in);
+	debug = hifi ? 1 : 0;
+	if (hifi)
+		nhv_sam_hifi_begin();
 	if (!SAMMain()) {
 		free(buffer);
 		buffer = NULL;
+		debug = 0;
 		return 0;
+	}
+	debug = 0;
+	if (hifi) {
+		free(buffer);
+		buffer = NULL;
+		return nhv_sam_hifi_take(hifi_out);
 	}
 	len = GetBufferLength() / 50;
 	if (len <= 0 || len > 22050 * 10) {
