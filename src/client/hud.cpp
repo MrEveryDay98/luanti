@@ -419,7 +419,11 @@ void Hud::drawLuaElements(const v3s16 &camera_offset, bool only_unhidable,
 			pos.X -= map_scroll; // (VoxHack: across with the big map)
 		switch (e->type) {
 			case HUD_ELEM_TEXT: {
-				unsigned int font_size = g_fontengine->getDefaultFontSize();
+				// (VoxHack: monospace text from the mono font's own size - it
+				// can be another font: retro mode's small one)
+				const bool mono = e->style & HUD_STYLE_MONO;
+				unsigned int font_size = mono ? g_fontengine->getFontSize(FM_Mono)
+						: g_fontengine->getDefaultFontSize();
 
 				if (e->size.X > 0)
 					font_size *= e->size.X;
@@ -434,7 +438,8 @@ void Hud::drawLuaElements(const v3s16 &camera_offset, bool only_unhidable,
 					// then the text size setting alone picks the multiple (the
 					// HUD size can't scale it by 1.5 etc.); the game sizes the
 					// HUD's boxes to fit it
-					u16 step = g_settings->getU16("font_size_divisible_by");
+					u16 step = g_settings->getU16(mono ? "mono_font_size_divisible_by"
+							: "font_size_divisible_by");
 					f32 px = font_size * (step > 1 ? RenderingEngine::getDisplayDensity()
 							: m_scale_factor); // wanted height in pixels
 					if (step > 1)
@@ -449,7 +454,7 @@ void Hud::drawLuaElements(const v3s16 &camera_offset, bool only_unhidable,
 					font_size -= 3;
 #endif
 				auto textfont = g_fontengine->getFont(FontSpec(font_size,
-					(e->style & HUD_STYLE_MONO) ? FM_Mono : FM_Unspecified,
+					mono ? FM_Mono : FM_Unspecified,
 					e->style & HUD_STYLE_BOLD, e->style & HUD_STYLE_ITALIC));
 
 				gui::CGUITTFont *ttfont = nullptr;
