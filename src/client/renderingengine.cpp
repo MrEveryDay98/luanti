@@ -290,8 +290,12 @@ bool RenderingEngine::setupTopLevelWindow()
 
 bool RenderingEngine::setWindowIcon()
 {
+	// (VoxHack: its own - tools/make_icon.py - else Luanti's)
 	irr_ptr<video::IImage> img(driver->createImageFromFile(
-			(porting::path_share + "/textures/base/pack/logo.png").c_str()));
+			(porting::path_share + "/textures/base/pack/nhv_icon.png").c_str()));
+	if (!img)
+		img.reset(driver->createImageFromFile(
+				(porting::path_share + "/textures/base/pack/logo.png").c_str()));
 	if (!img) {
 		warningstream << "Could not load icon file." << std::endl;
 		return false;
