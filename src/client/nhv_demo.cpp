@@ -366,6 +366,11 @@ static void record_changed(u8 type, std::string *last, const std::string &now)
 	}
 }
 
+// (the camera at most this often: a fast screen draws hundreds of frames a
+// second - playback glides between them, play_frame)
+static const u64 FRAME_MS = 16;
+static u64 rec_frame_ms = 0;
+
 void record_frame(v3f pos, f32 yaw, f32 pitch, u8 camera_mode)
 {
 	if (!recording())
@@ -377,8 +382,14 @@ void record_frame(v3f pos, f32 yaw, f32 pitch, u8 camera_mode)
 	put_f32(f, yaw);
 	put_f32(f, pitch);
 	f.push_back((char)camera_mode);
-	// (standing still, looking the same way: nothing new)
-	record_changed(REC_FRAME, &rec_last_frame, f);
+	// (standing still, looking the same way: nothing new; changed sooner
+	// than FRAME_MS after the last: kept for a frame or two later - the
+	// camera where it came to rest is always recorded)
+	u64 now = porting::getTimeMs();
+	if (f != rec_last_frame && now - rec_frame_ms >= FRAME_MS) {
+		rec_frame_ms = now;
+		record_changed(REC_FRAME, &rec_last_frame, f);
+	}
 
 	// what's passed outside the messages, when it changes
 	for (const char *key : SETTINGS) {
@@ -523,6 +534,11 @@ static bool play_have_frame = false;
 static v3f play_pos;
 static f32 play_yaw = 0.0f, play_pitch = 0.0f;
 static u8 play_mode = 0;
+// (the camera gliding from the frame before - recorded up to 60 a second,
+// shown at whatever rate the screen draws: play_frame)
+static v3f glide_pos;
+static f32 glide_yaw = 0.0f, glide_pitch = 0.0f;
+static f64 glide_t0 = 0.0, glide_ms = 0.0;
 // the next record, read ahead (its time decides when it's due)
 static bool next_ok = false;
 static u8 next_type = 0;
@@ -725,6 +741,12 @@ static void apply_record(u8 type, const std::string &d)
 		play_packets.push_back(d);
 		break;
 	case REC_FRAME:
+		// (from where the last one was, over as long as it was ago - a
+		// frame or so; a long wait - the camera standing still - none)
+		glide_pos = play_pos, glide_yaw = play_yaw, glide_pitch = play_pitch;
+		glide_ms = play_have_frame && !play_catchup
+				? std::min<f64>(play_clock - glide_t0, 2.0 * FRAME_MS) : 0.0;
+		glide_t0 = play_clock;
 		play_pos.X = get_f32(d, at);
 		play_pos.Y = get_f32(d, at);
 		play_pos.Z = get_f32(d, at);
@@ -872,6 +894,14 @@ bool play_frame(v3f *pos, f32 *yaw, f32 *pitch, u8 *camera_mode)
 	*yaw = play_yaw;
 	*pitch = play_pitch;
 	*camera_mode = play_mode;
+	if (glide_ms > 0.0 && play_clock < glide_t0 + glide_ms) {
+		f32 k = (f32)((play_clock - glide_t0) / glide_ms);
+		*pos = glide_pos + (play_pos - glide_pos) * k;
+		// (the shorter way round)
+		f32 dyaw = std::fmod(play_yaw - glide_yaw + 540.0f, 360.0f) - 180.0f;
+		*yaw = glide_yaw + dyaw * k;
+		*pitch = glide_pitch + (play_pitch - glide_pitch) * k;
+	}
 	return true;
 }
 
