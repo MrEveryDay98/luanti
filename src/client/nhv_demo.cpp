@@ -15,6 +15,11 @@
 //     speed, angle, look y
 //   7 your inventory opened (nothing)
 // (NHVDEMO1: the same, not compressed - the first demos)
+//
+// Beside it, <demo>.info: the game's details as they were last ("key=value"
+// lines, from the game: set_info) - what the title's Demos list shows - and
+// start=<ms>, when the game began (played back from a little before it:
+// what came first, the title screen, the prologue, gone through at once).
 
 #include "nhv_demo.h"
 #include "nhv_camera.h"
@@ -31,7 +36,9 @@
 #include <ctime>
 #include <deque>
 #include <fstream>
+#include <algorithm>
 #include <map>
+#include <mutex>
 #include <vector>
 #include <zstd.h>
 
@@ -85,6 +92,12 @@ static void z_write(const void *src, size_t len, ZSTD_EndDirective mode)
 	}
 }
 static u64 rec_t0 = 0;
+// (the server thread's set_info and the client's recording: rec_path and
+// rec_had_info under rec_info_lock)
+static std::mutex rec_info_lock;
+static std::string rec_path;
+static bool rec_had_info = false;
+static u32 rec_game_ms = 0; // (when the game's details first came)
 static std::map<std::string, std::string> rec_settings;
 static f32 rec_roll = 0.0f;
 static std::string rec_bubbles, rec_orbit;
@@ -136,6 +149,11 @@ void record_begin(const std::string &name)
 	ZSTD_CCtx_setParameter(rec_z, ZSTD_c_compressionLevel, 6);
 	rec_last_frame.clear();
 	rec_t0 = porting::getTimeMs();
+	{
+		std::lock_guard<std::mutex> lock(rec_info_lock);
+		rec_path = path;
+		rec_had_info = false;
+	}
 	rec_settings.clear();
 	rec_roll = 0.0f;
 	rec_bubbles.clear();
@@ -240,8 +258,30 @@ void record_end()
 		ZSTD_freeCCtx(rec_z);
 		rec_z = nullptr;
 		rec_file.close();
-		actionstream << "[nhv] demo: recording ended" << std::endl;
+		std::lock_guard<std::mutex> lock(rec_info_lock);
+		// (no game in it - the title screen, the prologue: not kept)
+		if (!rec_had_info) {
+			fs::DeleteSingleFileOrEmptyDirectory(rec_path);
+			actionstream << "[nhv] demo: recording ended, no game in it (not kept)" << std::endl;
+		} else {
+			actionstream << "[nhv] demo: recording ended" << std::endl;
+		}
+		rec_path.clear();
 	}
+}
+
+void set_info(const Info &info)
+{
+	std::lock_guard<std::mutex> lock(rec_info_lock);
+	if (rec_path.empty() || info.empty())
+		return;
+	if (!rec_had_info)
+		rec_game_ms = (u32)(porting::getTimeMs() - rec_t0);
+	std::ofstream f(rec_path + ".info", std::ios::binary | std::ios::trunc);
+	for (const auto &kv : info)
+		f << kv.first << "=" << kv.second << "\n";
+	f << "start=" << rec_game_ms << "\n";
+	rec_had_info = true;
 }
 
 // ---------------------------------------------------------------- playback
@@ -250,6 +290,9 @@ std::string play_path;
 static std::ifstream play_file;
 static bool play_is_open = false;
 static f64 play_clock = 0.0;      // ms
+// (from where the game began: jumped to once the client's ready - before,
+// it's still taking in the media and definitions it needs first)
+static f64 play_skip = 0.0;
 static bool play_pause = false, play_done = false;
 static f32 play_rate = 1.0f;
 static std::deque<std::string> play_packets; // u16 command + data, due
@@ -335,28 +378,19 @@ static void read_next()
 
 static std::string play_name;
 
-bool play_open(std::string *name, std::string *error)
+// a demo's head read: false and why if this VoxHack can't play it
+// (compressed: NHVDEMO2)
+static bool read_head(std::istream &f, std::string *name, bool *compressed, std::string *error)
 {
-	if (play_is_open) { // (already open: the launcher may ask again)
-		*name = play_name;
-		return true;
-	}
-	play_file.open(play_path, std::ios::binary);
-	if (!play_file.good()) {
-		*error = "Can't open the demo " + play_path;
-		return false;
-	}
 	std::string magic, version;
-	std::getline(play_file, magic);
-	std::getline(play_file, version);
-	std::getline(play_file, *name);
+	std::getline(f, magic);
+	std::getline(f, version);
+	std::getline(f, *name);
 	if (magic != MAGIC && magic != MAGIC_PLAIN) {
-		*error = "That isn't a VoxHack demo: " + play_path;
+		*error = "That isn't a VoxHack demo.";
 		return false;
 	}
-	play_z = magic == MAGIC;
-	if (play_z)
-		play_dz = ZSTD_createDCtx();
+	*compressed = magic == MAGIC;
 	// (the protocol it was recorded with must be this one's; the first demos
 	// don't say - they're tried)
 	if (version.rfind("proto ", 0) == 0) {
@@ -368,9 +402,39 @@ bool play_open(std::string *name, std::string *error)
 			return false;
 		}
 	}
+	return true;
+}
+
+bool play_open(std::string *name, std::string *error)
+{
+	if (play_is_open) { // (already open: the launcher may ask again)
+		*name = play_name;
+		return true;
+	}
+	play_file.open(play_path, std::ios::binary);
+	if (!play_file.good()) {
+		*error = "Can't open the demo " + play_path;
+		return false;
+	}
+	if (!read_head(play_file, name, &play_z, error)) {
+		*error += " (" + play_path + ")";
+		play_file.close();
+		return false;
+	}
+	if (play_z)
+		play_dz = ZSTD_createDCtx();
 	play_is_open = true;
 	play_name = *name;
 	play_clock = 0.0;
+	play_skip = 0.0;
+	// (from a little before the game began, if it says when: what came
+	// before it goes by at once)
+	std::ifstream inf(play_path + ".info", std::ios::binary);
+	std::string line;
+	while (std::getline(inf, line)) {
+		if (line.rfind("start=", 0) == 0)
+			play_skip = std::max(0.0, atof(line.c_str() + 6) - 1500.0);
+	}
 	read_next();
 	actionstream << "[nhv] demo: playing " << play_path << " (" << *name << ")" << std::endl;
 	return true;
@@ -491,6 +555,13 @@ void play_step(f32 dtime)
 		play_done = true;
 }
 
+void play_running()
+{
+	if (play_skip > play_clock)
+		play_clock = play_skip;
+	play_skip = 0.0;
+}
+
 bool play_next_packet(NetworkPacket *pkt)
 {
 	if (play_packets.empty())
@@ -557,6 +628,97 @@ void play_end()
 		play_dz = nullptr;
 	}
 	play_is_open = false;
+}
+
+// ---------------------------------------------------------------- the list
+static std::string demo_dir()
+{
+	return porting::path_user + DIR_DELIM + "demos";
+}
+
+// a name from the list: in the demos folder, a demo
+static bool valid_name(const std::string &file)
+{
+	const std::string ext = ".nhvdemo";
+	return file.size() > ext.size() && file.find_first_of("/\\:") == std::string::npos
+			&& file.find("..") == std::string::npos
+			&& file.compare(file.size() - ext.size(), ext.size(), ext) == 0;
+}
+
+std::vector<Entry> list()
+{
+	std::string recording_now;
+	{
+		std::lock_guard<std::mutex> lock(rec_info_lock);
+		recording_now = rec_path;
+	}
+	std::vector<Entry> out;
+	const std::string dir = demo_dir();
+	for (const fs::DirListNode &n : fs::GetDirListing(dir)) {
+		const std::string path = dir + DIR_DELIM + n.name;
+		if (n.dir || !valid_name(n.name) || path == recording_now)
+			continue;
+		Entry e;
+		e.file = n.name;
+		std::ifstream f(path, std::ios::binary);
+		bool z = false;
+		e.playable = f.good() && read_head(f, &e.name, &z, &e.why);
+		f.clear();
+		f.seekg(0, std::ios::end);
+		e.size = (u64)std::max<std::streamoff>(0, f.tellg());
+		// (named as it was recorded: 2026-10-30_14-05-09.nhvdemo)
+		int Y, M, D, h, m, s;
+		if (sscanf(n.name.c_str(), "%4d-%2d-%2d_%2d-%2d-%2d", &Y, &M, &D, &h, &m, &s) == 6) {
+			char buf[32];
+			snprintf(buf, sizeof buf, "%04d-%02d-%02d %02d:%02d", Y, M, D, h, m);
+			e.date = buf;
+		}
+		std::ifstream inf(path + ".info", std::ios::binary);
+		std::string line;
+		while (std::getline(inf, line)) {
+			size_t eq = line.find('=');
+			if (eq != std::string::npos)
+				e.info.emplace_back(line.substr(0, eq), line.substr(eq + 1));
+		}
+		out.push_back(e);
+	}
+	// (newest first: the names are their dates)
+	std::sort(out.begin(), out.end(), [](const Entry &a, const Entry &b) {
+		return a.file > b.file;
+	});
+	return out;
+}
+
+bool remove(const std::string &file)
+{
+	if (!valid_name(file))
+		return false;
+	const std::string path = demo_dir() + DIR_DELIM + file;
+	fs::DeleteSingleFileOrEmptyDirectory(path + ".info");
+	return fs::DeleteSingleFileOrEmptyDirectory(path);
+}
+
+static std::mutex queue_lock;
+static std::string queued;
+
+bool queue(const std::string &file)
+{
+	const std::string path = demo_dir() + DIR_DELIM + file;
+	if (!valid_name(file) || !fs::PathExists(path))
+		return false;
+	std::lock_guard<std::mutex> lock(queue_lock);
+	queued = path;
+	return true;
+}
+
+bool take_queued(std::string *path)
+{
+	std::lock_guard<std::mutex> lock(queue_lock);
+	if (queued.empty())
+		return false;
+	*path = queued;
+	queued.clear();
+	return true;
 }
 
 } // namespace nhv_demo

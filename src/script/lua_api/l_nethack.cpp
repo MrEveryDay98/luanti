@@ -5,6 +5,7 @@
 #include "nhv_camera.h"
 #include "client/sound/sam_voice.h"
 #include "client/hud.h"
+#include "client/nhv_demo.h"
 #include "server.h"
 #include "mapblock.h"
 #include "lua_api/l_nethack.h"
@@ -807,6 +808,78 @@ int ModApiNetHack::l_nhv_camera_path(lua_State *L)
 	return 0;
 }
 
+// core.nhv_demo_info({key = value...}): the game's details now (name, role,
+// dlvl...), kept beside the demo being recorded - what the title's Demos
+// list shows (nhv_demo.h; nothing's kept if no demo's being recorded)
+int ModApiNetHack::l_nhv_demo_info(lua_State *L)
+{
+	nhv_demo::Info info;
+	if (lua_istable(L, 1)) {
+		lua_pushnil(L);
+		while (lua_next(L, 1)) {
+			if (lua_type(L, -2) == LUA_TSTRING) {
+				std::string k = lua_tostring(L, -2);
+				std::string v = lua_isboolean(L, -1) ? (lua_toboolean(L, -1) ? "true" : "false")
+						: lua_tostring(L, -1) ? lua_tostring(L, -1) : "";
+				// (one line each)
+				std::replace(v.begin(), v.end(), '\n', ' ');
+				std::replace(v.begin(), v.end(), '\r', ' ');
+				if (k.find_first_of("=\n\r") == std::string::npos)
+					info.emplace_back(k, v);
+			}
+			lua_pop(L, 1);
+		}
+		std::sort(info.begin(), info.end());
+	}
+	nhv_demo::set_info(info);
+	return 0;
+}
+
+// core.nhv_demo_list() -> {{file=, size=, date=, name=, playable=, why=,
+// info = {key = value...}}...}: the demos recorded, newest first (date:
+// "2026-10-30 14:05"; playable false: why says why - another version's)
+int ModApiNetHack::l_nhv_demo_list(lua_State *L)
+{
+	std::vector<nhv_demo::Entry> list = nhv_demo::list();
+	lua_createtable(L, (int)list.size(), 0);
+	int i = 0;
+	for (const nhv_demo::Entry &e : list) {
+		lua_createtable(L, 0, 7);
+		set_str(L, "file", e.file.c_str());
+		lua_pushnumber(L, (lua_Number)e.size);
+		lua_setfield(L, -2, "size");
+		set_str(L, "date", e.date.c_str());
+		set_str(L, "name", e.name.c_str());
+		lua_pushboolean(L, e.playable);
+		lua_setfield(L, -2, "playable");
+		set_str(L, "why", e.why.c_str());
+		lua_createtable(L, 0, (int)e.info.size());
+		for (const auto &kv : e.info) {
+			lua_pushstring(L, kv.second.c_str());
+			lua_setfield(L, -2, kv.first.c_str());
+		}
+		lua_setfield(L, -2, "info");
+		lua_rawseti(L, -2, ++i);
+	}
+	return 1;
+}
+
+// core.nhv_demo_delete(file) -> bool: a demo from the list deleted
+int ModApiNetHack::l_nhv_demo_delete(lua_State *L)
+{
+	lua_pushboolean(L, nhv_demo::remove(luaL_checkstring(L, 1)));
+	return 1;
+}
+
+// core.nhv_demo_play(file) -> bool: a demo from the list played as this
+// session ends - let the player go with "nhv:demo" (core.disconnect_player)
+// - then back to the game (clientlauncher.cpp)
+int ModApiNetHack::l_nhv_demo_play(lua_State *L)
+{
+	lua_pushboolean(L, nhv_demo::queue(luaL_checkstring(L, 1)));
+	return 1;
+}
+
 // core.nhv_bubble_floor({{x=, z=, rx=, rz=, vx=, vz=}...}, floor_y): the
 // Plane of Water's bubbles on the floor, drawn by the client (nil or {}:
 // none) - nhv_camera.h, client/nhv_bubble_floor.cpp
@@ -1281,6 +1354,10 @@ void ModApiNetHack::Initialize(lua_State *L, int top)
 	API_FCT(nhv_bubble_floor);
 	API_FCT(nhv_camera_orbit);
 	API_FCT(nhv_camera_path);
+	API_FCT(nhv_demo_info);
+	API_FCT(nhv_demo_list);
+	API_FCT(nhv_demo_delete);
+	API_FCT(nhv_demo_play);
 	API_FCT(nhv_sam_seconds);
 	API_FCT(nhv_map_scroll);
 	API_FCT(nhv_hero_light);

@@ -464,12 +464,17 @@ void GameFormSpec::showPauseMenu()
 	if (!simple_singleplayer_mode)
 		// TRANSLATORS: Pause menu button, try to keep the translation short
 		buttons.push_back({false, "btn_change_password", strgettext("Change Password")});
+	// (VoxHack: a demo playing - no game to ask for these)
+	const bool demo = nhv_demo::playing();
 	// VoxHack: the keys, explained (the game shows them)
-	buttons.push_back({true, "btn_nhv_help", strgettext("Help")});
+	if (!demo)
+		buttons.push_back({true, "btn_nhv_help", strgettext("Help")});
 	// VoxHack: the game's achievements and NetHack's own options
-	buttons.push_back({true, "btn_nhv_achievements", strgettext("Achievements")});
+	if (!demo)
+		buttons.push_back({true, "btn_nhv_achievements", strgettext("Achievements")});
 	// (VoxHack's options and NetHack's, one screen: Luanti's Settings below)
-	buttons.push_back({true, "btn_nhv_options", strgettext("Options")});
+	if (!demo)
+		buttons.push_back({true, "btn_nhv_options", strgettext("Options")});
 	// TRANSLATORS: Try to keep the translation short
 	buttons.push_back({false, "btn_settings", strgettext("Settings")});
 #ifndef __ANDROID__
@@ -479,8 +484,12 @@ void GameFormSpec::showPauseMenu()
 #endif
 #endif
 	// NetHack Voxel: no main menu to go back to; Quit saves and goes back to
-	// the game's title screen (Quit there leaves the game)
-	buttons.push_back({true, "btn_nhv_title", strgettext("Quit")});
+	// the game's title screen (Quit there leaves the game) - a demo playing:
+	// it's left (back to the game, if it was played from its title)
+	if (demo)
+		buttons.push_back({true, "btn_exit_menu", strgettext("Leave the demo")});
+	else
+		buttons.push_back({true, "btn_nhv_title", strgettext("Quit")});
 
 	const double menu_w = 14.25;
 	double button_w = 3.5;

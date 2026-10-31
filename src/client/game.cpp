@@ -727,6 +727,8 @@ void Game::run()
 		if (m_is_paused)
 			dtime = 0.0f;
 
+		if (nhv_demo::playing())
+			nhv_demo::play_running();
 		step(dtime);
 
 		// (VoxHack: a demo playing - you where you were then; recording one -
@@ -1399,6 +1401,9 @@ bool Game::checkConnection()
 		// NetHack Voxel: "Quit" on the game's title screen closes the game
 		// without an error message
 		if (reason == "nhv:quit")
+			return false;
+		// (... and its Demos: the game let go, a demo played - clientlauncher.cpp)
+		if (reason == "nhv:demo")
 			return false;
 
 		errordata->setError(

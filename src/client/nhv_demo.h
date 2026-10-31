@@ -19,6 +19,8 @@
 
 #include "irrlichttypes_bloated.h"
 #include <string>
+#include <utility>
+#include <vector>
 
 class NetworkPacket;
 
@@ -49,6 +51,9 @@ bool play_open(std::string *name, std::string *error);
 // the demo's clock goes on (dtime: real seconds; paused or sped up here);
 // what's due is applied - settings, shared state - or queued
 void play_step(f32 dtime);
+// the game's running (the client's ready): from where the game began, if
+// the demo says (what came before - the title, the prologue - at once)
+void play_running();
 // the next message due, if any
 bool play_next_packet(NetworkPacket *pkt);
 // the inventory was opened now: true once (then it's shown)
@@ -62,5 +67,31 @@ void play_speed(f32 factor); // times the speed by this (0.25 .. 8)
 f32 play_speed_now();
 bool play_ended();
 void play_end(); // put back the settings it changed
+
+// ---------------------------------------------------------------- the list
+// (the title's Demos: core.nhv_demo_*, l_nethack.cpp)
+typedef std::vector<std::pair<std::string, std::string>> Info;
+// the game's details now, from the server as they change (name, role,
+// dlvl...): kept beside the demo being recorded, as <demo>.info ("key=value"
+// lines). A recording that never had any - only the title screen or the
+// prologue, no game - is thrown away as it ends.
+void set_info(const Info &info);
+struct Entry {
+	std::string file;   // its name in the demos folder
+	u64 size = 0;       // bytes
+	std::string date;   // when it was recorded, from its name: "2026-10-30 14:05"
+	std::string name;   // who recorded it
+	bool playable = false;
+	std::string why;    // why not
+	Info info;          // its .info (none: an older demo)
+};
+// newest first (not the one being recorded now)
+std::vector<Entry> list();
+// a demo and its .info deleted (file: a name from list())
+bool remove(const std::string &file);
+// played when this session ends (the title has the server let you go),
+// then back to the game - clientlauncher.cpp
+bool queue(const std::string &file);
+bool take_queued(std::string *path);
 
 } // namespace nhv_demo
