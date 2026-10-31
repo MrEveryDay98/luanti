@@ -335,10 +335,24 @@ public:
 		return m_prop.infotext == "nhv:billboard";
 	}
 
+	// VoxHack: one marked "nhv:spin" (a small item on the floor) is spun
+	// round by the client, at the same rate for all (nhvSpinYaw) - the game
+	// doesn't send its turning every frame
+	bool nhvSpin() const
+	{
+		return m_prop.infotext == "nhv:spin";
+	}
+	static f32 nhvSpinYaw();
+
 	void nhvLayOutShadow(v3f foot);
 	bool nhvShadow() const
 	{
-		return m_prop.infotext == "nhv:shadow" || nhvShadowBillboard();
+		return m_prop.infotext == "nhv:shadow" || nhvShadowBillboard() || nhvShadowSpin();
+	}
+	// (a spinning thing's shadow, "nhv:shadow_spin": spun as it is)
+	bool nhvShadowSpin() const
+	{
+		return m_prop.infotext == "nhv:shadow_spin";
 	}
 	// (a billboard's shadow, "nhv:shadow_billboard": turned to the camera as
 	// its thing is - nhvBillboard)

@@ -4,6 +4,7 @@
 
 #include "content_cao.h"
 #include "nhv_camera.h"
+#include "porting.h"
 #include <IBillboardSceneNode.h>
 #include <ICameraSceneNode.h>
 #include <IMeshManipulator.h>
@@ -1012,6 +1013,12 @@ void GenericCAO::updateNametag()
 // the sheet's matrix, where the sheet (flat: z 0) doesn't use it - its
 // third column: the yaw (radians) and the throw along the floor for a
 // height (x, z), the thickness
+// (0.8 radians a second, in degrees, round and round)
+f32 GenericCAO::nhvSpinYaw()
+{
+	return (f32)std::fmod(porting::getTimeMs() * 0.0008 * core::RADTODEG64, 360.0);
+}
+
 void GenericCAO::nhvLayOutShadow(v3f foot)
 {
 	v3f rot = rot_translator.val_current;
@@ -1019,6 +1026,8 @@ void GenericCAO::nhvLayOutShadow(v3f foot)
 	if (nhvShadowBillboard() && nhv_camera::get(&cam)) {
 		v3f d = cam * BS - (foot + intToFloat(m_env->getCameraOffset(), BS));
 		rot.Y += std::atan2(-d.X, d.Z) * core::RADTODEG;
+	} else if (nhvShadowSpin()) {
+		rot.Y = nhvSpinYaw();
 	}
 	core::matrix4 turn;
 	setPitchYawRoll(turn, v3f(0.0f, -rot.Y, 0.0f));
@@ -1072,6 +1081,8 @@ void GenericCAO::updateNodePos()
 				v3f d = cam * BS - pos_translator.val_current;
 				f32 yaw = std::atan2(-d.X, d.Z) * core::RADTODEG + rot_translator.val_current.Y;
 				rot = v3f(0.0f, -yaw, 0.0f);
+			} else if (nhvSpin()) {
+				rot = v3f(0.0f, -nhvSpinYaw(), 0.0f);
 			}
 			setPitchYawRoll(getPosRotMatrix(), rot);
 		}
