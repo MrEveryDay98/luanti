@@ -417,6 +417,9 @@ void Hud::drawLuaElements(const v3s16 &camera_offset, bool only_unhidable,
 			continue;
 		if ((e->z_index >= NHV_ABOVE_GUI_Z) != above_gui)
 			continue;
+		// (VoxHack: the big map's, while it's closed)
+		if ((e->style & HUD_STYLE_NHV_BIG_MAP) && !(player->hud_flags & HUD_FLAG_NHV_BIG_MAP))
+			continue;
 
 		v2s32 pos(floor(e->pos.X * (float) m_screensize.X + 0.5),
 				floor(e->pos.Y * (float) m_screensize.Y + 0.5));

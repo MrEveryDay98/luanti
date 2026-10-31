@@ -24,6 +24,10 @@
 // VoxHack: moved across with the big map as it scrolls (client/hud.h's
 // nhv_map_scroll: one shift for them all, eased smoothly every frame)
 #define HUD_STYLE_NHV_MAP_SCROLL 256
+// VoxHack: drawn only while the HUD flag nhv_big_map is on (the big map's
+// squares: kept while it's closed, not sent all over again each time it
+// opens)
+#define HUD_STYLE_NHV_BIG_MAP 512
 
 // Note that these visibility flags do not determine if the hud items are
 // actually drawn, but rather, whether to draw the item should the rest
@@ -78,6 +82,8 @@
 #define HUD_FLAG_NHV_STAB              (1 << 23)
 // no outline round what's pointed at (the game: outside the editors)
 #define HUD_FLAG_NHV_NO_SELECTION      (1 << 24)
+// the big map open: its elements (HUD_STYLE_NHV_BIG_MAP) drawn
+#define HUD_FLAG_NHV_BIG_MAP           (1 << 25)
 
 #define HUD_PARAM_HOTBAR_ITEMCOUNT 1
 #define HUD_PARAM_HOTBAR_IMAGE 2
