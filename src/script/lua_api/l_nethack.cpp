@@ -69,6 +69,7 @@ struct NhvFuncs {
 	NHV_FN(nhv_mon_info)
 	NHV_FN(nhv_get_missiles)
 	NHV_FN(nhv_clear_missiles)
+	NHV_FN(nhv_get_rolls)
 	NHV_FN(nhv_get_lights)
 	NHV_FN(nhv_get_ball)
 	NHV_FN(nhv_get_rays)
@@ -156,6 +157,7 @@ bool load_library(std::string &err)
 	NHV_FN(nhv_mon_info)
 	NHV_FN(nhv_get_missiles)
 	NHV_FN(nhv_clear_missiles)
+	NHV_FN(nhv_get_rolls)
 	NHV_FN(nhv_get_lights)
 	NHV_FN(nhv_get_ball)
 	NHV_FN(nhv_get_rays)
@@ -1110,6 +1112,30 @@ int ModApiNetHack::l_nh_get_missiles(lua_State *L)
 	return 1;
 }
 
+// nh_get_rolls() -> list of {pid, x, y, dx, dy, dist, tile}: boulders a
+// rolling boulder trap set rolling since the last call, for the game to
+// roll (missiles.lua)
+int ModApiNetHack::l_nh_get_rolls(lua_State *L)
+{
+	REQUIRE_LOADED();
+	nhv_rolling buf[16];
+	int n = nh.nhv_get_rolls(buf, 16);
+	lua_createtable(L, n, 0);
+	for (int i = 0; i < n; i++) {
+		const nhv_rolling &r = buf[i];
+		lua_createtable(L, 0, 7);
+		set_int(L, "pid", r.pid);
+		set_int(L, "x", r.x);
+		set_int(L, "y", r.y);
+		set_int(L, "dx", r.dx);
+		set_int(L, "dy", r.dy);
+		set_int(L, "dist", r.dist);
+		set_int(L, "tile", r.tile);
+		lua_rawseti(L, -2, i + 1);
+	}
+	return 1;
+}
+
 // nh_get_lights() -> list of {x, y, range, at_hero}
 int ModApiNetHack::l_nh_get_lights(lua_State *L)
 {
@@ -1402,6 +1428,7 @@ void ModApiNetHack::Initialize(lua_State *L, int top)
 	API_FCT(nh_num_monsters);
 	API_FCT(nh_mon_info);
 	API_FCT(nh_get_missiles);
+	API_FCT(nh_get_rolls);
 	API_FCT(nh_clear_missiles);
 	API_FCT(nh_get_lights);
 	API_FCT(nh_get_ball);

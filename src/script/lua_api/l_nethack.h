@@ -65,6 +65,7 @@ private:
 	static int l_nh_num_monsters(lua_State *L);
 	static int l_nh_mon_info(lua_State *L);
 	static int l_nh_get_missiles(lua_State *L);
+	static int l_nh_get_rolls(lua_State *L);
 	static int l_nh_clear_missiles(lua_State *L);
 	static int l_nh_get_rays(lua_State *L);
 	static int l_nh_get_lights(lua_State *L);
