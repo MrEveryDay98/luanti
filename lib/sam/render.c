@@ -749,7 +749,11 @@ do
         for(i=0; i<256; i++) {
             // subtract half the frequency of the formant 1.
             // this adds variety to the voice
-            pitches[i] -= (frequency1[i] >> 1);
+            // (VoxHack: no lower than 1 - as a byte it wrapped round to the
+            // lowest pitch there is, a high voice or a wide mouth breaking
+            // mid-word)
+            int p = pitches[i] - (frequency1[i] >> 1);
+            pitches[i] = p < 1 ? 1 : p;
         }
     }
 
