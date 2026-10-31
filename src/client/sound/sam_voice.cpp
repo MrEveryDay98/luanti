@@ -146,9 +146,9 @@ static std::string animaleseScript(const std::string &text, bool shorten, bool s
 		} else if (c == '\'' && !word.empty()) {
 			// (don't, it's: one word)
 		} else if (c == '.' || c == '!' || c == '?') {
-			gap(3);
+			gap(7);  // (a pause: speech.lua types to the same)
 		} else if (c == ',' || c == ';' || c == ':' || c == '-') {
-			gap(2);
+			gap(4);
 		} else if (!shorten) {
 			gap(1);  // (shortened, the words run together)
 		} else {
