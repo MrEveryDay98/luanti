@@ -597,6 +597,11 @@ void applyEffects(std::vector<float> &x, const std::string &chain)
 } // namespace
 
 // ---------------------------------------------------------------- public
+void applyEffectChain(std::vector<float> &x, const std::string &chain)
+{
+	applyEffects(x, chain);
+}
+
 Dictionary parseDictionary(const std::string &text)
 {
 	Dictionary d;

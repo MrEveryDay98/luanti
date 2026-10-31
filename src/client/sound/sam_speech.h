@@ -45,4 +45,8 @@ std::vector<std::string> toPhonemes(const std::string &text, const Settings &s, 
 // 16-bit mono PCM at RATE; empty if there was nothing SAM could say
 std::vector<short> speak(const std::string &text, const Settings &s, const Dictionary *dict);
 
+// a chain of effects, as Settings::effects, on any sound at RATE (the
+// Animalese voice too: sam_voice.h); never clips
+void applyEffectChain(std::vector<float> &x, const std::string &chain);
+
 } // namespace nhvsam
