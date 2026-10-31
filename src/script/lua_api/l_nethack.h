@@ -40,6 +40,8 @@ private:
 	static int l_nhv_demo_list(lua_State *L);
 	static int l_nhv_demo_delete(lua_State *L);
 	static int l_nhv_demo_play(lua_State *L);
+	static int l_nhv_demo_recording(lua_State *L);
+	static int l_nhv_demo_restart(lua_State *L);
 	static int l_nhv_sam_seconds(lua_State *L);
 	static int l_nhv_map_scroll(lua_State *L);
 	static int l_nhv_hero_light(lua_State *L);

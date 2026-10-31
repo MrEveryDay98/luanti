@@ -71,6 +71,10 @@ void nhv_set_hero_light(float level)
 {
 	s_nhv_hero_light = level;
 }
+float nhv_get_hero_light()
+{
+	return s_nhv_hero_light;
+}
 
 // VoxHack: a fog of the game's own (core.nhv_fog - the opening's): as far
 // as this (nodes; < 0: none - the sky's, as Luanti's) without hiding what's
@@ -81,6 +85,11 @@ void nhv_set_fog(float distance, float max)
 {
 	s_nhv_fog_distance = distance;
 	s_nhv_fog_max = std::clamp(max, 0.0f, 1.0f);
+}
+void nhv_get_fog(float *distance, float *max)
+{
+	*distance = s_nhv_fog_distance;
+	*max = s_nhv_fog_max;
 }
 bool nhvFogOwn()
 {
@@ -747,7 +756,11 @@ void Game::run()
 			// (the inventory, opened then)
 			if (nhv_demo::playing() && nhv_demo::play_take_inventory())
 				m_game_formspec.showPlayerInventory(nullptr);
-			if (nhv_demo::playing() && nhv_demo::play_ended() && !m_nhv_demo_end_said) {
+			// (a part over, the next one next: a session of its own -
+			// clientlauncher.cpp)
+			if (nhv_demo::playing() && nhv_demo::play_part_over())
+				g_gamecallback->disconnect();
+			else if (nhv_demo::playing() && nhv_demo::play_ended() && !m_nhv_demo_end_said) {
 				m_nhv_demo_end_said = true;
 				m_game_ui->showStatusText(L"End of the demo (Esc to leave)");
 			}
@@ -759,7 +772,14 @@ void Game::run()
 		updateCamera(dtime);
 		updateSound(dtime);
 		processPlayerInteraction(dtime, m_game_ui->m_flags.show_hud);
-		updateFrame(&graph, &stats, dtime, cam_view);
+		// (VoxHack: a demo going through what came before its game - the
+		// title screen, the prologue - at once: black meanwhile, nhv_demo.h)
+		if (nhv_demo::playing() && nhv_demo::play_catching_up()) {
+			driver->beginScene(true, true, video::SColor(255, 0, 0, 0));
+			driver->endScene();
+		} else {
+			updateFrame(&graph, &stats, dtime, cam_view);
+		}
 		updateProfilerGraphs(&graph);
 
 		if (m_does_lost_focus_pause_game && !device->isWindowFocused() && !isMenuActive()) {
@@ -1402,8 +1422,10 @@ bool Game::checkConnection()
 		// without an error message
 		if (reason == "nhv:quit")
 			return false;
-		// (... and its Demos: the game let go, a demo played - clientlauncher.cpp)
-		if (reason == "nhv:demo")
+		// (... and its Demos: the game let go, a demo played; or back to the
+		// title from a game being recorded: the session started again -
+		// clientlauncher.cpp)
+		if (reason == "nhv:demo" || reason == "nhv:restart")
 			return false;
 
 		errordata->setError(
@@ -2431,7 +2453,9 @@ void Game::updatePlayerControl(const CameraOrientation &cam)
 void Game::updatePauseState()
 {
 	bool was_paused = this->m_is_paused;
-	this->m_is_paused = this->simple_singleplayer_mode && g_menumgr.pausesGame();
+	// (VoxHack: a demo playing too - its clock stops while its menu's open)
+	this->m_is_paused = (this->simple_singleplayer_mode || nhv_demo::playing())
+			&& g_menumgr.pausesGame();
 
 	if (!was_paused && this->m_is_paused) {
 		this->pauseAnimation();
@@ -3002,6 +3026,9 @@ void Game::updateSound(f32 dtime)
 			camera->getCameraNode()->getUpVector());
 
 	sound_volume_control(sound_manager.get(), device->isWindowActive());
+	// (VoxHack: a demo going through what came before its game: unheard)
+	if (nhv_demo::playing() && nhv_demo::play_catching_up())
+		sound_manager->setListenerGain(0.0f);
 
 	// Update sound maker
 	ClientMap &map = client->getEnv().getClientMap();

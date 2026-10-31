@@ -353,6 +353,11 @@ void nhv_set_map_scroll(float px, bool instant)
 		s_map_scroll = px;
 }
 
+float nhv_get_map_scroll()
+{
+	return s_map_scroll_target;
+}
+
 // where it is this frame: eased toward where it's going (a quick glide)
 static s32 nhv_map_scroll_now()
 {

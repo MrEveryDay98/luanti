@@ -1011,7 +1011,9 @@ void Client::ReceiveAll()
 {
 	NetworkPacket pkt;
 	u64 start_ms = porting::getTimeMs();
-	const u64 budget = m_state == LC_Ready ? 10 : 100;
+	// (VoxHack: a demo going through what came before its game - unseen:
+	// as much at once as it can)
+	const u64 budget = m_state == LC_Ready && !nhv_demo::play_catching_up() ? 10 : 100;
 
 	// (VoxHack: a demo playing - its messages that are due)
 	if (nhv_demo::playing()) {

@@ -9,6 +9,7 @@
 #include "filecache.h"
 #include "filesys.h"
 #include "log.h"
+#include "nhv_demo.h" // (VoxHack)
 #include "porting.h"
 #include "settings.h"
 #include "util/hex.h"
@@ -192,6 +193,15 @@ void ClientMediaDownloader::initialStep(Client *client)
 		const std::string &sha1 = filestatus->sha1;
 
 		if (tryLoadFromCache(name, sha1, client)) {
+			filestatus->received = true;
+			m_uncached_count--;
+		} else if (nhv_demo::playing()) {
+			// (VoxHack: a demo playing, its media not in the cache - a new
+			// install: the game's own of that name, nhv_demo.h; none, and
+			// it goes without - no server to send it)
+			std::string path = nhv_demo::media_fallback(name), data;
+			if (path.empty() || !fs::ReadFile(path, data) || !loadMedia(client, data, name))
+				warningstream << "[nhv] demo: no media \"" << name << "\"" << std::endl;
 			filestatus->received = true;
 			m_uncached_count--;
 		}
@@ -692,8 +702,15 @@ bool SingleMediaDownloader::conventionalTransferDone(const std::string &name,
 
 void SingleMediaDownloader::initialStep(Client *client)
 {
-	if (tryLoadFromCache(m_file_name, m_file_sha1, client))
+	if (tryLoadFromCache(m_file_name, m_file_sha1, client)) {
 		m_stage = STAGE_DONE;
+	} else if (nhv_demo::playing()) {
+		// (VoxHack: a demo playing - the game's own of that name, as above)
+		std::string path = nhv_demo::media_fallback(m_file_name), data;
+		if (path.empty() || !fs::ReadFile(path, data) || !loadMedia(client, data, m_file_name))
+			warningstream << "[nhv] demo: no media \"" << m_file_name << "\"" << std::endl;
+		m_stage = STAGE_DONE;
+	}
 	if (isDone())
 		return;
 

@@ -880,6 +880,24 @@ int ModApiNetHack::l_nhv_demo_play(lua_State *L)
 	return 1;
 }
 
+// core.nhv_demo_recording() -> bool: a demo's being recorded, with a game
+// in it (nhv_demo.h)
+int ModApiNetHack::l_nhv_demo_recording(lua_State *L)
+{
+	lua_pushboolean(L, nhv_demo::recording_game());
+	return 1;
+}
+
+// core.nhv_demo_restart(): the session started again as it ends - let the
+// player go with "nhv:restart" (core.disconnect_player) - the game back at
+// its title (back to the title from a game being recorded: its demo kept,
+// the next game a demo of its own; clientlauncher.cpp)
+int ModApiNetHack::l_nhv_demo_restart(lua_State *L)
+{
+	nhv_demo::ask_restart();
+	return 0;
+}
+
 // core.nhv_bubble_floor({{x=, z=, rx=, rz=, vx=, vz=}...}, floor_y): the
 // Plane of Water's bubbles on the floor, drawn by the client (nil or {}:
 // none) - nhv_camera.h, client/nhv_bubble_floor.cpp
@@ -1358,6 +1376,8 @@ void ModApiNetHack::Initialize(lua_State *L, int top)
 	API_FCT(nhv_demo_list);
 	API_FCT(nhv_demo_delete);
 	API_FCT(nhv_demo_play);
+	API_FCT(nhv_demo_recording);
+	API_FCT(nhv_demo_restart);
 	API_FCT(nhv_sam_seconds);
 	API_FCT(nhv_map_scroll);
 	API_FCT(nhv_hero_light);

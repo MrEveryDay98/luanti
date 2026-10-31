@@ -102,6 +102,7 @@ struct HardcodedPauseFormspecHandler : public TextDest
 		}
 
 		if (fields.find("btn_exit_menu") != fields.end()) {
+			nhv_demo::play_leave(); // (VoxHack: a demo left - no more of it)
 			g_gamecallback->disconnect();
 			return;
 		}
@@ -461,7 +462,7 @@ void GameFormSpec::showPauseMenu()
 	std::vector<PauseButton> buttons;
 	// TRANSLATORS: Pause menu button, try to keep the translation short
 	buttons.push_back({true, "btn_continue", strgettext("Continue")});
-	if (!simple_singleplayer_mode)
+	if (!simple_singleplayer_mode && !nhv_demo::playing())
 		// TRANSLATORS: Pause menu button, try to keep the translation short
 		buttons.push_back({false, "btn_change_password", strgettext("Change Password")});
 	// (VoxHack: a demo playing - no game to ask for these)

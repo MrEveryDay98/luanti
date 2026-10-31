@@ -237,35 +237,61 @@ bool ClientLauncher::run(const GameParams &game_params, const Settings &cmd_args
 				chat_backend
 			);
 
-			// (VoxHack: a demo from the title's Demos - played now, with no
-			// game, then back to the game: its title screen; nhv_demo.h)
-			std::string demo;
-			while (nhv_demo::take_queued(&demo) && m_rendering_engine->run() && !*kill
-					&& !g_gamecallback->shutdown_requested) {
-				GameStartData demo_data = start_data;
-				nhv_demo::play_path = demo;
-				std::string name, error;
-				if (nhv_demo::play_open(&name, &error)) {
-					demo_data.mode = GameClientData::GM_JOIN;
-					demo_data.address = "127.0.0.1";
-					demo_data.world_path.clear();
-					demo_data.name = name;
+			// (VoxHack: a demo's further parts - a saved game continued in
+			// later sessions: each played in a session of its own; then done
+			// with it - nhv_demo.h)
+			auto demo_parts = [&](GameStartData &demo_data) {
+				while (nhv_demo::play_next_part() && m_rendering_engine->run() && !*kill
+						&& !g_gamecallback->shutdown_requested) {
 					m_rendering_engine->get_scene_manager()->clear();
 					guienv->clear();
 					guiroot = guienv->addStaticText(L"", core::rect<s32>(0, 0, 10000, 10000));
 					the_game(kill, input, m_rendering_engine, demo_data, errordata, chat_backend);
-				} else {
-					errorstream << error << std::endl;
 				}
-				nhv_demo::play_path.clear();
+				nhv_demo::play_close();
+			};
+			if (nhv_demo::playing()) // (one from the command line)
+				demo_parts(start_data);
+
+			// (VoxHack: after the game's session - a demo from the title's
+			// Demos played, with no game; or back to the title from a game
+			// being recorded, its demo kept - then the game again, at its
+			// title screen)
+			for (;;) {
+				std::string demo;
+				const bool restart = nhv_demo::take_restart();
+				const bool have_demo = !restart && nhv_demo::take_queued(&demo);
+				if (!restart && !have_demo)
+					break;
 				if (!m_rendering_engine->run() || *kill || g_gamecallback->shutdown_requested)
 					break;
+				if (have_demo) {
+					GameStartData demo_data = start_data;
+					nhv_demo::play_path = demo;
+					std::string name, error;
+					if (nhv_demo::play_open(&name, &error)) {
+						demo_data.mode = GameClientData::GM_JOIN;
+						demo_data.address = "127.0.0.1";
+						demo_data.world_path.clear();
+						demo_data.name = name;
+						m_rendering_engine->get_scene_manager()->clear();
+						guienv->clear();
+						guiroot = guienv->addStaticText(L"", core::rect<s32>(0, 0, 10000, 10000));
+						the_game(kill, input, m_rendering_engine, demo_data, errordata, chat_backend);
+						demo_parts(demo_data);
+					} else {
+						errorstream << error << std::endl;
+						nhv_demo::play_path.clear();
+					}
+					if (!m_rendering_engine->run() || *kill || g_gamecallback->shutdown_requested)
+						break;
+				}
 				m_rendering_engine->get_scene_manager()->clear();
 				guienv->clear();
 				guiroot = guienv->addStaticText(L"", core::rect<s32>(0, 0, 10000, 10000));
 				errordata = GameErrorData();
-				// (the game told: no prologue first - init.lua)
-				g_settings->setBool("nhv_from_demo", true);
+				// (the game told: straight to the title, no prologue - init.lua)
+				g_settings->setBool("nhv_to_title", true);
 				the_game(kill, input, m_rendering_engine, start_data, errordata, chat_backend);
 			}
 #ifdef NDEBUG
