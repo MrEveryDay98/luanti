@@ -19,6 +19,11 @@
 // BY 4.0): pitch and letter length in percent (100: as recorded, 75 ms a
 // letter), shorten 0|1 (each word only its first and last letters), the
 // effects as SAM's (they need SAM built in).
+//
+// Or in Beeps and boops: an 8-bit beep a character (the same pace and
+// gaps as Animalese), each a little higher or lower than the speaker's own
+// pitch - the same character always the same note:
+//     nhv_beeps:<pitch>,<length>,<shorten>,<effects>|<text>
 
 #pragma once
 

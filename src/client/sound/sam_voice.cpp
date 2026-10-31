@@ -20,15 +20,22 @@ namespace sound {
 
 static const char SAM_PREFIX[] = "nhv_sam:";
 static const char ANIMALESE_PREFIX[] = "nhv_animalese:";
+static const char BEEPS_PREFIX[] = "nhv_beeps:";
 
 static bool isAnimaleseName(const std::string &name)
 {
 	return name.compare(0, sizeof(ANIMALESE_PREFIX) - 1, ANIMALESE_PREFIX) == 0;
 }
 
+static bool isBeepsName(const std::string &name)
+{
+	return name.compare(0, sizeof(BEEPS_PREFIX) - 1, BEEPS_PREFIX) == 0;
+}
+
 bool isSamVoiceName(const std::string &name)
 {
-	return name.compare(0, sizeof(SAM_PREFIX) - 1, SAM_PREFIX) == 0 || isAnimaleseName(name);
+	return name.compare(0, sizeof(SAM_PREFIX) - 1, SAM_PREFIX) == 0 || isAnimaleseName(name)
+			|| isBeepsName(name);
 }
 
 // ---------------------------------------------------------------- Animalese
@@ -98,8 +105,10 @@ static const AnimaleseLetters *animaleseLetters()
 	return letters.pcm.empty() ? nullptr : &letters;
 }
 
-// what's said, letter by letter: 'A'..'Z', or ' ' a letter's silence
-static std::string animaleseScript(const std::string &text, bool shorten)
+// what's said, letter by letter: 'A'..'Z' (and '0'..'9', not spelled
+// out), or ' ' a letter's silence. (speech.lua times the letters shown on
+// screen the same way: speech.times)
+static std::string animaleseScript(const std::string &text, bool shorten, bool spell_digits = true)
 {
 	static const char *const DIGITS[] = {"zero", "one", "two", "three", "four", "five", "six", "seven",
 			"eight", "nine"};
@@ -129,6 +138,8 @@ static std::string animaleseScript(const std::string &text, bool shorten)
 			i = e == std::string::npos ? text.size() : e;
 		} else if (std::isalpha((unsigned char)c)) {
 			word += (char)std::toupper((unsigned char)c);
+		} else if (std::isdigit((unsigned char)c) && !spell_digits) {
+			word += c;
 		} else if (std::isdigit((unsigned char)c)) {
 			for (const char *d = DIGITS[c - '0']; *d; d++)
 				word += (char)std::toupper((unsigned char)*d);
@@ -275,10 +286,75 @@ static std::vector<short> samSpeak(const std::string &name)
 }
 #endif
 
+// ---------------------------------------------------------------- beeps
+// (see sam_voice.h) A square wave a character: vowels a hollower "boop"
+// (a wider pulse, lower), the rest a "beep", each its own few semitones
+// from the speaker's pitch
+static std::vector<short> beepsSpeak(const std::string &name)
+{
+	size_t bar = name.find('|');
+	if (bar == std::string::npos)
+		return {};
+	int v[3] = {100, 100, 0};
+	std::string effects;
+	{
+		std::istringstream ss(name.substr(sizeof(BEEPS_PREFIX) - 1, bar - (sizeof(BEEPS_PREFIX) - 1)));
+		std::string f;
+		for (int i = 0; i < 4 && std::getline(ss, f, ','); i++) {
+			if (i < 3)
+				v[i] = std::atoi(f.c_str());
+			else
+				effects = f;
+		}
+	}
+	std::string script = animaleseScript(name.substr(bar + 1), v[2] != 0, false);
+	if (script.find_first_not_of(' ') == std::string::npos)
+		return {};
+	const int out_rate = nhvsam::RATE;
+	const float base = 520.0f * std::clamp(v[0], 25, 400) / 100.0f;
+	size_t letter = (size_t)(0.075 * out_rate * std::clamp(v[1], 25, 400) / 100.0f);
+	// (each note held most of its letter: a short gap between beeps)
+	size_t held = letter * 7 / 10, attack = out_rate * 2 / 1000;
+	std::vector<float> x;
+	x.reserve(script.size() * letter);
+	for (char c : script) {
+		size_t at = x.size();
+		x.resize(at + letter, 0.0f);
+		if (c == ' ')
+			continue;
+		bool vowel = std::strchr("AEIOUY", c) != nullptr;
+		// (-3 to +3 semitones, the same for the same character; a boop lower)
+		int semi = ((unsigned char)c * 7 + 3) % 7 - 3 - (vowel ? 2 : 0);
+		float freq = base * std::pow(2.0f, semi / 12.0f);
+		float duty = vowel ? 0.5f : 0.25f;
+		float phase = 0;
+		for (size_t i = 0; i < held; i++) {
+			phase += freq / out_rate;
+			phase -= std::floor(phase);
+			float s = phase < duty ? 1.0f : -1.0f;
+			// (a quick start, then fading out over its last part)
+			float g = std::min(1.0f, (float)i / attack);
+			if (i > held / 2)
+				g *= (float)(held - i) / (held - held / 2);
+			x[at + i] = s * g * 7000.0f;
+		}
+	}
+#ifdef NHV_HAVE_SAM
+	if (!effects.empty())
+		nhvsam::applyEffectChain(x, effects);
+#endif
+	std::vector<short> pcm(x.size());
+	for (size_t i = 0; i < x.size(); i++)
+		pcm[i] = (short)std::clamp(x[i], -32768.0f, 32767.0f);
+	return pcm;
+}
+
 float samVoiceSeconds(const std::string &name)
 {
 	if (isAnimaleseName(name))
 		return (float)animaleseSpeak(name).size() / nhvsam::RATE;
+	if (isBeepsName(name))
+		return (float)beepsSpeak(name).size() / nhvsam::RATE;
 #ifdef NHV_HAVE_SAM
 	return (float)samSpeak(name).size() / nhvsam::RATE;
 #else
@@ -306,6 +382,10 @@ std::shared_ptr<ISoundDataOpen> openSamVoice(const std::string &name)
 	if (isAnimaleseName(name)) {
 		std::vector<short> pcm = animaleseSpeak(name);
 		return pcm.empty() ? nullptr : openVoicePCM("Animalese", pcm);
+	}
+	if (isBeepsName(name)) {
+		std::vector<short> pcm = beepsSpeak(name);
+		return pcm.empty() ? nullptr : openVoicePCM("Beeps", pcm);
 	}
 #ifndef NHV_HAVE_SAM
 	static bool warned = false;
