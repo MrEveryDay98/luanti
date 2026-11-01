@@ -119,8 +119,13 @@ float light_at(v3f p)
 		float level = FULL - to.getLength() / FALL;
 		if (level <= best || level < 1.0f)
 			continue;
-		if (clear_line(p, po.pos + out * 0.01f))
-			best = level;
+		// (as much of the doorway as it sees: dimmer seeing less of it)
+		v3f pts[MAX_UP * 2];
+		int n = portal_points(po, pts), seen = 0;
+		for (int i = 0; i < n; i++)
+			seen += clear_line(p, pts[i]) ? 1 : 0;
+		if (seen > 0)
+			best = std::fmax(best, level - (1.0f - (float)seen / n) * 4.0f);
 	}
 	for (const Light &l : s_lights) {
 		float level = l.level - std::fmax((p - l.pos).getLength() - 0.5f, 0.0f);

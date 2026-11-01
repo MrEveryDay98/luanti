@@ -15,6 +15,7 @@
 
 #include "irr_v3d.h"
 #include "irrlichttypes.h"
+#include <cmath>
 #include <vector>
 
 namespace nhv_rt
@@ -29,9 +30,12 @@ constexpr u8 RT_STOPS = 1, RT_LIT = 2;
 constexpr float FULL = 14.0f, FALL = 2.0f, RANGE = 26.0f;
 
 struct Portal {
-	v3f pos; // the face's middle (nodes)
+	v3f pos; // the face's bottom middle (nodes: at standing height)
 	int dir; // the way out: 0 +x, 1 -x, 2 +z, 3 -z
+	int height; // how many blocks up it's open (1..MAX_UP)
 };
+// (how far up a portal's looked at: blocks from standing height)
+constexpr int MAX_UP = 4;
 struct Light {
 	v3f pos; // nodes
 	float level;
@@ -56,6 +60,19 @@ void get_lights(std::vector<Light> *lights);
 // lamps (not the hero's light): for things not drawn by the nodes' shader
 // (entities, your hand)
 float light_at(v3f pos);
+
+// the points a portal's light is traced to, over its face (light through
+// all of a doorway, not from one point in it: soft at the edges)
+inline int portal_points(const Portal &po, v3f *pts)
+{
+	v3f out = po.dir == 0 ? v3f(1, 0, 0) : po.dir == 1 ? v3f(-1, 0, 0) : po.dir == 2 ? v3f(0, 0, 1) : v3f(0, 0, -1);
+	v3f across(std::fabs(out.Z), 0, std::fabs(out.X));
+	int n = 0;
+	for (int k = 0; k < po.height && k < MAX_UP; k++)
+		for (int s = -1; s <= 1; s += 2)
+			pts[n++] = po.pos + v3f(0, (float)k, 0) + across * (0.3f * s) + out * 0.01f;
+	return n;
+}
 
 inline v3f dir_vec(int dir)
 {

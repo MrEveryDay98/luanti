@@ -1344,8 +1344,19 @@ int ModApiNetHack::l_nhv_rt_scan(lua_State *L)
 			if (at(x, z) != RT_LIT)
 				continue;
 			for (int d = 0; d < 4; d++) {
-				if (at(x + DX[d], z + DZ[d]) == 0)
-					portals.push_back({v3f(x + DX[d] * 0.5f, stand + 0.4f, z + DZ[d] * 0.5f), d});
+				if (at(x + DX[d], z + DZ[d]) != 0)
+					continue;
+				// (and how far up it's open, both sides)
+				int up = 1;
+				while (up < MAX_UP && stand + up < Y0 + GY) {
+					size_t a = ((size_t)(stand + up - Y0) * GZ + z) * GX + x;
+					int nx = x + DX[d], nz = z + DZ[d];
+					size_t b = ((size_t)(stand + up - Y0) * GZ + nz) * GX + nx;
+					if (cells[a] != RT_LIT || cells[b] != 0)
+						break;
+					up++;
+				}
+				portals.push_back({v3f(x + DX[d] * 0.5f, (float)stand, z + DZ[d] * 0.5f), d, up});
 			}
 		}
 	}

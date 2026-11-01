@@ -84,7 +84,8 @@ void update(video::IVideoDriver *driver, v3f camera)
 		s_portals[i * 4] = portals[i].pos.X;
 		s_portals[i * 4 + 1] = portals[i].pos.Y;
 		s_portals[i * 4 + 2] = portals[i].pos.Z;
-		s_portals[i * 4 + 3] = (float)portals[i].dir;
+		// (the way out, and how far up it's open: dir + 4 * (height - 1))
+		s_portals[i * 4 + 3] = (float)(portals[i].dir + 4 * (portals[i].height - 1));
 	}
 	s_portal_count = (float)np;
 	std::vector<nhv_rt::Light> lights;

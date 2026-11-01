@@ -220,25 +220,47 @@ vec3 nhvRtLit(vec3 wpos, vec3 normal)
 	vec3 n = nl > 0.001 ? normal / nl : vec3(0.0);
 	// (from just off the face: the block in front of it)
 	vec3 a = p + n * 0.05;
-	float level = 0.0;
+	// (how bright, before the face's shading)
+	float bright = 0.0;
 	if (nhvRtCell(floor(a + 0.5)).g > 0.5) {
-		level = 14.0;
+		bright = 1.0;
 	} else {
 		for (int i = 0; i < 64; i++) {
 			if (float(i) >= nhvRtPortalN)
 				break;
 			vec4 po = nhvRtPortals[i];
-			vec3 ov = po.w < 0.5 ? vec3(1.0, 0.0, 0.0) : po.w < 1.5 ? vec3(-1.0, 0.0, 0.0)
-				: po.w < 2.5 ? vec3(0.0, 0.0, 1.0) : vec3(0.0, 0.0, -1.0);
+			// (the way out; how far up it's open: w = way + 4 * (blocks - 1))
+			float way = mod(po.w, 4.0);
+			float tall = floor(po.w / 4.0 + 0.01) + 1.0;
+			vec3 ov = way < 0.5 ? vec3(1.0, 0.0, 0.0) : way < 1.5 ? vec3(-1.0, 0.0, 0.0)
+				: way < 2.5 ? vec3(0.0, 0.0, 1.0) : vec3(0.0, 0.0, -1.0);
 			vec3 to = a - po.xyz;
-			// (out of it, and facing it)
-			if (dot(to, ov) <= 0.0 || (nl > 0.001 && dot(n, to) >= 0.0))
+			if (dot(to, ov) <= 0.0)
 				continue;
 			float l = 14.0 - length(to) / 2.0;
-			if (l <= level || l < 1.0)
+			if (l < 1.0)
 				continue;
-			if (nhvRtClear(a, po.xyz + ov * 0.01))
-				level = l;
+			float b = nhvDecodeLight(l / 14.0);
+			if (b <= bright)
+				continue;
+			// light through all of the doorway, not from one point in it: as
+			// much of it as it sees (points over its face, its height and
+			// width), facing them - soft at the edges
+			vec3 across = vec3(abs(ov.z), 0.0, abs(ov.x));
+			float seen = 0.0, total = 0.0;
+			for (int k = 0; k < 4; k++) {
+				if (float(k) >= tall)
+					break;
+				for (int s = 0; s < 2; s++) {
+					vec3 t = po.xyz + vec3(0.0, float(k), 0.0) + across * (s == 0 ? -0.3 : 0.3) + ov * 0.01;
+					total += 1.0;
+					if (nl > 0.001 && dot(n, t - a) <= 0.0)
+						continue;
+					if (nhvRtClear(a, t))
+						seen += 1.0;
+				}
+			}
+			bright = max(bright, b * seen / max(total, 1.0));
 		}
 	}
 	for (int i = 0; i < 8; i++) {
@@ -249,21 +271,22 @@ vec3 nhvRtLit(vec3 wpos, vec3 normal)
 		if (nl > 0.001 && dot(n, to) <= 0.0)
 			continue;
 		float l = li.w - max(length(to) - 0.5, 0.0);
-		if (l <= level || l < 1.0)
+		if (l < 1.0 || nhvDecodeLight(l / 14.0) <= bright)
 			continue;
 		if (nhvRtClear(a, li.xyz))
-			level = l;
+			bright = nhvDecodeLight(l / 14.0);
 	}
 	if (nhvHeroLight.w > 0.0) {
 		vec3 h = (cameraOffset + nhvHeroLight.xyz) / 10.0;
 		vec3 to = h - a;
 		float l = nhvHeroLight.w - max(length(to) - 0.5, 0.0);
-		if (l > level && !(nl > 0.001 && dot(n, to) <= 0.0) && nhvRtClear(a, h))
-			level = l;
+		if (l > 0.0 && nhvDecodeLight(l / 14.0) > bright && !(nl > 0.001 && dot(n, to) <= 0.0)
+				&& nhvRtClear(a, h))
+			bright = nhvDecodeLight(l / 14.0);
 	}
-	if (level <= 0.0)
+	if (bright <= 0.0)
 		return vec3(0.0);
-	return vec3(min(nhvDecodeLight(level / 14.0) * nhvFaceShade(normal) * 1.04, 1.0));
+	return vec3(min(bright * nhvFaceShade(normal) * 1.04, 1.0));
 }
 vec3 nhvLitBy(vec3 wpos, vec3 normal)
 {
