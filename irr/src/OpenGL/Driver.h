@@ -145,6 +145,7 @@ public:
 	void OnWindowResize(const core::dimension2d<u32> &size) override;
 	core::dimension2d<u32> getVirtualScreenSize() const override { return VirtualSize; }
 	void setVirtualScreenWholeScale(bool whole) override;
+	void setVirtualScreenWide(bool wide) override;
 	core::position2d<s32> windowToScreen(const core::position2d<s32> &p) const override;
 	core::position2d<s32> screenToWindow(const core::position2d<s32> &p) const override;
 
@@ -315,6 +316,7 @@ protected:
 	ITexture *VirtualDepth = nullptr;
 	IRenderTarget *VirtualTarget = nullptr;
 	bool VirtualWhole = false;
+	bool VirtualWide = false;
 
 	virtual u16 getMaxJointTransforms() const override
 	{

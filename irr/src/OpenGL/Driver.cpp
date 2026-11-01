@@ -1607,12 +1607,23 @@ void COpenGL3DriverBase::setVirtualScreenWholeScale(bool whole)
 	applyVirtualSize();
 }
 
-// the virtual screen's size: as asked; or, scaled up by whole pixels, a
-// little bigger or smaller - its shape kept - so that fills the window's
-// height (or width, whichever it meets first)
+void COpenGL3DriverBase::setVirtualScreenWide(bool wide)
+{
+	if (wide == VirtualWide)
+		return;
+	VirtualWide = wide;
+	applyVirtualSize();
+}
+
+// the virtual screen's size: as asked (widescreen: as wide as the window's
+// shape makes it at that height); or, scaled up by whole pixels, a little
+// bigger or smaller - its shape kept - so that fills the window's height
+// (or width, whichever it meets first)
 core::dimension2d<u32> COpenGL3DriverBase::fittedVirtualSize() const
 {
 	core::dimension2d<u32> size = VirtualAsked;
+	if (VirtualWide && size.Height && WindowSize.Width && WindowSize.Height)
+		size.Width = core::min_(4096u, (u32)std::round((f32)size.Height * WindowSize.Width / WindowSize.Height));
 	if (!VirtualWhole || !size.Width || !size.Height || !WindowSize.Width || !WindowSize.Height)
 		return size;
 	f32 fit = core::min_((f32)WindowSize.Width / size.Width, (f32)WindowSize.Height / size.Height);

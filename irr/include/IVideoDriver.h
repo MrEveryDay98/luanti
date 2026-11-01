@@ -952,6 +952,9 @@ public:
 	//! VoxHack: scaled up by whole numbers only (every pixel the same size;
 	//! more black round it), or as big as fits
 	virtual void setVirtualScreenWholeScale(bool whole) {}
+	//! VoxHack: widescreen - as tall as asked, as wide as the window's
+	//! shape makes it (an 800x600 screen in a 16:9 window: 1067x600)
+	virtual void setVirtualScreenWide(bool wide) {}
 	//! VoxHack: a point in the window (pixels) as a point on the screen,
 	//! and back (the same without a virtual screen)
 	virtual core::position2d<s32> windowToScreen(const core::position2d<s32> &p) const { return p; }

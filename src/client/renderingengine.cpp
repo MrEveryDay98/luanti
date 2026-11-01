@@ -471,6 +471,8 @@ void RenderingEngine::nhvApplyRetro()
 		screen = core::dimension2du(w, h);
 	auto *driver = get_video_driver();
 	driver->setVirtualScreenWholeScale(g_settings->getBool("nhv_retro_whole"));
+	// (widescreen: as wide as the window's shape makes it - nhv_retro_wide)
+	driver->setVirtualScreenWide(g_settings->getBool("nhv_retro_wide"));
 	driver->setVirtualScreenSize(retro ? screen : core::dimension2du(0, 0));
 	if (retro != nhv_retro) {
 		// (the render resolution changes with it: render/plain.cpp)
