@@ -36,6 +36,7 @@ static constexpr f32 CAMERA_OFFSET_STEP = 200;
 #define WIELDMESH_OFFSET_Y -35.0f
 #define WIELDMESH_AMPLITUDE_X 7.0f
 #define WIELDMESH_AMPLITUDE_Y 10.0f
+#define NHV_HAND_SCALE 1.4f
 
 // VoxHack: how much of the screen's width each side bar covers (0 - none;
 // sidebars.lua - core.nhv_view_sides): the hands are drawn that much in
@@ -76,6 +77,9 @@ Camera::Camera(MapDrawControl &draw_control, Client *client, RenderingEngine *re
 	m_nhv_offnode->setItem(ItemStack(), m_client);
 	m_nhv_offnode->setVisible(false);
 	m_nhv_offnode->drop();
+	// NetHack Voxel: the hands' items drawn 40% bigger than Luanti's
+	m_wieldnode->setScale(v3f(NHV_HAND_SCALE));
+	m_nhv_offnode->setScale(v3f(NHV_HAND_SCALE));
 
 	m_nametags.clear();
 
