@@ -1331,6 +1331,7 @@ int ModApiNetHack::l_nhv_rt_scan(lua_State *L)
 		return s == 1;
 	};
 	std::vector<u8> cells((size_t)GX * GY * GZ, 0);
+	std::vector<u8> levels((size_t)GX * GY * GZ, 0);
 	v3s16 b0 = getNodeBlockPos(v3s16(0, Y0, 0)), b1 = getNodeBlockPos(v3s16(GX - 1, Y0 + GY - 1, GZ - 1));
 	for (s16 bz = b0.Z; bz <= b1.Z; bz++)
 	for (s16 by = b0.Y; by <= b1.Y; by++)
@@ -1349,8 +1350,10 @@ int ModApiNetHack::l_nhv_rt_scan(lua_State *L)
 			size_t li = (size_t)wz * GX + wx;
 			// (in a lit room, solid or not: what's partly a block - a
 			// nodebox - lit there too)
-			cells[i] = (opaque(block->getNodeNoCheck(x, y, z).getContent()) ? RT_STOPS : 0)
+			MapNode node = block->getNodeNoCheck(x, y, z);
+			cells[i] = (opaque(node.getContent()) ? RT_STOPS : 0)
 					| (li < len && lit[li] == '1' ? RT_LIT : 0);
+			levels[i] = node.getLight(LIGHTBANK_NIGHT, ndef->getLightingFlags(node));
 		}
 	}
 	// (the portals: a lit room's block at standing height beside an open
@@ -1415,7 +1418,7 @@ int ModApiNetHack::l_nhv_rt_scan(lua_State *L)
 	}
 	// (how many portals, for checking)
 	lua_pushinteger(L, (lua_Integer)portals.size());
-	nhv_rt::set_grid(std::move(cells), std::move(portals));
+	nhv_rt::set_grid(std::move(cells), std::move(portals), std::move(levels));
 	return 1;
 }
 

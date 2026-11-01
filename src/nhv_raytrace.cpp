@@ -9,14 +9,16 @@ namespace nhv_rt
 
 static std::mutex s_mutex;
 static std::vector<u8> s_cells;
+static std::vector<u8> s_levels;
 static std::vector<Portal> s_portals;
 static std::vector<Light> s_lights;
 static u32 s_generation = 0;
 
-void set_grid(std::vector<u8> &&cells, std::vector<Portal> &&portals)
+void set_grid(std::vector<u8> &&cells, std::vector<Portal> &&portals, std::vector<u8> &&levels)
 {
 	std::lock_guard<std::mutex> lock(s_mutex);
 	s_cells = std::move(cells);
+	s_levels = std::move(levels);
 	s_portals = std::move(portals);
 	++s_generation;
 	if (s_generation == 0)
@@ -33,6 +35,7 @@ void clear()
 {
 	std::lock_guard<std::mutex> lock(s_mutex);
 	s_cells.clear();
+	s_levels.clear();
 	s_portals.clear();
 	s_lights.clear();
 	++s_generation;
@@ -44,10 +47,11 @@ u32 generation()
 	return s_cells.empty() ? 0 : s_generation;
 }
 
-void get_grid(std::vector<u8> *cells)
+void get_grid(std::vector<u8> *cells, std::vector<u8> *levels)
 {
 	std::lock_guard<std::mutex> lock(s_mutex);
 	*cells = s_cells;
+	*levels = s_levels;
 }
 
 void get_portals(std::vector<Portal> *portals)

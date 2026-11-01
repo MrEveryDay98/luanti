@@ -13,7 +13,7 @@
 namespace nhv_rt_client
 {
 
-static bool s_enabled = false;
+static bool s_enabled = false, s_square = false;
 static u64 s_enabled_read = 0;
 static video::ITexture *s_texture = nullptr;
 static video::IVideoDriver *s_driver = nullptr;
@@ -29,28 +29,42 @@ bool enabled()
 	if (now - s_enabled_read > 250) {
 		s_enabled_read = now;
 		s_enabled = g_settings->getBool("nhv_raytrace");
+		s_square = g_settings->get("nhv_square_light") != "off";
 	}
 	return s_enabled;
+}
+
+bool square()
+{
+	enabled();
+	return s_square;
+}
+
+bool raytracing()
+{
+	return enabled() && s_texture;
 }
 
 static void upload(video::IVideoDriver *driver)
 {
 	using namespace nhv_rt;
-	std::vector<u8> cells;
-	get_grid(&cells);
+	std::vector<u8> cells, levels;
+	get_grid(&cells, &levels);
 	if (s_texture) {
 		s_driver->removeTexture(s_texture);
 		s_texture = nullptr;
 	}
 	if (cells.empty())
 		return;
-	// (y layers one under another: x across, z + layer * GZ down)
+	// (y layers one under another: x across, z + layer * GZ down; red: stops
+	// light, green: in a lit room, blue: its own light, 0..15 by 17s)
 	video::IImage *img = driver->createImage(video::ECF_A8R8G8B8,
 			core::dimension2d<u32>(GX, GZ * GY));
 	u32 *px = (u32 *)img->getData();
 	for (size_t i = 0; i < cells.size() && i < (size_t)GX * GZ * GY; i++) {
 		u8 c = cells[i];
-		px[i] = 0xFF000000u | ((c & RT_STOPS) ? 0x00FF0000u : 0u) | ((c & RT_LIT) ? 0x0000FF00u : 0u);
+		u32 l = i < levels.size() ? std::min<u32>(levels[i], 15) * 17 : 0;
+		px[i] = 0xFF000000u | ((c & RT_STOPS) ? 0x00FF0000u : 0u) | ((c & RT_LIT) ? 0x0000FF00u : 0u) | l;
 	}
 	bool mips = driver->getTextureCreationFlag(video::ETCF_CREATE_MIP_MAPS);
 	driver->setTextureCreationFlag(video::ETCF_CREATE_MIP_MAPS, false);
@@ -62,7 +76,8 @@ static void upload(video::IVideoDriver *driver)
 
 void update(video::IVideoDriver *driver, v3f camera)
 {
-	if (!enabled()) {
+	bool rt = enabled();
+	if (!rt && !square()) {
 		s_portal_count = s_light_count = 0.0f;
 		return;
 	}
@@ -70,6 +85,10 @@ void update(video::IVideoDriver *driver, v3f camera)
 	if (gen != s_generation) {
 		s_generation = gen;
 		upload(driver);
+	}
+	if (!rt) {
+		s_portal_count = s_light_count = 0.0f;
+		return;
 	}
 	// (the nearest the camera: those near enough to light what's in view)
 	std::vector<nhv_rt::Portal> portals;
@@ -106,7 +125,7 @@ void update(video::IVideoDriver *driver, v3f camera)
 
 video::ITexture *texture()
 {
-	return enabled() ? s_texture : nullptr;
+	return enabled() || square() ? s_texture : nullptr;
 }
 
 const float *portals()

@@ -154,12 +154,16 @@ uniform vec4 nhvRtPortals[64];
 uniform float nhvRtPortalN;
 uniform vec4 nhvRtLights[8];
 uniform float nhvRtLightN;
-vec2 nhvRtCell(vec3 c)
+vec3 nhvRtTexel(vec3 c)
 {
 	// (x 0..255, z 0..63, y -9..22)
 	if (c.x < 0.0 || c.x > 255.0 || c.z < 0.0 || c.z > 63.0 || c.y < -9.0 || c.y > 22.0)
-		return vec2(0.0);
-	return texture2D(texture2, (vec2(c.x, c.z + (c.y + 9.0) * 64.0) + 0.5) / vec2(256.0, 2048.0)).rg;
+		return vec3(0.0);
+	return texture2D(texture2, (vec2(c.x, c.z + (c.y + 9.0) * 64.0) + 0.5) / vec2(256.0, 2048.0)).rgb;
+}
+vec2 nhvRtCell(vec3 c)
+{
+	return nhvRtTexel(c).rg;
 }
 // nothing that stops light on the line from a to b (nodes; not the blocks
 // they're in)
@@ -234,14 +238,10 @@ float nhvFaceShade(vec3 normal)
 		return 0.670820 * n2.x + n2.y + 0.836660 * n2.z;
 	return 1.0;
 }
-vec3 nhvRtLit(vec3 wpos, vec3 normal)
+// how bright it is at a (just off a face turned n - nl its length; before
+// the face's shading): a lit room's light, its doorways', lamps', yours
+float nhvRtBright(vec3 a, vec3 n, float nl)
 {
-	vec3 p = (cameraOffset + wpos) / 10.0;
-	float nl = length(normal);
-	vec3 n = nl > 0.001 ? normal / nl : vec3(0.0);
-	// (from just off the face: the block in front of it)
-	vec3 a = nhvRtOpen(p + n * 0.05);
-	// (how bright, before the face's shading)
 	float bright = 0.0;
 	if (nhvRtCell(floor(a + 0.5)).g > 0.5) {
 		bright = 1.0;
@@ -294,6 +294,15 @@ vec3 nhvRtLit(vec3 wpos, vec3 normal)
 				&& nhvRtClear(a, h))
 			bright = nhvDecodeLight(l / 14.0);
 	}
+	return bright;
+}
+vec3 nhvRtLit(vec3 wpos, vec3 normal)
+{
+	vec3 p = (cameraOffset + wpos) / 10.0;
+	float nl = length(normal);
+	vec3 n = nl > 0.001 ? normal / nl : vec3(0.0);
+	// (from just off the face: the block in front of it)
+	float bright = nhvRtBright(nhvRtOpen(p + n * 0.05), n, nl);
 	if (bright <= 0.0)
 		return vec3(0.0);
 	return vec3(min(bright * nhvFaceShade(normal) * 1.04, 1.0));
@@ -312,59 +321,51 @@ vec3 nhvLitBy(vec3 wpos, vec3 normal)
 // corner to block corner. Any light: the blocks' own (the face's light
 // carried on to there, as it changes across the face) and the raytraced.
 uniform float nhvSquare;
-// (the light at an offset d - world units - along the face: the face's own
-// carried on to there, as it changes across the face - m: how far along
-// the face a step on the screen goes, each way across - or the
-// raytraced/yours there)
-vec3 nhvSquareAt(vec3 light, vec3 lx, vec3 ly, vec3 wpos, vec3 normal, vec3 d, vec3 t1, vec3 t2,
-	vec4 m, float det)
+uniform float nhvGrid; // (the blocks' texture there: 1)
+// a block's brightness (b: its middle, nodes - the block in front of a face
+// turned n, nl its length): its own light (the texture's blue: Luanti's
+// light there, 0..15), and the raytraced there or yours
+float nhvSquareBright(vec3 b, vec3 n, float nl)
 {
-	vec3 l = light;
-	if (abs(det) > 1e-8) {
-		float sx = (m.w * dot(d, t1) - m.y * dot(d, t2)) / det;
-		float sy = (m.x * dot(d, t2) - m.z * dot(d, t1)) / det;
-		l = max(light + lx * sx + ly * sy, vec3(0.0));
+	float bright = nhvDecodeLight(nhvRtTexel(b).b * 15.0 / 14.0);
+	if (nhvRaytrace > 0.5)
+		return max(bright, nhvRtBright(nhvRtOpen(b), n, nl));
+	if (nhvHeroLight.w > 0.0) {
+		vec3 to = (cameraOffset + nhvHeroLight.xyz) / 10.0 - b;
+		float l = nhvHeroLight.w - max(length(to) - 0.5, 0.0);
+		if (l > 0.0 && !(nl > 0.001 && dot(n, to) <= 0.0))
+			bright = max(bright, nhvDecodeLight(l / 14.0));
 	}
-	return max(l, nhvLitBy(wpos + d, normal));
+	return bright;
 }
 vec3 nhvSquareLit(vec3 light, vec3 wpos, vec3 normal)
 {
-	vec3 px = dFdx(wpos), py = dFdy(wpos);
-	vec3 lx = dFdx(light), ly = dFdy(light);
 	float nl = length(normal);
-	if (nl < 0.001)
+	if (nhvGrid < 0.5 || nl < 0.001)
 		return max(light, nhvLitBy(wpos, normal));
 	vec3 n = normal / nl;
-	// (the face's two ways across; where on its block this is, from the
-	// middle, -0.5..0.5 each way)
+	// (the face's two ways across; its block - the one in front of it - and
+	// where on it this is, from the middle, -0.5..0.5 each way)
 	vec3 an = abs(n);
 	vec3 t1 = an.x > 0.5 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0);
 	vec3 t2 = an.z > 0.5 ? vec3(0.0, 1.0, 0.0) : vec3(0.0, 0.0, 1.0);
 	vec3 a = (cameraOffset + wpos) / 10.0 + n * 0.05;
 	vec3 cell = floor(a + 0.5);
 	float u = dot(a - cell, t1), v = dot(a - cell, t2);
-	vec4 m = vec4(dot(px, t1), dot(py, t1), dot(px, t2), dot(py, t2));
-	float det = m.x * m.w - m.y * m.z;
-	vec3 dc = -(t1 * u + t2 * v) * 10.0;
-	vec3 lc = nhvSquareAt(light, lx, ly, wpos, normal, dc, t1, t2, m, det);
+	float bright = nhvSquareBright(cell, n, nl);
 	if (nhvSquare > 1.5 && abs(u) + abs(v) > 0.5) {
+		// (in a corner's triangle: the neighbours beside that corner, where
+		// the face goes on - solid behind, open in front)
 		vec3 s1 = t1 * (u < 0.0 ? -1.0 : 1.0), s2 = t2 * (v < 0.0 ? -1.0 : 1.0);
-		vec3 l1 = nhvSquareAt(light, lx, ly, wpos, normal, dc + s1 * 10.0, t1, t2, m, det);
-		vec3 l2 = nhvSquareAt(light, lx, ly, wpos, normal, dc + s2 * 10.0, t1, t2, m, det);
-		// (raytraced: only where the face goes on - solid behind, open in
-		// front)
-		if (nhvRaytrace > 0.5) {
-			if (!(nhvRtCell(cell + s1).r < 0.5 && nhvRtCell(cell + s1 - n).r > 0.5))
-				l1 = lc;
-			if (!(nhvRtCell(cell + s2).r < 0.5 && nhvRtCell(cell + s2 - n).r > 0.5))
-				l2 = lc;
-		}
-		float b = max(lc.r, max(lc.g, lc.b));
-		float b1 = max(l1.r, max(l1.g, l1.b)), b2 = max(l2.r, max(l2.g, l2.b));
-		if (b1 < b * 0.6 && b2 < b * 0.6)
-			lc = b1 > b2 ? l1 : l2;
+		float b1 = bright, b2 = bright;
+		if (nhvRtCell(cell + s1).r < 0.5 && nhvRtCell(cell + s1 - n).r > 0.5)
+			b1 = nhvSquareBright(cell + s1, n, nl);
+		if (b1 < bright * 0.6 && nhvRtCell(cell + s2).r < 0.5 && nhvRtCell(cell + s2 - n).r > 0.5)
+			b2 = nhvSquareBright(cell + s2, n, nl);
+		if (b1 < bright * 0.6 && b2 < bright * 0.6)
+			bright = max(b1, b2);
 	}
-	return lc;
+	return vec3(min(bright * nhvFaceShade(normal) * 1.04, 1.0));
 }
 
 vec3 nhvTexelLit(vec3 light, vec2 uv, vec2 texsize, vec3 wpos, vec3 normal)

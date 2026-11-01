@@ -169,6 +169,8 @@ class GameGlobalShaderUniformSetter : public IShaderUniformSetter
 	// square light: 0 off, 1 block by block, 2 with the steps' corners
 	// filled (nhv_square_light: off, on, filled)
 	CachedPixelShaderSetting<float> m_nhv_square_pixel{"nhvSquare"};
+	// (the blocks' texture there: raytraced or square light)
+	CachedPixelShaderSetting<float> m_nhv_grid_pixel{"nhvGrid"};
 	float m_nhv_square = 0.0f;
 	// (arrays: named without "[0]" by the OpenGL 3 driver, with it by the old one)
 	CachedPixelShaderSetting<float, nhv_rt_client::MAX_PORTALS * 4> m_nhv_rt_portals_pixel{"nhvRtPortals"};
@@ -325,8 +327,10 @@ public:
 				hero[3] = s_nhv_hero_light;
 			}
 			m_nhv_hero_light_pixel.set(hero, services);
-			float rt = nhv_rt_client::texture() ? 1.0f : 0.0f;
+			float rt = nhv_rt_client::raytracing() ? 1.0f : 0.0f;
 			m_nhv_rt_pixel.set(&rt, services);
+			float grid = nhv_rt_client::texture() ? 1.0f : 0.0f;
+			m_nhv_grid_pixel.set(&grid, services);
 			if (rt > 0.0f) {
 				float n = nhv_rt_client::portal_count();
 				m_nhv_rt_portals_pixel.set(nhv_rt_client::portals(), services);

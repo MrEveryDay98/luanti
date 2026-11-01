@@ -46,8 +46,9 @@ struct Light {
 };
 
 // server: the blocks (GX * GY * GZ bits, x fastest, then z, then y), the
-// portals
-void set_grid(std::vector<u8> &&cells, std::vector<Portal> &&portals);
+// portals, and each block's own light (Luanti's, the night's: 0..15 - for
+// square light, block by block)
+void set_grid(std::vector<u8> &&cells, std::vector<Portal> &&portals, std::vector<u8> &&levels);
 // server: the lamps
 void set_lights(std::vector<Light> &&lights);
 // server: none (left the game)
@@ -56,7 +57,7 @@ void clear();
 // client: the grid's version (0: none yet) - new blocks to upload when it
 // changes; copies of what's there
 u32 generation();
-void get_grid(std::vector<u8> *cells);
+void get_grid(std::vector<u8> *cells, std::vector<u8> *levels);
 void get_portals(std::vector<Portal> *portals);
 void get_lights(std::vector<Light> *lights);
 
