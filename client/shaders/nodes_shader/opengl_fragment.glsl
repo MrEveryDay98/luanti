@@ -179,28 +179,62 @@ bool nhvRtClear(vec3 a, vec3 b)
 		s.y > 0.0 ? (1.0 - fq.y) * td.y : s.y < 0.0 ? fq.y * td.y : 1e9,
 		s.z > 0.0 ? (1.0 - fq.z) * td.z : s.z < 0.0 ? fq.z * td.z : 1e9);
 	for (int i = 0; i < 96; i++) {
-		if (tm.x < tm.y && tm.x < tm.z) {
-			if (tm.x >= 1.0)
-				return true;
-			c.x += s.x;
-			tm.x += td.x;
-		} else if (tm.y < tm.z) {
-			if (tm.y >= 1.0)
-				return true;
-			c.y += s.y;
-			tm.y += td.y;
-		} else {
-			if (tm.z >= 1.0)
-				return true;
-			c.z += s.z;
-			tm.z += td.z;
+		// (through an edge or a corner - two ways out of the block at once:
+		// the blocks beside it on the way looked at too, so it can't slip
+		// between two that only touch there)
+		float t = min(tm.x, min(tm.y, tm.z));
+		if (t >= 1.0)
+			return true;
+		vec3 hit = vec3(tm.x - t < 1e-4 ? 1.0 : 0.0, tm.y - t < 1e-4 ? 1.0 : 0.0, tm.z - t < 1e-4 ? 1.0 : 0.0);
+		if (hit.x + hit.y + hit.z > 1.5) {
+			if ((hit.x > 0.5 && nhvRtCell(c + vec3(s.x, 0.0, 0.0)).r > 0.5)
+					|| (hit.y > 0.5 && nhvRtCell(c + vec3(0.0, s.y, 0.0)).r > 0.5)
+					|| (hit.z > 0.5 && nhvRtCell(c + vec3(0.0, 0.0, s.z)).r > 0.5))
+				return false;
 		}
+		c += s * hit;
+		tm += td * hit;
 		if (c == ce)
 			return true;
 		if (nhvRtCell(c).r > 0.5)
 			return false;
 	}
 	return true;
+}
+// a point where faces meet - on the line between blocks - may round into
+// the solid block beside its face (a ray from inside a block isn't stopped
+// by it), and a ray along that line can slip between blocks that only
+// touch at an edge: rays start from inside an open block, never on its
+// edges - the one the point's in, or the open one beside it - and a
+// quarter of a block off any solid block beside it (a ray hugging a wall
+// sees round what a wall's thickness would hide: thin strips of light
+// along walls' feet and corners)
+vec3 nhvRtOpen(vec3 a)
+{
+	for (int k = 0; k < 3; k++) {
+		if (nhvRtCell(floor(a + 0.5)).r < 0.5)
+			break;
+		float f = fract(a[k] + 0.5);
+		vec3 b = a;
+		if (f < 0.03)
+			b[k] -= 0.05;
+		else if (f > 0.97)
+			b[k] += 0.05;
+		else
+			continue;
+		if (nhvRtCell(floor(b + 0.5)).r < 0.5)
+			a = b;
+	}
+	vec3 c = floor(a + 0.5);
+	vec3 lo = c - 0.45, hi = c + 0.45;
+	for (int k = 0; k < 3; k++) {
+		vec3 e = vec3(k == 0 ? 1.0 : 0.0, k == 1 ? 1.0 : 0.0, k == 2 ? 1.0 : 0.0);
+		if (nhvRtCell(c - e).r > 0.5)
+			lo[k] = c[k] - 0.25;
+		if (nhvRtCell(c + e).r > 0.5)
+			hi[k] = c[k] + 0.25;
+	}
+	return clamp(a, lo, hi);
 }
 // sides darker than tops, as Luanti shades them
 float nhvFaceShade(vec3 normal)
@@ -219,7 +253,7 @@ vec3 nhvRtLit(vec3 wpos, vec3 normal)
 	float nl = length(normal);
 	vec3 n = nl > 0.001 ? normal / nl : vec3(0.0);
 	// (from just off the face: the block in front of it)
-	vec3 a = p + n * 0.05;
+	vec3 a = nhvRtOpen(p + n * 0.05);
 	// (how bright, before the face's shading)
 	float bright = 0.0;
 	if (nhvRtCell(floor(a + 0.5)).g > 0.5) {

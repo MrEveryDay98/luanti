@@ -90,11 +90,31 @@ static bool clear_line(v3f a, v3f b)
 				: step[k] < 0 ? (q[k] - c[k]) * tdelta[k] : 1e9f;
 	}
 	for (int i = 0; i < 96; i++) {
-		int k = tmax[0] < tmax[1] ? (tmax[0] < tmax[2] ? 0 : 2) : (tmax[1] < tmax[2] ? 1 : 2);
-		if (tmax[k] >= 1.0f)
+		float t = std::fmin(tmax[0], std::fmin(tmax[1], tmax[2]));
+		if (t >= 1.0f)
 			return true;
-		c[k] += step[k];
-		tmax[k] += tdelta[k];
+		// (through an edge or a corner - two ways out of the block at once:
+		// the blocks beside it on the way looked at too, so it can't slip
+		// between two that only touch there)
+		bool hit[3];
+		int n = 0;
+		for (int k = 0; k < 3; k++) {
+			hit[k] = tmax[k] - t < 1e-4f;
+			n += hit[k] ? 1 : 0;
+		}
+		if (n > 1) {
+			for (int k = 0; k < 3; k++) {
+				if (hit[k] && (cell(c[0] + (k == 0 ? step[0] : 0), c[1] + (k == 1 ? step[1] : 0),
+						c[2] + (k == 2 ? step[2] : 0)) & RT_STOPS))
+					return false;
+			}
+		}
+		for (int k = 0; k < 3; k++) {
+			if (hit[k]) {
+				c[k] += step[k];
+				tmax[k] += tdelta[k];
+			}
+		}
 		if (c[0] == ce[0] && c[1] == ce[1] && c[2] == ce[2])
 			return true;
 		if (cell(c[0], c[1], c[2]) & RT_STOPS)
@@ -103,11 +123,50 @@ static bool clear_line(v3f a, v3f b)
 	return true;
 }
 
+// a point on the line between two blocks, rounding into a solid one: moved
+// just into the open one beside it; and inside that, not on its edges, a
+// quarter of a block off any solid block beside it (as the shaders do - a
+// ray from inside a block isn't stopped by it, one along an edge can slip
+// between blocks that only touch there, one hugging a wall sees round
+// what a wall's thickness would hide)
+static v3f into_open(v3f p)
+{
+	float *c[3] = {&p.X, &p.Y, &p.Z};
+	auto solid = [&]() {
+		return cell((int)std::floor(p.X + 0.5f), (int)std::floor(p.Y + 0.5f), (int)std::floor(p.Z + 0.5f)) & RT_STOPS;
+	};
+	for (int k = 0; k < 3; k++) {
+		if (!solid())
+			break;
+		float v = *c[k];
+		float f = (v + 0.5f) - std::floor(v + 0.5f);
+		float to = f < 0.03f ? v - 0.05f : f > 0.97f ? v + 0.05f : v;
+		if (to == v)
+			continue;
+		*c[k] = to;
+		if (solid())
+			*c[k] = v;
+	}
+	// (and inside it, not on its edges; a quarter of a block off any solid
+	// block beside it)
+	int m[3] = {(int)std::floor(p.X + 0.5f), (int)std::floor(p.Y + 0.5f), (int)std::floor(p.Z + 0.5f)};
+	for (int k = 0; k < 3; k++) {
+		int lo[3] = {m[0], m[1], m[2]}, hi[3] = {m[0], m[1], m[2]};
+		lo[k]--;
+		hi[k]++;
+		float a = (cell(lo[0], lo[1], lo[2]) & RT_STOPS) ? m[k] - 0.25f : m[k] - 0.45f;
+		float b = (cell(hi[0], hi[1], hi[2]) & RT_STOPS) ? m[k] + 0.25f : m[k] + 0.45f;
+		*c[k] = std::fmin(std::fmax(*c[k], a), b);
+	}
+	return p;
+}
+
 float light_at(v3f p)
 {
 	std::lock_guard<std::mutex> lock(s_mutex);
 	if (s_cells.empty())
 		return 0.0f;
+	p = into_open(p);
 	if (cell((int)std::floor(p.X + 0.5f), (int)std::floor(p.Y + 0.5f), (int)std::floor(p.Z + 0.5f)) & RT_LIT)
 		return FULL;
 	float best = 0.0f;
