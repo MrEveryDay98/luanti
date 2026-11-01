@@ -126,4 +126,9 @@ private:
 	bool m_cache_clickable_chat_weblinks;
 	// Track if a ctrl key is currently held down
 	bool m_is_ctrl_down;
+
+	// VoxHack: the console's left edge and width (pixels), off the screen's
+	// sides by core.nhv_console_margins
+	s32 m_nhv_x0 = 0;
+	s32 m_nhv_w = 0;
 };

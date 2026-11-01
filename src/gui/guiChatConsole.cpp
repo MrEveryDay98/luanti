@@ -34,6 +34,15 @@ inline u32 getScrollbarSize(IGUIEnvironment* env)
 	return env->getSkin()->getSize(gui::EGDS_SCROLLBAR_SIZE);
 }
 
+// VoxHack: the console kept off the screen's sides (pixels: the game's side
+// bars, sidebars.lua - core.nhv_console_margins)
+static s32 s_nhv_margin[2] = {0, 0};
+void nhv_set_console_margins(int left, int right)
+{
+	s_nhv_margin[0] = MYMAX(left, 0);
+	s_nhv_margin[1] = MYMAX(right, 0);
+}
+
 GUIChatConsole::GUIChatConsole(
 		gui::IGUIEnvironment* env,
 		gui::IGUIElement* parent,
@@ -175,7 +184,8 @@ void GUIChatConsole::draw()
 
 	// Check screen size
 	v2u32 screensize = driver->getScreenSize();
-	if (screensize != m_screensize)
+	if (screensize != m_screensize || m_nhv_x0 != s_nhv_margin[0]
+			|| m_nhv_x0 + m_nhv_w != (s32)screensize.X - s_nhv_margin[1])
 	{
 		// screen size has changed
 		// scale current console height to new window size
@@ -184,7 +194,7 @@ void GUIChatConsole::draw()
 		m_screensize = screensize;
 		m_desired_height = m_desired_height_fraction * m_screensize.Y;
 		reformatConsole();
-	} else if (!m_scrollbar->getAbsolutePosition().isPointInside(core::vector2di(screensize.X, m_height))) {
+	} else if (!m_scrollbar->getAbsolutePosition().isPointInside(core::vector2di(m_nhv_x0 + m_nhv_w, m_height))) {
 		// the height of the chat window is no longer the height of the scrollbar
 		// happens while opening/closing the window
 		updateScrollbar(true);
@@ -208,7 +218,9 @@ void GUIChatConsole::draw()
 
 void GUIChatConsole::reformatConsole()
 {
-	s32 cols = m_screensize.X / m_fontsize.X - 2; // make room for a margin (looks better)
+	m_nhv_x0 = s_nhv_margin[0];
+	m_nhv_w = MYMAX((s32)m_screensize.X - s_nhv_margin[0] - s_nhv_margin[1], (s32)m_fontsize.X * 4);
+	s32 cols = m_nhv_w / m_fontsize.X - 2; // make room for a margin (looks better)
 	s32 rows = m_desired_height / m_fontsize.Y - 1; // make room for the input prompt
 	if (cols <= 0 || rows <= 0)
 		cols = rows = 0;
@@ -221,7 +233,7 @@ void GUIChatConsole::reformatConsole()
 
 void GUIChatConsole::recalculateConsolePosition()
 {
-	core::rect<s32> rect(0, 0, m_screensize.X, m_height);
+	core::rect<s32> rect(m_nhv_x0, 0, m_nhv_x0 + m_nhv_w, m_height);
 	DesiredRect = rect;
 	recalculateAbsolutePosition(false);
 }
@@ -284,10 +296,10 @@ void GUIChatConsole::drawBackground()
 	video::IVideoDriver* driver = Environment->getVideoDriver();
 	if (m_background != NULL)
 	{
-		core::rect<s32> sourcerect(0, -m_height, m_screensize.X, 0);
+		core::rect<s32> sourcerect(0, -m_height, m_nhv_w, 0);
 		driver->draw2DImage(
 			m_background,
-			v2s32(0, 0),
+			v2s32(m_nhv_x0, 0),
 			sourcerect,
 			&AbsoluteClippingRect,
 			m_background_color,
@@ -297,7 +309,7 @@ void GUIChatConsole::drawBackground()
 	{
 		driver->draw2DRectangle(
 			m_background_color,
-			core::rect<s32>(0, 0, m_screensize.X, m_height),
+			core::rect<s32>(m_nhv_x0, 0, m_nhv_x0 + m_nhv_w, m_height),
 			&AbsoluteClippingRect);
 	}
 }
@@ -311,7 +323,7 @@ void GUIChatConsole::drawText()
 
 	core::recti rect;
 	if (m_scrollbar->isVisible())
-		rect = core::rect<s32> (0, 0, m_screensize.X - getScrollbarSize(Environment), m_height);
+		rect = core::rect<s32> (m_nhv_x0, 0, m_nhv_x0 + m_nhv_w - getScrollbarSize(Environment), m_height);
 	else
 		rect = AbsoluteClippingRect;
 
@@ -327,7 +339,7 @@ void GUIChatConsole::drawText()
 			continue;
 
 		for (const ChatFormattedFragment &fragment : line.fragments) {
-			s32 x = (fragment.column + 1) * m_fontsize.X;
+			s32 x = m_nhv_x0 + (fragment.column + 1) * m_fontsize.X;
 			core::rect<s32> destrect(
 				x, y, x + m_fontsize.X * fragment.text.size(), y + m_fontsize.Y);
 
@@ -376,7 +388,7 @@ void GUIChatConsole::drawPrompt()
 	s32 y = row * font_height + m_height - m_desired_height;
 
 	core::rect<s32> destrect(
-		font_width, y, font_width + text_width, y + font_height);
+		m_nhv_x0 + font_width, y, m_nhv_x0 + font_width + text_width, y + font_height);
 	m_font->draw(
 		prompt_text.c_str(),
 		destrect,
@@ -397,7 +409,7 @@ void GUIChatConsole::drawPrompt()
 
 			s32 cursor_len = prompt.getCursorLength();
 			video::IVideoDriver* driver = Environment->getVideoDriver();
-			s32 x = font_width + text_to_cursor_pos_width;
+			s32 x = m_nhv_x0 + font_width + text_to_cursor_pos_width;
 			core::rect<s32> destrect(
 				x,
 				y + font_height * (1.0 - m_cursor_height),
@@ -683,7 +695,7 @@ bool GUIChatConsole::OnEvent(const SEvent& event)
 			{
 				// Translate pixel position to font position
 				bool was_url_pressed = m_cache_clickable_chat_weblinks &&
-						weblinkClick(event.MouseInput.X / m_fontsize.X,
+						weblinkClick((event.MouseInput.X - m_nhv_x0) / m_fontsize.X,
 								event.MouseInput.Y / m_fontsize.Y);
 
 				if (!was_url_pressed
@@ -802,7 +814,7 @@ void GUIChatConsole::updateScrollbar(bool update_size)
 	m_scrollbar->setVisible(m_scrollbar->getMin() != m_scrollbar->getMax());
 
 	if (update_size) {
-		const core::rect<s32> rect (m_screensize.X - getScrollbarSize(Environment), 0, m_screensize.X, m_height);
+		const core::rect<s32> rect (m_nhv_x0 + m_nhv_w - getScrollbarSize(Environment), 0, m_nhv_x0 + m_nhv_w, m_height);
 		m_scrollbar->setRelativePosition(rect);
 	}
 }

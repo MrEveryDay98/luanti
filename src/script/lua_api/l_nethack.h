@@ -48,6 +48,7 @@ private:
 	static int l_nhv_rt_scan(lua_State *L);
 	static int l_nhv_rt_lights(lua_State *L);
 	static int l_nhv_rt_light_at(lua_State *L);
+	static int l_nhv_console_margins(lua_State *L);
 	static int l_nhv_fog(lua_State *L);
 	static int l_nh_tile_count(lua_State *L);
 	static int l_nh_cmap_name(lua_State *L);

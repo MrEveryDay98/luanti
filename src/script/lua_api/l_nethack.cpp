@@ -1422,6 +1422,16 @@ int ModApiNetHack::l_nhv_rt_scan(lua_State *L)
 	return 1;
 }
 
+// core.nhv_console_margins(left, right): keep the chat console (T, the
+// command line) off the screen's sides, pixels (the game's side bars;
+// client/gui/guiChatConsole.cpp)
+void nhv_set_console_margins(int left, int right);
+int ModApiNetHack::l_nhv_console_margins(lua_State *L)
+{
+	nhv_set_console_margins((int)luaL_optinteger(L, 1, 0), (int)luaL_optinteger(L, 2, 0));
+	return 0;
+}
+
 // core.nhv_rt_light_at(pos): the raytraced light level there (nodes; from
 // the lit rooms and lamps, not the hero's light - for checking)
 int ModApiNetHack::l_nhv_rt_light_at(lua_State *L)
@@ -1590,6 +1600,7 @@ void ModApiNetHack::Initialize(lua_State *L, int top)
 	API_FCT(nhv_rt_scan);
 	API_FCT(nhv_rt_lights);
 	API_FCT(nhv_rt_light_at);
+	API_FCT(nhv_console_margins);
 	API_FCT(nhv_fog);
 	API_FCT(nh_tile_count);
 	API_FCT(nh_cmap_name);
