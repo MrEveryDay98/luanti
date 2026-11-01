@@ -255,6 +255,16 @@ void ClientEnvironment::step(float dtime)
 			u16 rt = decode_light((u8)std::min(std::round(nhv_rt::light_at(intToFloat(p, 1))), 14.0f));
 			light = std::max<u16>(light & 0xFF, rt) | (std::max<u16>(light >> 8, rt) << 8);
 		}
+		// (VoxHack: and the light you carry - the shaders' own, round your
+		// head, not a block's: core.nhv_hero_light - so what's in your hands
+		// is lit as where you stand is; blind, it isn't lit at all)
+		{
+			extern float nhv_get_hero_light();
+			u16 carried = decode_light((u8)std::clamp(std::round(nhv_get_hero_light()), 0.0f, 14.0f));
+			light = std::max<u16>(light & 0xFF, carried) | (std::max<u16>(light >> 8, carried) << 8);
+		}
+		if (nhv_camera::get_blind())
+			light = 0;
 		lplayer->light_color = encode_light(light, 0); // this transfers light.alpha
 		final_color_blend(&lplayer->light_color, light, day_night_ratio);
 	}

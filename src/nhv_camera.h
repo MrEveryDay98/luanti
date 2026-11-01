@@ -40,6 +40,10 @@ v3f get_drift();
 // (client/game.cpp)
 void set_drift_facing(bool on);
 bool get_drift_facing();
+// server (core.nhv_hero_blind): the hero is blind - what's in your hands
+// isn't lit (client/clientenvironment.cpp)
+void set_blind(bool on);
+bool get_blind();
 
 // server (core.nhv_bubble_floor): the Plane of Water's bubbles, each an
 // ellipse on the floor - x, z (its middle), rx, rz (its half widths), vx,
