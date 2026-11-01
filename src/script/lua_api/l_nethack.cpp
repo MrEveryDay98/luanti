@@ -1432,6 +1432,16 @@ int ModApiNetHack::l_nhv_console_margins(lua_State *L)
 	return 0;
 }
 
+// core.nhv_view_sides(fraction): how much of the screen's width each of
+// the game's side bars covers - the hands drawn in from them
+// (client/camera.cpp)
+void nhv_set_view_sides(float side);
+int ModApiNetHack::l_nhv_view_sides(lua_State *L)
+{
+	nhv_set_view_sides((float)luaL_optnumber(L, 1, 0));
+	return 0;
+}
+
 // core.nhv_rt_light_at(pos): the raytraced light level there (nodes; from
 // the lit rooms and lamps, not the hero's light - for checking)
 int ModApiNetHack::l_nhv_rt_light_at(lua_State *L)
@@ -1601,6 +1611,7 @@ void ModApiNetHack::Initialize(lua_State *L, int top)
 	API_FCT(nhv_rt_lights);
 	API_FCT(nhv_rt_light_at);
 	API_FCT(nhv_console_margins);
+	API_FCT(nhv_view_sides);
 	API_FCT(nhv_fog);
 	API_FCT(nh_tile_count);
 	API_FCT(nh_cmap_name);

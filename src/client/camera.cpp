@@ -37,6 +37,15 @@ static constexpr f32 CAMERA_OFFSET_STEP = 200;
 #define WIELDMESH_AMPLITUDE_X 7.0f
 #define WIELDMESH_AMPLITUDE_Y 10.0f
 
+// VoxHack: how much of the screen's width each side bar covers (0 - none;
+// sidebars.lua - core.nhv_view_sides): the hands are drawn that much in
+// from the sides, where the view still shows them
+static f32 s_nhv_view_side = 0.0f;
+void nhv_set_view_sides(float side)
+{
+	s_nhv_view_side = rangelim(side, 0.0f, 0.4f);
+}
+
 static const char *setting_names[] = {
 	"view_bobbing_amount", "fov", "arm_inertia",
 	"show_nametag_backgrounds",
@@ -714,6 +723,10 @@ void Camera::update(LocalPlayer* player, f32 frametime, f32 tool_reload_ratio)
 	// NetHack Voxel: kicking, both hands drop out of view and come back
 	f32 nhv_down = m_nhv_down_anim >= 0.0f ? std::sin(m_nhv_down_anim * M_PI) * 90.0f : 0.0f;
 	wield_position.Y -= nhv_down;
+	// (the side bars: in from them - as far in the view left as before in
+	// the whole screen)
+	const f32 nhv_in = WIELDMESH_OFFSET_X * 2.0f * s_nhv_view_side;
+	wield_position.X -= nhv_in;
 	m_wieldnode->setPosition(wield_position);
 	m_wieldnode->setRotation(wield_rotation);
 
@@ -740,6 +753,7 @@ void Camera::update(LocalPlayer* player, f32 frametime, f32 tool_reload_ratio)
 			off_pos.Y += std::sin(my_modf(bobfrac * 2.0) * M_PI) * 3.0;
 		}
 		off_pos.Y -= nhv_down;
+		off_pos.X += nhv_in;
 		m_nhv_offnode->setPosition(off_pos);
 		m_nhv_offnode->setRotation(off_rot);
 	}
