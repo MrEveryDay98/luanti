@@ -74,6 +74,7 @@ struct NhvFuncs {
 	NHV_FN(nhv_get_missiles)
 	NHV_FN(nhv_clear_missiles)
 	NHV_FN(nhv_get_rolls)
+	NHV_FN(nhv_get_boulders)
 	NHV_FN(nhv_get_lights)
 	NHV_FN(nhv_get_ball)
 	NHV_FN(nhv_get_rays)
@@ -162,6 +163,7 @@ bool load_library(std::string &err)
 	NHV_FN(nhv_get_missiles)
 	NHV_FN(nhv_clear_missiles)
 	NHV_FN(nhv_get_rolls)
+	NHV_FN(nhv_get_boulders)
 	NHV_FN(nhv_get_lights)
 	NHV_FN(nhv_get_ball)
 	NHV_FN(nhv_get_rays)
@@ -1140,6 +1142,28 @@ int ModApiNetHack::l_nh_get_rolls(lua_State *L)
 	return 1;
 }
 
+// nh_get_boulders() -> list of {x, y, seen, glyph, tile}: every boulder on
+// the level, seen or not (seen: the hero sees its square) - for drawing
+// one in plain view, in the dark, all black (mobs.lua)
+int ModApiNetHack::l_nh_get_boulders(lua_State *L)
+{
+	REQUIRE_LOADED();
+	static std::vector<int> buf(5 * 256);
+	int n = nh.nhv_get_boulders(buf.data(), 256);
+	lua_createtable(L, n, 0);
+	for (int i = 0; i < n; i++) {
+		lua_createtable(L, 0, 5);
+		set_int(L, "x", buf[i * 5]);
+		set_int(L, "y", buf[i * 5 + 1]);
+		lua_pushboolean(L, buf[i * 5 + 2] != 0);
+		lua_setfield(L, -2, "seen");
+		set_int(L, "glyph", buf[i * 5 + 3]);
+		set_int(L, "tile", buf[i * 5 + 4]);
+		lua_rawseti(L, -2, i + 1);
+	}
+	return 1;
+}
+
 // nh_get_lights() -> list of {x, y, range, at_hero}
 int ModApiNetHack::l_nh_get_lights(lua_State *L)
 {
@@ -1585,6 +1609,7 @@ void ModApiNetHack::Initialize(lua_State *L, int top)
 	API_FCT(nh_mon_info);
 	API_FCT(nh_get_missiles);
 	API_FCT(nh_get_rolls);
+	API_FCT(nh_get_boulders);
 	API_FCT(nh_clear_missiles);
 	API_FCT(nh_get_lights);
 	API_FCT(nh_get_ball);
