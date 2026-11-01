@@ -152,6 +152,7 @@ void set_default_settings()
 	settings->setDefault("nhv_retro_res", "800x600"); // VoxHack: retro mode's screen
 	settings->setDefault("nhv_retro_palette", "vga"); // VoxHack: retro mode's colours: vga (256), ega (16), full
 	settings->setDefault("nhv_retro_bands", "6"); // VoxHack: retro mode's light in this many steps (0: smooth)
+	settings->setDefault("nhv_raytrace", "false"); // VoxHack: raytraced light (nhv_raytrace.h)
 	settings->setDefault("nhv_square_light", "off"); // VoxHack: light block by block (on)
 	settings->setDefault("nhv_retro_wide", "false"); // VoxHack: retro mode's screen as wide as the window's shape
 	settings->setDefault("nhv_retro_whole", "false"); // VoxHack: retro mode scaled up by whole numbers only
