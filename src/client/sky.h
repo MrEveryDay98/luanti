@@ -152,6 +152,7 @@ private:
 	bool m_nhv_daynight = false;
 	f32 m_nhv_pixels = 0;
 	f32 m_nhv_bright = 1; // the clouds' brightness (1: as drawn)
+	f32 m_nhv_vortex[3] = {0, 0, 1}; // a vortex: twist, turning speed, size
 	struct NhvLayer {
 		bool generated = false;
 		f32 speed_x = 0, speed_y = 0, scale = 3, alpha = 0;

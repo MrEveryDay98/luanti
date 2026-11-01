@@ -16,6 +16,7 @@ uniform lowp vec4 nhvSkyShade1;
 uniform lowp vec4 nhvSkyHorizon;  // rgb; a = how strongly it fades in
 uniform highp vec4 nhvSkyMisc;    // x: pixels per repeat (0 = smooth); y: brightness
 uniform lowp vec4 nhvSkyGlow;     // rgb: the clouds' colour at dawn and dusk; a: how strongly now
+uniform highp vec4 nhvSkyVortex;  // x: twist (radians, in the middle); y: turned by now; z: size
 
 VARYING_ highp vec3 vPos;
 
@@ -49,6 +50,22 @@ highp float fbm(highp vec2 p, float octaves)
 	return v / max(total, 0.001);
 }
 
+// VoxHack: a vortex - the clouds twisted round the point overhead, the
+// most in the middle (x: how far, radians; it fades out by z, the vortex's
+// size), the whole sky turned round it as time goes (y, radians). A twist
+// that grew with time would wind the clouds into streaks: a fixed one,
+// turning, doesn't.
+highp vec2 nhvVortex(highp vec2 p)
+{
+	if (nhvSkyVortex.x == 0.0 && nhvSkyVortex.y == 0.0)
+		return p;
+	highp float r = length(p);
+	highp float k = exp(-r / max(nhvSkyVortex.z, 0.01));
+	highp float a = nhvSkyVortex.y + nhvSkyVortex.x * k;
+	highp float c = cos(a), s = sin(a);
+	return vec2(c * p.x - s * p.y, s * p.x + c * p.y);
+}
+
 // one layer: rgb and how much of it there is
 vec4 layer(sampler2D tex, highp vec2 p, highp vec4 L, lowp vec4 tint, highp vec4 gen, lowp vec4 shade)
 {
@@ -74,7 +91,7 @@ void main(void)
 {
 	highp vec3 d = normalize(vPos);
 	// (on the plane: its height is 1, so these are its coordinates)
-	highp vec2 p = vPos.xz / vPos.y * 0.25;
+	highp vec2 p = nhvVortex(vPos.xz / vPos.y * 0.25);
 
 	vec4 back = layer(texture0, p, nhvSkyLayer0, nhvSkyTint0, nhvSkyGen0, nhvSkyShade0);
 	vec4 front = layer(texture1, p, nhvSkyLayer1, nhvSkyTint1, nhvSkyGen1, nhvSkyShade1);

@@ -73,6 +73,7 @@ struct NhvSkyUniforms {
 	f32 horizon[4] = {0, 0, 0, 0};
 	f32 misc[4] = {0, 1, 0, 0};
 	f32 glow[4] = {1, 1, 1, 0}; // (the clouds tinted so: rgb, how strongly now)
+	f32 vortex[4] = {0, 0, 1, 0}; // (twist, turned by now, size: nhv_sky_shader)
 } g_nhv_sky;
 
 class NhvSkyUniformSetter : public IShaderUniformSetter {
@@ -82,6 +83,7 @@ class NhvSkyUniformSetter : public IShaderUniformSetter {
 	CachedPixelShaderSetting<f32, 4> m_shade0{"nhvSkyShade0"}, m_shade1{"nhvSkyShade1"};
 	CachedPixelShaderSetting<f32, 4> m_horizon{"nhvSkyHorizon"};
 	CachedPixelShaderSetting<f32, 4> m_misc{"nhvSkyMisc"};
+	CachedPixelShaderSetting<f32, 4> m_vortex{"nhvSkyVortex"};
 	CachedPixelShaderSetting<f32, 4> m_glow{"nhvSkyGlow"};
 public:
 	void onSetUniforms(video::IMaterialRendererServices *services) override
@@ -97,6 +99,7 @@ public:
 		m_horizon.set(g_nhv_sky.horizon, services);
 		m_misc.set(g_nhv_sky.misc, services);
 		m_glow.set(g_nhv_sky.glow, services);
+		m_vortex.set(g_nhv_sky.vortex, services);
 	}
 };
 
@@ -211,6 +214,11 @@ void Sky::nhvUpdate()
 	m_nhv_glow[1] = nhvNum(rest, "gg", 1);
 	m_nhv_glow[2] = nhvNum(rest, "gb", 1);
 	m_nhv_glow[3] = core::clamp(nhvNum(rest, "ga", 0), 0.0f, 1.0f);
+	// (a vortex: its twist in the middle, radians; how fast it turns,
+	// radians a second; its size)
+	m_nhv_vortex[0] = nhvNum(rest, "vt", 0);
+	m_nhv_vortex[1] = nhvNum(rest, "vs", 0);
+	m_nhv_vortex[2] = MYMAX(0.01f, nhvNum(rest, "vr", 1));
 	for (int i = 0; i < 2; i++) {
 		auto m = nhvPairs(parts[i]);
 		NhvLayer &L = m_nhv_layer[i];
@@ -265,6 +273,9 @@ void Sky::nhvDraw(video::IVideoDriver *driver)
 	}
 	for (int k = 0; k < 4; k++)
 		g_nhv_sky.horizon[k] = m_nhv_horizon[k];
+	g_nhv_sky.vortex[0] = m_nhv_vortex[0];
+	g_nhv_sky.vortex[1] = (f32)std::fmod(t * m_nhv_vortex[1], 2.0 * core::PI64);
+	g_nhv_sky.vortex[2] = m_nhv_vortex[2];
 	g_nhv_sky.misc[0] = m_nhv_pixels;
 	// (by night the clouds are dark too)
 	g_nhv_sky.misc[1] = (m_nhv_daynight ? MYMAX(0.12f, m_time_brightness) : 1.0f) * m_nhv_bright;
