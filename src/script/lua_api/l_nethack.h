@@ -33,6 +33,7 @@ private:
 	static int l_nhv_camera_roll(lua_State *L);
 	static int l_nh_get_bubbles(lua_State *L);
 	static int l_nhv_player_drift(lua_State *L);
+	static int l_nhv_drift_facing(lua_State *L);
 	static int l_nhv_bubble_floor(lua_State *L);
 	static int l_nhv_camera_orbit(lua_State *L);
 	static int l_nhv_camera_path(lua_State *L);

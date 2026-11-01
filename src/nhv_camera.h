@@ -35,6 +35,11 @@ float get_roll();
 // as a moving platform would carry it
 void set_drift(v3f velocity);
 v3f get_drift();
+// server (core.nhv_drift_facing): while carried along so (travel), the
+// camera eases round to face the way it goes - until the player turns it
+// (client/game.cpp)
+void set_drift_facing(bool on);
+bool get_drift_facing();
 
 // server (core.nhv_bubble_floor): the Plane of Water's bubbles, each an
 // ellipse on the floor - x, z (its middle), rx, rz (its half widths), vx,

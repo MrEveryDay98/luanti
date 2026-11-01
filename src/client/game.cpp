@@ -2350,6 +2350,7 @@ bool Game::isTouchShootlineUsed() const
 void Game::updateCameraOrientation(CameraOrientation *cam, float dtime)
 {
 	f32 sens_scale = getSensitivityScaleFactor();
+	const f32 nhv_yaw_before = cam->camera_yaw;
 
 	if (g_touchcontrols) {
 		// User setting is already applied by TouchControls.
@@ -2388,6 +2389,23 @@ void Game::updateCameraOrientation(CameraOrientation *cam, float dtime)
 		cam->camera_pitch -= input->getAxisValue(KeyType::CAMERA_PITCH_UP) * rate;
 	if (input->isKeyDown(KeyType::CAMERA_PITCH_DOWN))
 		cam->camera_pitch += input->getAxisValue(KeyType::CAMERA_PITCH_DOWN) * rate;
+
+	// NetHack Voxel: carried along by travel (core.nhv_drift_facing), the
+	// camera eases round to face the way you go, every frame - until you
+	// turn it yourself: then it's yours for the rest of the way
+	static bool nhv_turned_self = false;
+	if (!nhv_camera::get_drift_facing()) {
+		nhv_turned_self = false;
+	} else if (cam->camera_yaw != nhv_yaw_before) {
+		nhv_turned_self = true;
+	} else if (!nhv_turned_self) {
+		v3f d = nhv_camera::get_drift();
+		if (d.X * d.X + d.Z * d.Z > 0.01f) {
+			f32 want = std::atan2(-d.X, d.Z) * core::RADTODEG;
+			f32 diff = wrapDegrees_180(want - cam->camera_yaw);
+			cam->camera_yaw += diff * std::min(1.0f, dtime * 3.0f);
+		}
+	}
 
 	cam->camera_pitch = rangelim(cam->camera_pitch, -90, 90);
 }

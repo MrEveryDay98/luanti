@@ -13,6 +13,7 @@ static v3f where;
 static bool known = false;
 static float roll = 0.0f;
 static v3f drift(0.0f, 0.0f, 0.0f);
+static bool drift_facing = false;
 static std::vector<Bubble> bubbles;
 static float bubbles_y = 0.0f;
 static u64 bubbles_at = 0;
@@ -72,6 +73,18 @@ v3f get_drift()
 {
 	std::lock_guard<std::mutex> guard(lock);
 	return drift;
+}
+
+void set_drift_facing(bool on)
+{
+	std::lock_guard<std::mutex> guard(lock);
+	drift_facing = on;
+}
+
+bool get_drift_facing()
+{
+	std::lock_guard<std::mutex> guard(lock);
+	return drift_facing;
 }
 
 void set_bubbles(const std::vector<Bubble> &list, float floor_y)

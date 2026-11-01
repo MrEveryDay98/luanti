@@ -698,6 +698,15 @@ int ModApiNetHack::l_nhv_player_drift(lua_State *L)
 	return 0;
 }
 
+// core.nhv_drift_facing(on): while carried along by the drift (travel),
+// the camera eases round to face the way it goes - until the player turns
+// it themselves (client/game.cpp)
+int ModApiNetHack::l_nhv_drift_facing(lua_State *L)
+{
+	nhv_camera::set_drift_facing(lua_toboolean(L, 1));
+	return 0;
+}
+
 // core.nhv_hero_light(level): the light the hero carries (a light level, 0
 // none), lit round the player's head by the shaders (client/game.cpp; the
 // client is in this same program)
@@ -1595,6 +1604,7 @@ void ModApiNetHack::Initialize(lua_State *L, int top)
 	API_FCT(nhv_camera);
 	API_FCT(nhv_camera_roll);
 	API_FCT(nhv_player_drift);
+	API_FCT(nhv_drift_facing);
 	API_FCT(nhv_bubble_floor);
 	API_FCT(nhv_camera_orbit);
 	API_FCT(nhv_camera_path);
