@@ -511,6 +511,7 @@ set(common_SRCS
 	mapblock.cpp
 	nhv_levelready.cpp
 	nhv_camera.cpp
+	nhv_raytrace.cpp
 	mapnode.cpp
 	mapsector.cpp
 	nodedef.cpp

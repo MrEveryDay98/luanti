@@ -5,6 +5,8 @@
 #include "util/serialize.h" // serializeJsonString
 #include "util/pointedthing.h"
 #include "client.h"
+#include "nhv_raytrace.h"
+#include "client/nhv_rt_client.h"
 #include "clientenvironment.h"
 #include "clientsimpleobject.h"
 #include "clientmap.h"
@@ -248,6 +250,11 @@ void ClientEnvironment::step(float dtime)
 		node_at_lplayer = m_map->getNode(p);
 
 		u16 light = getInteriorLight(node_at_lplayer, 0, m_client->ndef());
+		// (VoxHack: and the raytraced light - nhv_raytrace.h)
+		if (nhv_rt_client::enabled()) {
+			u16 rt = decode_light((u8)std::min(std::round(nhv_rt::light_at(intToFloat(p, 1))), 14.0f));
+			light = std::max<u16>(light & 0xFF, rt) | (std::max<u16>(light >> 8, rt) << 8);
+		}
 		lplayer->light_color = encode_light(light, 0); // this transfers light.alpha
 		final_color_blend(&lplayer->light_color, light, day_night_ratio);
 	}

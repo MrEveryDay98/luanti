@@ -141,10 +141,139 @@ vec3 nhvHeroLit(vec3 wpos, vec3 normal)
 	return vec3(min(nhvDecodeLight(level / 14.0) * shade * 1.04, 1.0));
 }
 
+// VoxHack: raytraced light (the setting nhv_raytrace; nhv_raytrace.h):
+// the level's blocks in texture2 (red: stops light, green: in a lit room;
+// y layers one under another), rays traced through them block by block. A
+// lit room lit through and through; out of it, light only where a straight
+// line reaches one of its portals (nhvRtPortals: where it opens onto the
+// dark), fading a level every two blocks; lamps (nhvRtLights) and the
+// hero's light casting hard shadows.
+uniform float nhvRaytrace;
+uniform sampler2D texture2;
+uniform vec4 nhvRtPortals[64];
+uniform float nhvRtPortalN;
+uniform vec4 nhvRtLights[8];
+uniform float nhvRtLightN;
+vec2 nhvRtCell(vec3 c)
+{
+	// (x 0..255, z 0..63, y -9..22)
+	if (c.x < 0.0 || c.x > 255.0 || c.z < 0.0 || c.z > 63.0 || c.y < -9.0 || c.y > 22.0)
+		return vec2(0.0);
+	return texture2D(texture2, (vec2(c.x, c.z + (c.y + 9.0) * 64.0) + 0.5) / vec2(256.0, 2048.0)).rg;
+}
+// nothing that stops light on the line from a to b (nodes; not the blocks
+// they're in)
+bool nhvRtClear(vec3 a, vec3 b)
+{
+	vec3 q = a + 0.5;
+	vec3 e = b + 0.5;
+	vec3 d = e - q;
+	vec3 c = floor(q);
+	vec3 ce = floor(e);
+	vec3 s = sign(d);
+	vec3 ad = abs(d);
+	vec3 td = vec3(ad.x > 1e-6 ? 1.0 / ad.x : 1e9, ad.y > 1e-6 ? 1.0 / ad.y : 1e9,
+		ad.z > 1e-6 ? 1.0 / ad.z : 1e9);
+	vec3 fq = q - c;
+	vec3 tm = vec3(s.x > 0.0 ? (1.0 - fq.x) * td.x : s.x < 0.0 ? fq.x * td.x : 1e9,
+		s.y > 0.0 ? (1.0 - fq.y) * td.y : s.y < 0.0 ? fq.y * td.y : 1e9,
+		s.z > 0.0 ? (1.0 - fq.z) * td.z : s.z < 0.0 ? fq.z * td.z : 1e9);
+	for (int i = 0; i < 96; i++) {
+		if (tm.x < tm.y && tm.x < tm.z) {
+			if (tm.x >= 1.0)
+				return true;
+			c.x += s.x;
+			tm.x += td.x;
+		} else if (tm.y < tm.z) {
+			if (tm.y >= 1.0)
+				return true;
+			c.y += s.y;
+			tm.y += td.y;
+		} else {
+			if (tm.z >= 1.0)
+				return true;
+			c.z += s.z;
+			tm.z += td.z;
+		}
+		if (c == ce)
+			return true;
+		if (nhvRtCell(c).r > 0.5)
+			return false;
+	}
+	return true;
+}
+// sides darker than tops, as Luanti shades them
+float nhvFaceShade(vec3 normal)
+{
+	float nl = length(normal);
+	vec3 n2 = nl > 0.001 ? normal * normal / (nl * nl) : vec3(0.0, 1.0, 0.0);
+	if (nl > 0.001 && normal.y < 0.0)
+		return 0.670820 * n2.x + 0.447213 * n2.y + 0.836660 * n2.z;
+	if (n2.x > 1e-3 || n2.z > 1e-3)
+		return 0.670820 * n2.x + n2.y + 0.836660 * n2.z;
+	return 1.0;
+}
+vec3 nhvRtLit(vec3 wpos, vec3 normal)
+{
+	vec3 p = (cameraOffset + wpos) / 10.0;
+	float nl = length(normal);
+	vec3 n = nl > 0.001 ? normal / nl : vec3(0.0);
+	// (from just off the face: the block in front of it)
+	vec3 a = p + n * 0.05;
+	float level = 0.0;
+	if (nhvRtCell(floor(a + 0.5)).g > 0.5) {
+		level = 14.0;
+	} else {
+		for (int i = 0; i < 64; i++) {
+			if (float(i) >= nhvRtPortalN)
+				break;
+			vec4 po = nhvRtPortals[i];
+			vec3 ov = po.w < 0.5 ? vec3(1.0, 0.0, 0.0) : po.w < 1.5 ? vec3(-1.0, 0.0, 0.0)
+				: po.w < 2.5 ? vec3(0.0, 0.0, 1.0) : vec3(0.0, 0.0, -1.0);
+			vec3 to = a - po.xyz;
+			// (out of it, and facing it)
+			if (dot(to, ov) <= 0.0 || (nl > 0.001 && dot(n, to) >= 0.0))
+				continue;
+			float l = 14.0 - length(to) / 2.0;
+			if (l <= level || l < 1.0)
+				continue;
+			if (nhvRtClear(a, po.xyz + ov * 0.01))
+				level = l;
+		}
+	}
+	for (int i = 0; i < 8; i++) {
+		if (float(i) >= nhvRtLightN)
+			break;
+		vec4 li = nhvRtLights[i];
+		vec3 to = li.xyz - a;
+		if (nl > 0.001 && dot(n, to) <= 0.0)
+			continue;
+		float l = li.w - max(length(to) - 0.5, 0.0);
+		if (l <= level || l < 1.0)
+			continue;
+		if (nhvRtClear(a, li.xyz))
+			level = l;
+	}
+	if (nhvHeroLight.w > 0.0) {
+		vec3 h = (cameraOffset + nhvHeroLight.xyz) / 10.0;
+		vec3 to = h - a;
+		float l = nhvHeroLight.w - max(length(to) - 0.5, 0.0);
+		if (l > level && !(nl > 0.001 && dot(n, to) <= 0.0) && nhvRtClear(a, h))
+			level = l;
+	}
+	if (level <= 0.0)
+		return vec3(0.0);
+	return vec3(min(nhvDecodeLight(level / 14.0) * nhvFaceShade(normal) * 1.04, 1.0));
+}
+vec3 nhvLitBy(vec3 wpos, vec3 normal)
+{
+	return nhvRaytrace > 0.5 ? nhvRtLit(wpos, normal) : nhvHeroLit(wpos, normal);
+}
+
 vec3 nhvTexelLit(vec3 light, vec2 uv, vec2 texsize, vec3 wpos, vec3 normal)
 {
 	if (nhvTexelLight <= 0.0)
-		return nhvBandedLight(max(light, nhvHeroLit(wpos, normal)));
+		return nhvBandedLight(max(light, nhvLitBy(wpos, normal)));
 	// (the light at the pixel's middle: across a face it changes evenly,
 	// so from here by its change over the texture - the screen's
 	// derivatives of light and of the texture position, solved for it)
@@ -160,7 +289,7 @@ vec3 nhvTexelLit(vec3 light, vec2 uv, vec2 texsize, vec3 wpos, vec3 normal)
 		lc = max(light + dFdx(light) * sx + dFdy(light) * sy, vec3(0.0));
 		wc = wpos + dFdx(wpos) * sx + dFdy(wpos) * sy;
 	}
-	lc = max(lc, nhvHeroLit(wc, normal));
+	lc = max(lc, nhvLitBy(wc, normal));
 	// (always in steps - the shading is this alone - as many as set)
 	float bands = max(nhvTexelSteps, 1.0);
 	float l = max(lc.r, max(lc.g, lc.b));

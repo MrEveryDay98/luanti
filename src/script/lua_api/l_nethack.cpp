@@ -3,6 +3,10 @@
 
 #include "nhv_levelready.h"
 #include "nhv_camera.h"
+#include "nhv_raytrace.h"
+#include "nodedef.h"
+#include "itemgroup.h"
+#include "serverenvironment.h"
 #include "client/sound/sam_voice.h"
 #include "client/hud.h"
 #include "client/nhv_demo.h"
@@ -1273,6 +1277,115 @@ int ModApiNetHack::l_nh_level_await(lua_State *L)
 	return 0;
 }
 
+// core.nhv_rt_scan(lit, floor_y): the level's blocks looked at for the
+// raytraced light (nhv_raytrace.h) - which stop light (what Luanti's light
+// doesn't go through, solid blocks and nodeboxes, closed doors), which are
+// in a lit room (lit: a string, a "1" for each column of blocks in one,
+// nhv_rt::GX by nhv_rt::GZ, x fastest) - and its lit rooms' portals, at
+// standing height (floor_y + 1)
+int ModApiNetHack::l_nhv_rt_scan(lua_State *L)
+{
+	using namespace nhv_rt;
+	size_t len = 0;
+	const char *lit = luaL_checklstring(L, 1, &len);
+	int stand = (int)luaL_checkinteger(L, 2) + 1;
+	Server *server = getServer(L);
+	Map &map = server->getEnv().getMap();
+	const NodeDefManager *ndef = server->ndef();
+	// (what stops light, by content id)
+	std::vector<s8> stops(CONTENT_MAX + 1, -1);
+	auto opaque = [&](content_t c) {
+		s8 &s = stops[c];
+		if (s < 0) {
+			const ContentFeatures &f = ndef->get(c);
+			s = !f.light_propagates || (f.walkable && (f.drawtype == NDT_NORMAL
+					|| f.drawtype == NDT_NODEBOX || f.drawtype == NDT_MESH))
+					|| (f.walkable && itemgroup_get(f.groups, "nhv_door") > 0) ? 1 : 0;
+			if (c == CONTENT_IGNORE || c == CONTENT_AIR)
+				s = 0;
+		}
+		return s == 1;
+	};
+	std::vector<u8> cells((size_t)GX * GY * GZ, 0);
+	v3s16 b0 = getNodeBlockPos(v3s16(0, Y0, 0)), b1 = getNodeBlockPos(v3s16(GX - 1, Y0 + GY - 1, GZ - 1));
+	for (s16 bz = b0.Z; bz <= b1.Z; bz++)
+	for (s16 by = b0.Y; by <= b1.Y; by++)
+	for (s16 bx = b0.X; bx <= b1.X; bx++) {
+		MapBlock *block = map.getBlockNoCreateNoEx(v3s16(bx, by, bz));
+		if (!block)
+			continue;
+		v3s16 o = block->getPosRelative();
+		for (s16 z = 0; z < MAP_BLOCKSIZE; z++)
+		for (s16 y = 0; y < MAP_BLOCKSIZE; y++)
+		for (s16 x = 0; x < MAP_BLOCKSIZE; x++) {
+			int wx = o.X + x, wy = o.Y + y, wz = o.Z + z;
+			if (wx < 0 || wx >= GX || wz < 0 || wz >= GZ || wy < Y0 || wy >= Y0 + GY)
+				continue;
+			size_t i = ((size_t)(wy - Y0) * GZ + wz) * GX + wx;
+			size_t li = (size_t)wz * GX + wx;
+			// (in a lit room, solid or not: what's partly a block - a
+			// nodebox - lit there too)
+			cells[i] = (opaque(block->getNodeNoCheck(x, y, z).getContent()) ? RT_STOPS : 0)
+					| (li < len && lit[li] == '1' ? RT_LIT : 0);
+		}
+	}
+	// (the portals: a lit room's block at standing height beside an open
+	// one outside it)
+	std::vector<Portal> portals;
+	if (stand >= Y0 && stand < Y0 + GY) {
+		auto at = [&](int x, int z) -> u8 {
+			if (x < 0 || x >= GX || z < 0 || z >= GZ)
+				return RT_STOPS;
+			return cells[((size_t)(stand - Y0) * GZ + z) * GX + x];
+		};
+		static const int DX[4] = {1, -1, 0, 0}, DZ[4] = {0, 0, 1, -1};
+		for (int z = 0; z < GZ; z++)
+		for (int x = 0; x < GX; x++) {
+			if (at(x, z) != RT_LIT)
+				continue;
+			for (int d = 0; d < 4; d++) {
+				if (at(x + DX[d], z + DZ[d]) == 0)
+					portals.push_back({v3f(x + DX[d] * 0.5f, stand + 0.4f, z + DZ[d] * 0.5f), d});
+			}
+		}
+	}
+	// (how many portals, for checking)
+	lua_pushinteger(L, (lua_Integer)portals.size());
+	nhv_rt::set_grid(std::move(cells), std::move(portals));
+	return 1;
+}
+
+// core.nhv_rt_light_at(pos): the raytraced light level there (nodes; from
+// the lit rooms and lamps, not the hero's light - for checking)
+int ModApiNetHack::l_nhv_rt_light_at(lua_State *L)
+{
+	lua_pushnumber(L, nhv_rt::light_at(read_v3f(L, 1)));
+	return 1;
+}
+
+// core.nhv_rt_lights({{x=, y=, z=, level=}, ...}): the lamps, for the
+// raytraced light (nodes; their light level)
+int ModApiNetHack::l_nhv_rt_lights(lua_State *L)
+{
+	std::vector<nhv_rt::Light> lights;
+	luaL_checktype(L, 1, LUA_TTABLE);
+	size_t n = lua_objlen(L, 1);
+	for (size_t i = 1; i <= n; i++) {
+		lua_rawgeti(L, 1, i);
+		if (lua_istable(L, -1)) {
+			v3f p = read_v3f(L, -1);
+			lua_getfield(L, -1, "level");
+			float level = lua_isnumber(L, -1) ? (float)lua_tonumber(L, -1) : 0.0f;
+			lua_pop(L, 1);
+			if (level > 0.0f)
+				lights.push_back({p, level});
+		}
+		lua_pop(L, 1);
+	}
+	nhv_rt::set_lights(std::move(lights));
+	return 0;
+}
+
 int ModApiNetHack::l_nh_level_progress(lua_State *L)
 {
 	float received;
@@ -1407,6 +1520,9 @@ void ModApiNetHack::Initialize(lua_State *L, int top)
 	API_FCT(nhv_sam_seconds);
 	API_FCT(nhv_map_scroll);
 	API_FCT(nhv_hero_light);
+	API_FCT(nhv_rt_scan);
+	API_FCT(nhv_rt_lights);
+	API_FCT(nhv_rt_light_at);
 	API_FCT(nhv_fog);
 	API_FCT(nh_tile_count);
 	API_FCT(nh_cmap_name);

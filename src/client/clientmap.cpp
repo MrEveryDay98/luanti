@@ -3,6 +3,7 @@
 // Copyright (C) 2010-2013 celeron55, Perttu Ahola <celeron55@gmail.com>
 
 #include "clientmap.h"
+#include "nhv_rt_client.h"
 #include "client.h"
 #include "client/mesh.h"
 #include "mapblock_mesh.h"
@@ -1027,6 +1028,12 @@ void ClientMap::renderMap(video::IVideoDriver* driver, s32 pass)
 		return intToFloat(mesh_grid.getMeshPos(pos) * MAP_BLOCKSIZE - m_camera_offset, BS);
 	};
 
+	// (VoxHack: the raytraced light's blocks and what's near to trace to,
+	// once a frame - nhv_rt_client.h)
+	if (pass == scene::ESNRP_SOLID)
+		nhv_rt_client::update(driver, camera_position / BS);
+	video::ITexture *nhv_rt_texture = nhv_rt_client::texture();
+
 	u32 merged_count = 0;
 
 	// For limiting number of mesh animations per frame
@@ -1163,12 +1170,24 @@ void ClientMap::renderMap(video::IVideoDriver* driver, s32 pass)
 				layer.AnisotropicFilter = 0;
 			}
 
+			// (and the raytraced light's blocks, as texture2)
+			if (nhv_rt_texture) {
+				auto &layer = material.TextureLayers[2];
+				layer.Texture = nhv_rt_texture;
+				layer.TextureWrapU = video::E_TEXTURE_CLAMP::ETC_CLAMP_TO_EDGE;
+				layer.TextureWrapV = video::E_TEXTURE_CLAMP::ETC_CLAMP_TO_EDGE;
+				layer.MinFilter = video::ETMINF_NEAREST_MIPMAP_NEAREST;
+				layer.MagFilter = video::ETMAGF_NEAREST;
+				layer.AnisotropicFilter = 0;
+			}
+
 			driver->setMaterial(material);
 			++material_swaps;
 			if (auto *tex = material.getTexture(0); tex && tex->getType() == video::ETT_2D_ARRAY)
 				++array_texture_use;
 
 			material.TextureLayers[ShadowRenderer::TEXTURE_LAYER_SHADOW].Texture = nullptr;
+			material.TextureLayers[2].Texture = nullptr;
 		}
 
 		m.setTranslation(descriptor.m_pos);

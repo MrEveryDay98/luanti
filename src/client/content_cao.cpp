@@ -4,6 +4,8 @@
 
 #include "content_cao.h"
 #include "nhv_camera.h"
+#include "nhv_raytrace.h"
+#include "client/nhv_rt_client.h"
 #include "porting.h"
 #include <IBillboardSceneNode.h>
 #include <ICameraSceneNode.h>
@@ -909,6 +911,12 @@ void GenericCAO::updateLight(u32 day_night_ratio)
 	}
 	if (!pos_ok)
 		light_at_pos = LIGHT_SUN;
+	// (VoxHack: the raytraced light there too - the lit rooms' light isn't
+	// in the blocks then: nhv_raytrace.h)
+	if (pos_ok && nhv_rt_client::enabled()) {
+		u16 rt = decode_light((u8)std::min(std::round(nhv_rt::light_at(intToFloat(pos[0], 1))), 14.0f));
+		light_at_pos = std::max<u16>(light_at_pos & 0xFF, rt) | (std::max<u16>(light_at_pos >> 8, rt) << 8);
+	}
 
 	video::SColor light;
 
