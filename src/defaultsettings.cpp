@@ -166,7 +166,7 @@ void set_default_settings()
 	settings->setDefault("keymap_nhv_enhance", "SYSTEM_SCANCODE_10"); // KEY_KEY_G (NetHack Voxel: enhance skills)
 	settings->setDefault("keymap_nhv_pickup", "SYSTEM_SCANCODE_9"); // KEY_KEY_F (VoxHack: pick up)
 	settings->setDefault("keymap_nhv_wiki", "SYSTEM_SCANCODE_59"); // KEY_F2 (VoxHack: NetHackWiki viewer)
-	settings->setDefault("keymap_nhv_commands", "SYSTEM_SCANCODE_60"); // KEY_F3 (VoxHack: NetHack's commands)
+	settings->setDefault("keymap_nhv_commands", "SYSTEM_SCANCODE_60|SYSTEM_SCANCODE_21"); // KEY_F3, KEY_KEY_R (VoxHack: NetHack's commands)
 	settings->setDefault("keymap_nhv_ascii", "SYSTEM_SCANCODE_61"); // KEY_F4 (VoxHack: ASCII mode)
 	settings->setDefault("keymap_nhv_invoke", "SYSTEM_SCANCODE_20"); // KEY_KEY_Q (VoxHack: invoke the wielded item)
 	settings->setDefault("keymap_inventory", "SYSTEM_SCANCODE_12|GAMEPAD_BUTTON_3"); // KEY_KEY_I|Gamepad North

@@ -4416,10 +4416,13 @@ bool GUIFormSpecMenu::preprocessEvent(const SEvent& event)
 		return true;
 
 	// VoxHack: the wiki viewer's key (F2) closes it again, and the command
-	// list's key (F3) closes the list (here, before a focused text field
-	// can take the key)
+	// list's key (F3, R) closes the list (here, before a focused text field
+	// can take the key - but not a letter typed into one: R in the finder)
+	gui::IGUIElement *focused = Environment->getFocus();
+	const bool typing = event.EventType == EET_KEY_INPUT_EVENT && event.KeyInput.Char != 0
+			&& focused && focused->getType() == gui::EGUIET_EDIT_BOX;
 	if (event.EventType == EET_KEY_INPUT_EVENT && event.KeyInput.PressedDown
-			&& m_client && m_text_dst
+			&& !typing && m_client && m_text_dst
 			&& ((m_text_dst->m_formname == "nhv:wiki"
 				&& keySettingHasMatch("keymap_nhv_wiki", KeyPress(event.KeyInput)))
 			|| (m_text_dst->m_formname == "nhv:commands"
