@@ -166,8 +166,7 @@ class GameGlobalShaderUniformSetter : public IShaderUniformSetter
 	// the raytraced light (nhv_rt_client.h): on; the portals and lamps
 	// nearest to trace to, and how many
 	CachedPixelShaderSetting<float> m_nhv_rt_pixel{"nhvRaytrace"};
-	// square light: 0 off, 1 block by block, 2 with the steps' corners
-	// filled (nhv_square_light: off, on, filled)
+	// square light: 0 off, 1 map square by map square (nhv_square_light)
 	CachedPixelShaderSetting<float> m_nhv_square_pixel{"nhvSquare"};
 	// (the blocks' texture there: raytraced or square light)
 	CachedPixelShaderSetting<float> m_nhv_grid_pixel{"nhvGrid"};
@@ -285,7 +284,7 @@ public:
 				m_nhv_texel_steps = std::clamp((float)g_settings->getS32("nhv_texel_steps"), 1.0f, 64.0f);
 				m_nhv_texel_scale = g_settings->getBool("nhv_texel_half") ? 0.5f : 1.0f;
 				const std::string square = g_settings->get("nhv_square_light");
-				m_nhv_square = square == "filled" ? 2.0f : square == "on" ? 1.0f : 0.0f;
+				m_nhv_square = square.empty() || square == "off" ? 0.0f : 1.0f;
 			}
 			m_nhv_retro_pixel.set(m_nhv_retro, services);
 			m_nhv_texel_pixel.set(&m_nhv_texel, services);
