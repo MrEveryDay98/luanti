@@ -303,8 +303,74 @@ vec3 nhvLitBy(vec3 wpos, vec3 normal)
 	return nhvRaytrace > 0.5 ? nhvRtLit(wpos, normal) : nhvHeroLit(wpos, normal);
 }
 
+// VoxHack: square light (the setting nhv_square_light): 0 off; 1 each
+// block's face lit as at the block's middle - light and shadow block by
+// block, their edges in steps; 2 the same, each step's corner filled: a
+// block whose two neighbours beside a corner are both much darker (a
+// shadow's edge, not light fading) is cut from that corner along the line
+// between their outer corners - the steps' edges straight lines from block
+// corner to block corner. Any light: the blocks' own (the face's light
+// carried on to there, as it changes across the face) and the raytraced.
+uniform float nhvSquare;
+// (the light at an offset d - world units - along the face: the face's own
+// carried on to there, as it changes across the face - m: how far along
+// the face a step on the screen goes, each way across - or the
+// raytraced/yours there)
+vec3 nhvSquareAt(vec3 light, vec3 lx, vec3 ly, vec3 wpos, vec3 normal, vec3 d, vec3 t1, vec3 t2,
+	vec4 m, float det)
+{
+	vec3 l = light;
+	if (abs(det) > 1e-8) {
+		float sx = (m.w * dot(d, t1) - m.y * dot(d, t2)) / det;
+		float sy = (m.x * dot(d, t2) - m.z * dot(d, t1)) / det;
+		l = max(light + lx * sx + ly * sy, vec3(0.0));
+	}
+	return max(l, nhvLitBy(wpos + d, normal));
+}
+vec3 nhvSquareLit(vec3 light, vec3 wpos, vec3 normal)
+{
+	vec3 px = dFdx(wpos), py = dFdy(wpos);
+	vec3 lx = dFdx(light), ly = dFdy(light);
+	float nl = length(normal);
+	if (nl < 0.001)
+		return max(light, nhvLitBy(wpos, normal));
+	vec3 n = normal / nl;
+	// (the face's two ways across; where on its block this is, from the
+	// middle, -0.5..0.5 each way)
+	vec3 an = abs(n);
+	vec3 t1 = an.x > 0.5 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0);
+	vec3 t2 = an.z > 0.5 ? vec3(0.0, 1.0, 0.0) : vec3(0.0, 0.0, 1.0);
+	vec3 a = (cameraOffset + wpos) / 10.0 + n * 0.05;
+	vec3 cell = floor(a + 0.5);
+	float u = dot(a - cell, t1), v = dot(a - cell, t2);
+	vec4 m = vec4(dot(px, t1), dot(py, t1), dot(px, t2), dot(py, t2));
+	float det = m.x * m.w - m.y * m.z;
+	vec3 dc = -(t1 * u + t2 * v) * 10.0;
+	vec3 lc = nhvSquareAt(light, lx, ly, wpos, normal, dc, t1, t2, m, det);
+	if (nhvSquare > 1.5 && abs(u) + abs(v) > 0.5) {
+		vec3 s1 = t1 * (u < 0.0 ? -1.0 : 1.0), s2 = t2 * (v < 0.0 ? -1.0 : 1.0);
+		vec3 l1 = nhvSquareAt(light, lx, ly, wpos, normal, dc + s1 * 10.0, t1, t2, m, det);
+		vec3 l2 = nhvSquareAt(light, lx, ly, wpos, normal, dc + s2 * 10.0, t1, t2, m, det);
+		// (raytraced: only where the face goes on - solid behind, open in
+		// front)
+		if (nhvRaytrace > 0.5) {
+			if (!(nhvRtCell(cell + s1).r < 0.5 && nhvRtCell(cell + s1 - n).r > 0.5))
+				l1 = lc;
+			if (!(nhvRtCell(cell + s2).r < 0.5 && nhvRtCell(cell + s2 - n).r > 0.5))
+				l2 = lc;
+		}
+		float b = max(lc.r, max(lc.g, lc.b));
+		float b1 = max(l1.r, max(l1.g, l1.b)), b2 = max(l2.r, max(l2.g, l2.b));
+		if (b1 < b * 0.6 && b2 < b * 0.6)
+			lc = b1 > b2 ? l1 : l2;
+	}
+	return lc;
+}
+
 vec3 nhvTexelLit(vec3 light, vec2 uv, vec2 texsize, vec3 wpos, vec3 normal)
 {
+	if (nhvSquare > 0.5)
+		return nhvBandedLight(nhvSquareLit(light, wpos, normal));
 	if (nhvTexelLight <= 0.0)
 		return nhvBandedLight(max(light, nhvLitBy(wpos, normal)));
 	// (the light at the pixel's middle: across a face it changes evenly,

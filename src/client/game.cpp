@@ -166,6 +166,10 @@ class GameGlobalShaderUniformSetter : public IShaderUniformSetter
 	// the raytraced light (nhv_rt_client.h): on; the portals and lamps
 	// nearest to trace to, and how many
 	CachedPixelShaderSetting<float> m_nhv_rt_pixel{"nhvRaytrace"};
+	// square light: 0 off, 1 block by block, 2 with the steps' corners
+	// filled (nhv_square_light: off, on, filled)
+	CachedPixelShaderSetting<float> m_nhv_square_pixel{"nhvSquare"};
+	float m_nhv_square = 0.0f;
 	// (arrays: named without "[0]" by the OpenGL 3 driver, with it by the old one)
 	CachedPixelShaderSetting<float, nhv_rt_client::MAX_PORTALS * 4> m_nhv_rt_portals_pixel{"nhvRtPortals"};
 	CachedPixelShaderSetting<float, nhv_rt_client::MAX_PORTALS * 4> m_nhv_rt_portals0_pixel{"nhvRtPortals[0]"};
@@ -278,12 +282,15 @@ public:
 						: pattern == "lines" ? 3.0f : pattern == "noise" ? 4.0f : 0.0f;
 				m_nhv_texel_steps = std::clamp((float)g_settings->getS32("nhv_texel_steps"), 1.0f, 64.0f);
 				m_nhv_texel_scale = g_settings->getBool("nhv_texel_half") ? 0.5f : 1.0f;
+				const std::string square = g_settings->get("nhv_square_light");
+				m_nhv_square = square == "filled" ? 2.0f : square == "on" ? 1.0f : 0.0f;
 			}
 			m_nhv_retro_pixel.set(m_nhv_retro, services);
 			m_nhv_texel_pixel.set(&m_nhv_texel, services);
 			m_nhv_texel_pattern_pixel.set(&m_nhv_texel_pattern, services);
 			m_nhv_texel_steps_pixel.set(&m_nhv_texel_steps, services);
 			m_nhv_texel_scale_pixel.set(&m_nhv_texel_scale, services);
+			m_nhv_square_pixel.set(&m_nhv_square, services);
 			// (full brightness, or wizard mode's partial: unlit colours mixed in)
 			float fullbright = (f & HUD_FLAG_NHV_FULLBRIGHT) ? 1.0f : m_nhv_brightness;
 			m_nhv_fullbright_pixel.set(&fullbright, services);
