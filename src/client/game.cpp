@@ -1836,11 +1836,19 @@ void Game::processItemSelection(u16 *new_playeritem)
 	*new_playeritem = player->getWieldIndex();
 
 	// NetHack Voxel: no hotbar selection at all; the number keys are action
-	// keys, sent to the server as "/nhvkey <n>"
+	// keys, sent to the server as "/nhvkey <n>" - with Shift held "s<n>"
+	// (quick items), with Ctrl "c<n>" (quick spells)
 	if (player->hud_flags & HUD_FLAG_NHV_ACTION_KEYS) {
+		std::wstring mod;
+		if (isKeyDown(KeyType::SNEAK))
+			mod = L"s";
+#ifdef _WIN32
+		else if (GetAsyncKeyState(VK_CONTROL) & 0x8000)
+			mod = L"c";
+#endif
 		for (u16 i = 0; i < 9; i++) {
 			if (wasKeyDown((GameKeyType) (KeyType::SLOT_1 + i))) {
-				client->sendChatMessage(L"/nhvkey " + std::to_wstring(i + 1));
+				client->sendChatMessage(L"/nhvkey " + mod + std::to_wstring(i + 1));
 				break;
 			}
 		}
