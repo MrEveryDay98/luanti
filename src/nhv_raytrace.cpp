@@ -124,10 +124,8 @@ static bool clear_line(v3f a, v3f b)
 }
 
 // a point on the line between two blocks, rounding into a solid one: moved
-// just into the open one beside it; and a quarter of a block off any solid
-// block beside it (as the shaders do - a ray from inside a block isn't
-// stopped by it, one hugging a wall sees round what a wall's thickness
-// would hide)
+// just into the open one beside it (as the shaders do - a ray from inside a
+// block isn't stopped by it)
 static v3f into_open(v3f p)
 {
 	float *c[3] = {&p.X, &p.Y, &p.Z};
@@ -145,16 +143,6 @@ static v3f into_open(v3f p)
 		*c[k] = to;
 		if (solid())
 			*c[k] = v;
-	}
-	// (and a quarter of a block off any solid block beside it)
-	int m[3] = {(int)std::floor(p.X + 0.5f), (int)std::floor(p.Y + 0.5f), (int)std::floor(p.Z + 0.5f)};
-	for (int k = 0; k < 3; k++) {
-		int lo[3] = {m[0], m[1], m[2]}, hi[3] = {m[0], m[1], m[2]};
-		lo[k]--;
-		hi[k]++;
-		float a = (cell(lo[0], lo[1], lo[2]) & RT_STOPS) ? m[k] - 0.25f : m[k] - 1.0f;
-		float b = (cell(hi[0], hi[1], hi[2]) & RT_STOPS) ? m[k] + 0.25f : m[k] + 1.0f;
-		*c[k] = std::fmin(std::fmax(*c[k], a), b);
 	}
 	return p;
 }
@@ -176,15 +164,8 @@ float light_at(v3f p)
 		float level = FULL - to.getLength() / FALL;
 		if (level <= best || level < 1.0f)
 			continue;
-		// (any of the doorway in sight: lit by it)
-		v3f pts[MAX_POINTS];
-		int n = portal_points(po, pts);
-		for (int i = 0; i < n; i++) {
-			if (clear_line(p, pts[i])) {
-				best = level;
-				break;
-			}
-		}
+		if (clear_line(p, portal_point(po)))
+			best = level;
 	}
 	for (const Light &l : s_lights) {
 		float level = l.level - std::fmax((p - l.pos).getLength() - 0.5f, 0.0f);

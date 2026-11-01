@@ -29,13 +29,17 @@ constexpr u8 RT_STOPS = 1, RT_LIT = 2;
 // it reaches
 constexpr float FULL = 14.0f, FALL = 2.0f, RANGE = 26.0f;
 
+// A lit room's opening onto the dark - a doorway: the faces, side by side,
+// between its blocks and the open ones outside, at standing height
 struct Portal {
-	v3f pos; // the face's bottom middle (nodes: at standing height)
+	v3f pos; // its bottom middle (nodes: at standing height)
 	int dir; // the way out: 0 +x, 1 -x, 2 +z, 3 -z
 	int height; // how many blocks up it's open (1..MAX_UP)
+	int width; // how many blocks across (1..MAX_WIDE)
 };
-// (how far up a portal's looked at: blocks from standing height)
-constexpr int MAX_UP = 4;
+// (how far up an opening's looked at: blocks from standing height; how
+// wide one is at most - a wider one is taken as several)
+constexpr int MAX_UP = 4, MAX_WIDE = 5;
 struct Light {
 	v3f pos; // nodes
 	float level;
@@ -61,19 +65,15 @@ void get_lights(std::vector<Light> *lights);
 // (entities, your hand)
 float light_at(v3f pos);
 
-// the points a portal's light is traced to: up both its edges, from its
-// bottom to its top - a point that sees any of a doorway is lit by it (hard
-// shadows, but none where the doorway's in sight)
-constexpr int MAX_POINTS = (MAX_UP + 1) * 2;
-inline int portal_points(const Portal &po, v3f *pts)
+// the point a doorway's light comes from: its middle - across the whole
+// opening, halfway up it - as if a light hung there. A point that sees it
+// is lit, one that doesn't isn't: clean, hard shadows, straight to the
+// walls, one edge from each corner
+inline v3f portal_point(const Portal &po)
 {
 	v3f out = po.dir == 0 ? v3f(1, 0, 0) : po.dir == 1 ? v3f(-1, 0, 0) : po.dir == 2 ? v3f(0, 0, 1) : v3f(0, 0, -1);
-	v3f across(std::fabs(out.Z), 0, std::fabs(out.X));
-	int h = po.height < MAX_UP ? po.height : MAX_UP, n = 0;
-	for (int j = 0; j <= h; j++)
-		for (int s = -1; s <= 1; s += 2)
-			pts[n++] = po.pos + v3f(0, -0.45f + j * (h - 0.1f) / h, 0) + across * (0.45f * s) + out * 0.01f;
-	return n;
+	float h = (float)(po.height < MAX_UP ? po.height : MAX_UP);
+	return po.pos + v3f(0, -0.5f + h * 0.5f, 0) + out * 0.01f;
 }
 
 inline v3f dir_vec(int dir)

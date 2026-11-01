@@ -204,10 +204,7 @@ bool nhvRtClear(vec3 a, vec3 b)
 // a point where faces meet - on the line between blocks - may round into
 // the solid block beside its face (a ray from inside a block isn't stopped
 // by it): rays start from an open block - the one the point's in, or the
-// open one beside it - and a quarter of a block off any solid block beside
-// it (a ray hugging a wall sees round what a wall's thickness would hide:
-// thin strips of light along walls' feet and corners). Not moved off the
-// edges between open blocks: a shadow's edge goes straight on across them
+// open one beside it
 vec3 nhvRtOpen(vec3 a)
 {
 	for (int k = 0; k < 3; k++) {
@@ -224,16 +221,7 @@ vec3 nhvRtOpen(vec3 a)
 		if (nhvRtCell(floor(b + 0.5)).r < 0.5)
 			a = b;
 	}
-	vec3 c = floor(a + 0.5);
-	vec3 lo = c - 1.0, hi = c + 1.0;
-	for (int k = 0; k < 3; k++) {
-		vec3 e = vec3(k == 0 ? 1.0 : 0.0, k == 1 ? 1.0 : 0.0, k == 2 ? 1.0 : 0.0);
-		if (nhvRtCell(c - e).r > 0.5)
-			lo[k] = c[k] - 0.25;
-		if (nhvRtCell(c + e).r > 0.5)
-			hi[k] = c[k] + 0.25;
-	}
-	return clamp(a, lo, hi);
+	return a;
 }
 // sides darker than tops, as Luanti shades them
 float nhvFaceShade(vec3 normal)
@@ -262,9 +250,10 @@ vec3 nhvRtLit(vec3 wpos, vec3 normal)
 			if (float(i) >= nhvRtPortalN)
 				break;
 			vec4 po = nhvRtPortals[i];
-			// (the way out; how far up it's open: w = way + 4 * (blocks - 1))
+			// (the way out; how far up it's open: w = way + 4 * (blocks up -
+			// 1) + 16 * (blocks across - 1))
 			float way = mod(po.w, 4.0);
-			float tall = floor(po.w / 4.0 + 0.01) + 1.0;
+			float tall = floor(mod(po.w, 16.0) / 4.0 + 0.01) + 1.0;
 			vec3 ov = way < 0.5 ? vec3(1.0, 0.0, 0.0) : way < 1.5 ? vec3(-1.0, 0.0, 0.0)
 				: way < 2.5 ? vec3(0.0, 0.0, 1.0) : vec3(0.0, 0.0, -1.0);
 			vec3 to = a - po.xyz;
@@ -276,26 +265,11 @@ vec3 nhvRtLit(vec3 wpos, vec3 normal)
 			float b = nhvDecodeLight(l / 14.0);
 			if (b <= bright)
 				continue;
-			// any of the doorway in sight lights it: traced to points up both
-			// its edges, its bottom to its top (hard shadows, but none where
-			// the doorway's in sight)
-			vec3 across = vec3(abs(ov.z), 0.0, abs(ov.x));
-			bool lit = false;
-			for (int j = 0; j <= 4; j++) {
-				if (float(j) > tall || lit)
-					break;
-				for (int s = 0; s < 2; s++) {
-					vec3 t = po.xyz + vec3(0.0, -0.45 + float(j) * (tall - 0.1) / tall, 0.0)
-						+ across * (s == 0 ? -0.45 : 0.45) + ov * 0.01;
-					if (nl > 0.001 && dot(n, t - a) <= 0.0)
-						continue;
-					if (nhvRtClear(a, t)) {
-						lit = true;
-						break;
-					}
-				}
-			}
-			if (lit)
+			// from the doorway's middle - across the whole opening, halfway
+			// up it - as if a light hung there: lit if that's in sight
+			// (nhv_raytrace.h)
+			vec3 t = po.xyz + vec3(0.0, -0.5 + tall * 0.5, 0.0) + ov * 0.01;
+			if ((nl < 0.001 || dot(n, t - a) > 0.0) && nhvRtClear(a, t))
 				bright = b;
 		}
 	}

@@ -1356,9 +1356,38 @@ int ModApiNetHack::l_nhv_rt_scan(lua_State *L)
 						break;
 					up++;
 				}
-				portals.push_back({v3f(x + DX[d] * 0.5f, (float)stand, z + DZ[d] * 0.5f), d, up});
+				portals.push_back({v3f(x + DX[d] * 0.5f, (float)stand, z + DZ[d] * 0.5f), d, up, 1});
 			}
 		}
+		// (the faces side by side in one plane, facing the same way, are one
+		// doorway - up to MAX_WIDE across)
+		auto plane = [](const Portal &p) { return p.dir < 2 ? p.pos.X : p.pos.Z; };
+		auto along = [](const Portal &p) { return p.dir < 2 ? p.pos.Z : p.pos.X; };
+		std::sort(portals.begin(), portals.end(), [&](const Portal &a, const Portal &b) {
+			if (a.dir != b.dir)
+				return a.dir < b.dir;
+			if (plane(a) != plane(b))
+				return plane(a) < plane(b);
+			return along(a) < along(b);
+		});
+		std::vector<Portal> doors;
+		for (size_t i = 0; i < portals.size();) {
+			size_t j = i + 1;
+			int up = portals[i].height;
+			while (j < portals.size() && j - i < (size_t)MAX_WIDE && portals[j].dir == portals[i].dir
+					&& plane(portals[j]) == plane(portals[i])
+					&& along(portals[j]) == along(portals[j - 1]) + 1.0f) {
+				up = std::min(up, portals[j].height);
+				j++;
+			}
+			Portal door = portals[i];
+			door.pos = (portals[i].pos + portals[j - 1].pos) * 0.5f;
+			door.height = up;
+			door.width = (int)(j - i);
+			doors.push_back(door);
+			i = j;
+		}
+		portals = std::move(doors);
 	}
 	// (how many portals, for checking)
 	lua_pushinteger(L, (lua_Integer)portals.size());
