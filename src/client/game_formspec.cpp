@@ -389,12 +389,9 @@ void GameFormSpec::showPlayerInventory(const std::string *fs_override)
 
 #define SIZE_TAG "size[14.25,7.275,true]" // Fixed size (ignored in touchscreen mode)
 
-// VoxHack: the pause menu's tips, just left of the menu. The menu has a fixed
-// size (its unit depends only on the DPI and gui_scaling), so the room beside
-// it and the text's own width are known here: the tips end just left of the
-// menu at any window or font size. Too little room: inside the menu, at its
-// left (the buttons are in its middle). A label whose box starts off the
-// screen isn't drawn at all, so each line is its own label, placed exactly.
+// VoxHack: the pause menu's tips, inside the menu at its left (the buttons
+// are in its middle) - not out beside it, over the HUD's side bars. Each
+// line is its own label, placed exactly.
 static std::string pauseMenuTips()
 {
 	static const wchar_t *keys[] = {L"F2", L"F3"};
@@ -405,17 +402,10 @@ static std::string pauseMenuTips()
 	const double u = GUIFormSpecMenu::getFixedImgsize(
 		RenderingEngine::getDisplayDensity() * 96,
 		g_settings->getFloat("gui_scaling", 0.5f, 42.0f));
-	const double screen_w = RenderingEngine::get_video_driver()->getScreenSize().Width;
-	const double menu_w = 14.25; // (SIZE_TAG's width)
-	const double gap = 0.4;      // (between the tips and the menu)
-	// widths in menu units: the key column, then the widest line
+	// (the key column's width, in menu units)
 	double key_w = (font->getDimension(L"F3").Width + font->getDimension(L"  ").Width) / u;
-	double text_w = font->getDimension(L"Tips").Width / u;
-	for (const wchar_t *w : what)
-		text_w = std::max(text_w, key_w + font->getDimension(w).Width / u);
 	const double line_h = font->getDimension(L"Ag").Height * 1.3 / u;
-	double room = (screen_w / 2) / u - menu_w / 2; // (left of the menu)
-	double x = room >= text_w + gap + 0.2 ? -text_w - gap : 0.4;
+	const double x = 0.4;
 	std::ostringstream os;
 	os << "style_type[label;noclip=true]";
 	double y = 1.45;
@@ -525,7 +515,7 @@ void GameFormSpec::showPauseMenu()
 			<< button_height << ";" << b.name << ";" << b.label << "]";
 	}
 	os << "container_end[]";
-	// VoxHack: tips, out to the left of the menu with nothing behind them
+	// VoxHack: tips, inside the menu at its left
 	// (the wiki viewer and the command list are easy to miss)
 	if (simple_singleplayer_mode)
 		os << pauseMenuTips();
