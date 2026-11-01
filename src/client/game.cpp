@@ -163,13 +163,10 @@ class GameGlobalShaderUniformSetter : public IShaderUniformSetter
 	// the hero's light: where (near the camera: cameraOffset), how bright;
 	// and the light curve to light by
 	CachedPixelShaderSetting<float, 4> m_nhv_hero_light_pixel{"nhvHeroLight"};
-	// the raytraced light (nhv_rt_client.h): on; the portals and lamps
-	// nearest to trace to, and how many
+	// the raytraced light (nhv_rt_client.h): on; the lamps nearest to trace
+	// to, and how many
 	CachedPixelShaderSetting<float> m_nhv_rt_pixel{"nhvRaytrace"};
 	// (arrays: named without "[0]" by the OpenGL 3 driver, with it by the old one)
-	CachedPixelShaderSetting<float, nhv_rt_client::MAX_PORTALS * 4> m_nhv_rt_portals_pixel{"nhvRtPortals"};
-	CachedPixelShaderSetting<float, nhv_rt_client::MAX_PORTALS * 4> m_nhv_rt_portals0_pixel{"nhvRtPortals[0]"};
-	CachedPixelShaderSetting<float> m_nhv_rt_portal_n_pixel{"nhvRtPortalN"};
 	CachedPixelShaderSetting<float, nhv_rt_client::MAX_LIGHTS * 4> m_nhv_rt_lights_pixel{"nhvRtLights"};
 	CachedPixelShaderSetting<float, nhv_rt_client::MAX_LIGHTS * 4> m_nhv_rt_lights0_pixel{"nhvRtLights[0]"};
 	CachedPixelShaderSetting<float> m_nhv_rt_light_n_pixel{"nhvRtLightN"};
@@ -321,11 +318,7 @@ public:
 			float rt = nhv_rt_client::texture() ? 1.0f : 0.0f;
 			m_nhv_rt_pixel.set(&rt, services);
 			if (rt > 0.0f) {
-				float n = nhv_rt_client::portal_count();
-				m_nhv_rt_portals_pixel.set(nhv_rt_client::portals(), services);
-				m_nhv_rt_portals0_pixel.set(nhv_rt_client::portals(), services);
-				m_nhv_rt_portal_n_pixel.set(&n, services);
-				n = nhv_rt_client::light_count();
+				float n = nhv_rt_client::light_count();
 				m_nhv_rt_lights_pixel.set(nhv_rt_client::lights(), services);
 				m_nhv_rt_lights0_pixel.set(nhv_rt_client::lights(), services);
 				m_nhv_rt_light_n_pixel.set(&n, services);

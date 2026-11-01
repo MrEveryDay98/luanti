@@ -142,24 +142,44 @@ vec3 nhvHeroLit(vec3 wpos, vec3 normal)
 }
 
 // VoxHack: raytraced light (the setting nhv_raytrace; nhv_raytrace.h):
-// the level's blocks in texture2 (red: stops light, green: in a lit room;
-// y layers one under another), rays traced through them block by block. A
-// lit room lit through and through; out of it, light only where a straight
-// line reaches one of its portals (nhvRtPortals: where it opens onto the
-// dark), fading a level every two blocks; lamps (nhvRtLights) and the
-// hero's light casting hard shadows.
+// the level's blocks in texture2 (red: stops light, green: in a lit room,
+// blue: the light out of lit rooms' doorways, traced block by block; y
+// layers one under another). That light blended smoothly between the open
+// blocks round a point; lamps (nhvRtLights) and the hero's light traced
+// to through the blocks, casting hard shadows.
 uniform float nhvRaytrace;
 uniform sampler2D texture2;
-uniform vec4 nhvRtPortals[64];
-uniform float nhvRtPortalN;
 uniform vec4 nhvRtLights[8];
 uniform float nhvRtLightN;
-vec2 nhvRtCell(vec3 c)
+vec3 nhvRtTexel(vec3 c)
 {
 	// (x 0..255, z 0..63, y -9..22)
 	if (c.x < 0.0 || c.x > 255.0 || c.z < 0.0 || c.z > 63.0 || c.y < -9.0 || c.y > 22.0)
-		return vec2(0.0);
-	return texture2D(texture2, (vec2(c.x, c.z + (c.y + 9.0) * 64.0) + 0.5) / vec2(256.0, 2048.0)).rg;
+		return vec3(0.0);
+	return texture2D(texture2, (vec2(c.x, c.z + (c.y + 9.0) * 64.0) + 0.5) / vec2(256.0, 2048.0)).rgb;
+}
+vec2 nhvRtCell(vec3 c)
+{
+	return nhvRtTexel(c).rg;
+}
+// the doorways' light at a point: blended between the 8 blocks round it,
+// the solid ones left out (as Luanti's smooth light is)
+float nhvRtGlow(vec3 a)
+{
+	vec3 b = floor(a);
+	vec3 f = a - b;
+	float sum = 0.0, wsum = 0.0;
+	for (int i = 0; i < 8; i++) {
+		vec3 o = vec3(mod(float(i), 2.0), mod(floor(float(i) / 2.0), 2.0), floor(float(i) / 4.0));
+		vec3 t = nhvRtTexel(b + o);
+		if (t.r > 0.5 && t.g < 0.5)
+			continue;
+		vec3 w3 = mix(1.0 - f, f, o);
+		float w = w3.x * w3.y * w3.z;
+		sum += t.b * w;
+		wsum += w;
+	}
+	return wsum > 1e-4 ? sum / wsum : nhvRtTexel(floor(a + 0.5)).b;
 }
 // nothing that stops light on the line from a to b (nodes; not the blocks
 // they're in)
@@ -221,48 +241,8 @@ vec3 nhvRtLit(vec3 wpos, vec3 normal)
 	// (from just off the face: the block in front of it)
 	vec3 a = p + n * 0.05;
 	// (how bright, before the face's shading)
-	float bright = 0.0;
-	if (nhvRtCell(floor(a + 0.5)).g > 0.5) {
-		bright = 1.0;
-	} else {
-		for (int i = 0; i < 64; i++) {
-			if (float(i) >= nhvRtPortalN)
-				break;
-			vec4 po = nhvRtPortals[i];
-			// (the way out; how far up it's open: w = way + 4 * (blocks - 1))
-			float way = mod(po.w, 4.0);
-			float tall = floor(po.w / 4.0 + 0.01) + 1.0;
-			vec3 ov = way < 0.5 ? vec3(1.0, 0.0, 0.0) : way < 1.5 ? vec3(-1.0, 0.0, 0.0)
-				: way < 2.5 ? vec3(0.0, 0.0, 1.0) : vec3(0.0, 0.0, -1.0);
-			vec3 to = a - po.xyz;
-			if (dot(to, ov) <= 0.0)
-				continue;
-			float l = 14.0 - length(to) / 2.0;
-			if (l < 1.0)
-				continue;
-			float b = nhvDecodeLight(l / 14.0);
-			if (b <= bright)
-				continue;
-			// light through all of the doorway, not from one point in it: as
-			// much of it as it sees (points over its face, its height and
-			// width), facing them - soft at the edges
-			vec3 across = vec3(abs(ov.z), 0.0, abs(ov.x));
-			float seen = 0.0, total = 0.0;
-			for (int k = 0; k < 4; k++) {
-				if (float(k) >= tall)
-					break;
-				for (int s = 0; s < 2; s++) {
-					vec3 t = po.xyz + vec3(0.0, float(k), 0.0) + across * (s == 0 ? -0.3 : 0.3) + ov * 0.01;
-					total += 1.0;
-					if (nl > 0.001 && dot(n, t - a) <= 0.0)
-						continue;
-					if (nhvRtClear(a, t))
-						seen += 1.0;
-				}
-			}
-			bright = max(bright, b * seen / max(total, 1.0));
-		}
-	}
+	float g = nhvRtGlow(a);
+	float bright = g > 0.0 ? nhvDecodeLight(g) : 0.0;
 	for (int i = 0; i < 8; i++) {
 		if (float(i) >= nhvRtLightN)
 			break;

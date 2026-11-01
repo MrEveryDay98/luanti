@@ -1362,7 +1362,7 @@ int ModApiNetHack::l_nhv_rt_scan(lua_State *L)
 	}
 	// (how many portals, for checking)
 	lua_pushinteger(L, (lua_Integer)portals.size());
-	nhv_rt::set_grid(std::move(cells), std::move(portals));
+	nhv_rt::set_grid(std::move(cells), portals, stand);
 	return 1;
 }
 
