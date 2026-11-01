@@ -243,24 +243,27 @@ vec3 nhvRtLit(vec3 wpos, vec3 normal)
 			float b = nhvDecodeLight(l / 14.0);
 			if (b <= bright)
 				continue;
-			// light through all of the doorway, not from one point in it: as
-			// much of it as it sees (points over its face, its height and
-			// width), facing them - soft at the edges
+			// any of the doorway in sight lights it: traced to points up both
+			// its edges, its bottom to its top (hard shadows, but none where
+			// the doorway's in sight)
 			vec3 across = vec3(abs(ov.z), 0.0, abs(ov.x));
-			float seen = 0.0, total = 0.0;
-			for (int k = 0; k < 4; k++) {
-				if (float(k) >= tall)
+			bool lit = false;
+			for (int j = 0; j <= 4; j++) {
+				if (float(j) > tall || lit)
 					break;
 				for (int s = 0; s < 2; s++) {
-					vec3 t = po.xyz + vec3(0.0, float(k), 0.0) + across * (s == 0 ? -0.3 : 0.3) + ov * 0.01;
-					total += 1.0;
+					vec3 t = po.xyz + vec3(0.0, -0.45 + float(j) * (tall - 0.1) / tall, 0.0)
+						+ across * (s == 0 ? -0.45 : 0.45) + ov * 0.01;
 					if (nl > 0.001 && dot(n, t - a) <= 0.0)
 						continue;
-					if (nhvRtClear(a, t))
-						seen += 1.0;
+					if (nhvRtClear(a, t)) {
+						lit = true;
+						break;
+					}
 				}
 			}
-			bright = max(bright, b * seen / max(total, 1.0));
+			if (lit)
+				bright = b;
 		}
 	}
 	for (int i = 0; i < 8; i++) {

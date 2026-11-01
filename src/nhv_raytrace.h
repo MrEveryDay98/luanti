@@ -61,16 +61,18 @@ void get_lights(std::vector<Light> *lights);
 // (entities, your hand)
 float light_at(v3f pos);
 
-// the points a portal's light is traced to, over its face (light through
-// all of a doorway, not from one point in it: soft at the edges)
+// the points a portal's light is traced to: up both its edges, from its
+// bottom to its top - a point that sees any of a doorway is lit by it (hard
+// shadows, but none where the doorway's in sight)
+constexpr int MAX_POINTS = (MAX_UP + 1) * 2;
 inline int portal_points(const Portal &po, v3f *pts)
 {
 	v3f out = po.dir == 0 ? v3f(1, 0, 0) : po.dir == 1 ? v3f(-1, 0, 0) : po.dir == 2 ? v3f(0, 0, 1) : v3f(0, 0, -1);
 	v3f across(std::fabs(out.Z), 0, std::fabs(out.X));
-	int n = 0;
-	for (int k = 0; k < po.height && k < MAX_UP; k++)
+	int h = po.height < MAX_UP ? po.height : MAX_UP, n = 0;
+	for (int j = 0; j <= h; j++)
 		for (int s = -1; s <= 1; s += 2)
-			pts[n++] = po.pos + v3f(0, (float)k, 0) + across * (0.3f * s) + out * 0.01f;
+			pts[n++] = po.pos + v3f(0, -0.45f + j * (h - 0.1f) / h, 0) + across * (0.45f * s) + out * 0.01f;
 	return n;
 }
 
