@@ -203,12 +203,11 @@ bool nhvRtClear(vec3 a, vec3 b)
 }
 // a point where faces meet - on the line between blocks - may round into
 // the solid block beside its face (a ray from inside a block isn't stopped
-// by it), and a ray along that line can slip between blocks that only
-// touch at an edge: rays start from inside an open block, never on its
-// edges - the one the point's in, or the open one beside it - and a
-// quarter of a block off any solid block beside it (a ray hugging a wall
-// sees round what a wall's thickness would hide: thin strips of light
-// along walls' feet and corners)
+// by it): rays start from an open block - the one the point's in, or the
+// open one beside it - and a quarter of a block off any solid block beside
+// it (a ray hugging a wall sees round what a wall's thickness would hide:
+// thin strips of light along walls' feet and corners). Not moved off the
+// edges between open blocks: a shadow's edge goes straight on across them
 vec3 nhvRtOpen(vec3 a)
 {
 	for (int k = 0; k < 3; k++) {
@@ -226,7 +225,7 @@ vec3 nhvRtOpen(vec3 a)
 			a = b;
 	}
 	vec3 c = floor(a + 0.5);
-	vec3 lo = c - 0.45, hi = c + 0.45;
+	vec3 lo = c - 1.0, hi = c + 1.0;
 	for (int k = 0; k < 3; k++) {
 		vec3 e = vec3(k == 0 ? 1.0 : 0.0, k == 1 ? 1.0 : 0.0, k == 2 ? 1.0 : 0.0);
 		if (nhvRtCell(c - e).r > 0.5)
