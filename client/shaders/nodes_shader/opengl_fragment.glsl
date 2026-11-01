@@ -238,13 +238,13 @@ float nhvFaceShade(vec3 normal)
 		return 0.670820 * n2.x + n2.y + 0.836660 * n2.z;
 	return 1.0;
 }
-// how bright it is at a (just off a face turned n - nl its length; before
-// the face's shading): a lit room's light, its doorways', lamps', yours
-float nhvRtBright(vec3 a, vec3 n, float nl)
+// the light level at a (just off a face turned n - nl its length): a lit
+// room's, its doorways', lamps', yours - 0..14
+float nhvRtLevel(vec3 a, vec3 n, float nl)
 {
-	float bright = 0.0;
+	float level = 0.0;
 	if (nhvRtCell(floor(a + 0.5)).g > 0.5) {
-		bright = 1.0;
+		level = 14.0;
 	} else {
 		for (int i = 0; i < 64; i++) {
 			if (float(i) >= nhvRtPortalN)
@@ -260,17 +260,14 @@ float nhvRtBright(vec3 a, vec3 n, float nl)
 			if (dot(to, ov) <= 0.0)
 				continue;
 			float l = 14.0 - length(to) / 2.0;
-			if (l < 1.0)
-				continue;
-			float b = nhvDecodeLight(l / 14.0);
-			if (b <= bright)
+			if (l < 1.0 || l <= level)
 				continue;
 			// from the doorway's middle - across the whole opening, halfway
 			// up it - as if a light hung there: lit if that's in sight
 			// (nhv_raytrace.h)
 			vec3 t = po.xyz + vec3(0.0, -0.5 + tall * 0.5, 0.0) + ov * 0.01;
 			if ((nl < 0.001 || dot(n, t - a) > 0.0) && nhvRtClear(a, t))
-				bright = b;
+				level = l;
 		}
 	}
 	for (int i = 0; i < 8; i++) {
@@ -281,20 +278,19 @@ float nhvRtBright(vec3 a, vec3 n, float nl)
 		if (nl > 0.001 && dot(n, to) <= 0.0)
 			continue;
 		float l = li.w - max(length(to) - 0.5, 0.0);
-		if (l < 1.0 || nhvDecodeLight(l / 14.0) <= bright)
+		if (l < 1.0 || l <= level)
 			continue;
 		if (nhvRtClear(a, li.xyz))
-			bright = nhvDecodeLight(l / 14.0);
+			level = l;
 	}
 	if (nhvHeroLight.w > 0.0) {
 		vec3 h = (cameraOffset + nhvHeroLight.xyz) / 10.0;
 		vec3 to = h - a;
 		float l = nhvHeroLight.w - max(length(to) - 0.5, 0.0);
-		if (l > 0.0 && nhvDecodeLight(l / 14.0) > bright && !(nl > 0.001 && dot(n, to) <= 0.0)
-				&& nhvRtClear(a, h))
-			bright = nhvDecodeLight(l / 14.0);
+		if (l > level && !(nl > 0.001 && dot(n, to) <= 0.0) && nhvRtClear(a, h))
+			level = l;
 	}
-	return bright;
+	return level;
 }
 vec3 nhvRtLit(vec3 wpos, vec3 normal)
 {
@@ -302,9 +298,10 @@ vec3 nhvRtLit(vec3 wpos, vec3 normal)
 	float nl = length(normal);
 	vec3 n = nl > 0.001 ? normal / nl : vec3(0.0);
 	// (from just off the face: the block in front of it)
-	float bright = nhvRtBright(nhvRtOpen(p + n * 0.05), n, nl);
-	if (bright <= 0.0)
+	float level = nhvRtLevel(nhvRtOpen(p + n * 0.05), n, nl);
+	if (level <= 0.0)
 		return vec3(0.0);
+	float bright = nhvDecodeLight(level / 14.0);
 	return vec3(min(bright * nhvFaceShade(normal) * 1.04, 1.0));
 }
 vec3 nhvLitBy(vec3 wpos, vec3 normal)
@@ -312,60 +309,88 @@ vec3 nhvLitBy(vec3 wpos, vec3 normal)
 	return nhvRaytrace > 0.5 ? nhvRtLit(wpos, normal) : nhvHeroLit(wpos, normal);
 }
 
-// VoxHack: square light (the setting nhv_square_light): 0 off; 1 each
-// block's face lit as at the block's middle - light and shadow block by
-// block, their edges in steps; 2 the same, each step's corner filled: a
-// block whose two neighbours beside a corner are both much darker (a
-// shadow's edge, not light fading) is cut from that corner along the line
-// between their outer corners - the steps' edges straight lines from block
-// corner to block corner. Any light: the blocks' own (the face's light
-// carried on to there, as it changes across the face) and the raytraced.
+// VoxHack: square light (the setting nhv_square_light): 0 off; 1 lit map
+// square by map square - each NetHack square (3x3 blocks) one even light,
+// as at its middle block (a wall: along it, square by square, and the same
+// all the way up it) - light and shadow's edges in steps; 2 the same, each
+// step's corner filled: a square of floor or ceiling whose two neighbours
+// beside a corner are both much darker (a shadow's edge, NHV_SHADOW_STEP
+// levels or more - not light fading) is cut from that corner along the line
+// between their outer corners - the steps' edges straight lines from square
+// corner to square corner. Any light: the blocks' own (Luanti's) and the
+// raytraced.
 uniform float nhvSquare;
 uniform float nhvGrid; // (the blocks' texture there: 1)
-// a block's brightness (b: its middle, nodes - the block in front of a face
-// turned n, nl its length): its own light (the texture's blue: Luanti's
+// a block's light level (b: its middle, nodes - the block in front of a
+// face turned n, nl its length): its own (the texture's blue: Luanti's
 // light there, 0..15), and the raytraced there or yours
-float nhvSquareBright(vec3 b, vec3 n, float nl)
+float nhvSquareLevel(vec3 b, vec3 n, float nl)
 {
-	float bright = nhvDecodeLight(nhvRtTexel(b).b * 15.0 / 14.0);
+	float level = min(floor(nhvRtTexel(b).b * 15.0 + 0.5), 14.0);
 	if (nhvRaytrace > 0.5)
-		return max(bright, nhvRtBright(nhvRtOpen(b), n, nl));
+		return max(level, nhvRtLevel(nhvRtOpen(b), n, nl));
 	if (nhvHeroLight.w > 0.0) {
 		vec3 to = (cameraOffset + nhvHeroLight.xyz) / 10.0 - b;
 		float l = nhvHeroLight.w - max(length(to) - 0.5, 0.0);
-		if (l > 0.0 && !(nl > 0.001 && dot(n, to) <= 0.0))
-			bright = max(bright, nhvDecodeLight(l / 14.0));
+		if (!(nl > 0.001 && dot(n, to) <= 0.0))
+			level = max(level, l);
 	}
-	return bright;
+	return level;
 }
+// (a shadow's edge, for the filled corners: a neighbour this many light
+// levels darker or more - light fading, a level a block, isn't one)
+const float NHV_SHADOW_STEP = 4.0;
+// (a map square's middle block, along one way: squares are 3 blocks, the
+// first from block 0; and the height light's taken at on a wall: standing
+// height)
+float nhvSquareMiddle(float x)
+{
+	return floor((x + 0.5) / 3.0) * 3.0 + 1.0;
+}
+const float NHV_STAND_Y = 0.0;
 vec3 nhvSquareLit(vec3 light, vec3 wpos, vec3 normal)
 {
 	float nl = length(normal);
 	if (nhvGrid < 0.5 || nl < 0.001)
 		return max(light, nhvLitBy(wpos, normal));
 	vec3 n = normal / nl;
-	// (the face's two ways across; its block - the one in front of it - and
-	// where on it this is, from the middle, -0.5..0.5 each way)
+	// (the face's two ways across - a floor's or ceiling's both level, a
+	// wall's one up; its map square's middle block, in front of it; where in
+	// the square this is, from the middle, -0.5..0.5 each way)
 	vec3 an = abs(n);
-	vec3 t1 = an.x > 0.5 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0);
-	vec3 t2 = an.z > 0.5 ? vec3(0.0, 1.0, 0.0) : vec3(0.0, 0.0, 1.0);
+	bool level_face = an.y > 0.5;
+	vec3 t1 = an.x > 0.5 ? vec3(0.0, 0.0, 1.0) : vec3(1.0, 0.0, 0.0);
+	vec3 t2 = level_face ? vec3(0.0, 0.0, 1.0) : vec3(0.0, 1.0, 0.0);
 	vec3 a = (cameraOffset + wpos) / 10.0 + n * 0.05;
-	vec3 cell = floor(a + 0.5);
-	float u = dot(a - cell, t1), v = dot(a - cell, t2);
-	float bright = nhvSquareBright(cell, n, nl);
-	if (nhvSquare > 1.5 && abs(u) + abs(v) > 0.5) {
-		// (in a corner's triangle: the neighbours beside that corner, where
-		// the face goes on - solid behind, open in front)
-		vec3 s1 = t1 * (u < 0.0 ? -1.0 : 1.0), s2 = t2 * (v < 0.0 ? -1.0 : 1.0);
-		float b1 = bright, b2 = bright;
-		if (nhvRtCell(cell + s1).r < 0.5 && nhvRtCell(cell + s1 - n).r > 0.5)
-			b1 = nhvSquareBright(cell + s1, n, nl);
-		if (b1 < bright * 0.6 && nhvRtCell(cell + s2).r < 0.5 && nhvRtCell(cell + s2 - n).r > 0.5)
-			b2 = nhvSquareBright(cell + s2, n, nl);
-		if (b1 < bright * 0.6 && b2 < bright * 0.6)
-			bright = max(b1, b2);
+	vec3 c = floor(a + 0.5);
+	if (an.x > 0.5) {
+		c.z = nhvSquareMiddle(a.z);
+		c.y = NHV_STAND_Y;
+	} else if (an.z > 0.5) {
+		c.x = nhvSquareMiddle(a.x);
+		c.y = NHV_STAND_Y;
+	} else {
+		c.x = nhvSquareMiddle(a.x);
+		c.z = nhvSquareMiddle(a.z);
 	}
-	return vec3(min(bright * nhvFaceShade(normal) * 1.04, 1.0));
+	float u = dot(a - c, t1) / 3.0, v = level_face ? dot(a - c, t2) / 3.0 : 0.0;
+	float level = nhvSquareLevel(c, n, nl);
+	if (nhvSquare > 1.5 && level_face && abs(u) + abs(v) > 0.5) {
+		// (in a corner's triangle: the squares beside that corner, where the
+		// floor or ceiling goes on - solid behind, open in front)
+		vec3 s1 = t1 * (u < 0.0 ? -3.0 : 3.0), s2 = t2 * (v < 0.0 ? -3.0 : 3.0);
+		float l1 = level, l2 = level;
+		if (nhvRtCell(c + s1).r < 0.5 && nhvRtCell(c + s1 - n).r > 0.5)
+			l1 = nhvSquareLevel(c + s1, n, nl);
+		if (l1 <= level - NHV_SHADOW_STEP && nhvRtCell(c + s2).r < 0.5
+				&& nhvRtCell(c + s2 - n).r > 0.5)
+			l2 = nhvSquareLevel(c + s2, n, nl);
+		if (l1 <= level - NHV_SHADOW_STEP && l2 <= level - NHV_SHADOW_STEP)
+			level = max(l1, l2);
+	}
+	if (level <= 0.0)
+		return vec3(0.0);
+	return vec3(min(nhvDecodeLight(level / 14.0) * nhvFaceShade(normal) * 1.04, 1.0));
 }
 
 vec3 nhvTexelLit(vec3 light, vec2 uv, vec2 texsize, vec3 wpos, vec3 normal)
