@@ -383,8 +383,12 @@ WieldMeshSceneNode::~WieldMeshSceneNode()
 	sanity_check(g_extrusion_mesh_cache);
 
 	// Remove node from shadow casters. m_shadow might be an invalid pointer!
-	if (m_shadow)
-		m_shadow->removeNodeFromShadowList(m_meshnode);
+	// (VoxHack: so the renderer there is now is asked, not m_shadow - the
+	// rendering core is rebuilt when retro mode is switched, the shadow
+	// renderer this was added to deleted with it; reaching into it here
+	// crashed the game when something held or a sprite went afterwards)
+	if (ShadowRenderer *shadow = RenderingEngine::get_shadow_renderer())
+		shadow->removeNodeFromShadowList(m_meshnode);
 
 	if (g_extrusion_mesh_cache->drop())
 		g_extrusion_mesh_cache = nullptr;
