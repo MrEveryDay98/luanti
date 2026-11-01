@@ -309,11 +309,10 @@ vec3 nhvLitBy(vec3 wpos, vec3 normal)
 	return nhvRaytrace > 0.5 ? nhvRtLit(wpos, normal) : nhvHeroLit(wpos, normal);
 }
 
-// VoxHack: square light (the setting nhv_square_light): 0 off; 1 lit map
-// square by map square - each NetHack square (3x3 blocks) one even light,
-// as at its middle block (a wall: along it, square by square, and the same
-// all the way up it) - light and shadow's edges in steps. Any light: the
-// blocks' own (Luanti's) and the raytraced.
+// VoxHack: square light (the setting nhv_square_light): 0 off; 1 lit block
+// by block - each block's face one even light, the light of the block in
+// front of it - light and shadow's edges in steps. Any light: the blocks'
+// own (Luanti's) and the raytraced.
 uniform float nhvSquare;
 uniform float nhvGrid; // (the blocks' texture there: 1)
 // a block's light level (b: its middle, nodes - the block in front of a
@@ -332,34 +331,14 @@ float nhvSquareLevel(vec3 b, vec3 n, float nl)
 	}
 	return level;
 }
-// (a map square's middle block, along one way: squares are 3 blocks, the
-// first from block 0; and the height light's taken at on a wall: standing
-// height)
-float nhvSquareMiddle(float x)
-{
-	return floor((x + 0.5) / 3.0) * 3.0 + 1.0;
-}
-const float NHV_STAND_Y = 0.0;
 vec3 nhvSquareLit(vec3 light, vec3 wpos, vec3 normal)
 {
 	float nl = length(normal);
 	if (nhvGrid < 0.5 || nl < 0.001)
 		return max(light, nhvLitBy(wpos, normal));
 	vec3 n = normal / nl;
-	// (its map square's middle block, in front of the face)
-	vec3 an = abs(n);
-	vec3 a = (cameraOffset + wpos) / 10.0 + n * 0.05;
-	vec3 c = floor(a + 0.5);
-	if (an.x > 0.5) {
-		c.z = nhvSquareMiddle(a.z);
-		c.y = NHV_STAND_Y;
-	} else if (an.z > 0.5) {
-		c.x = nhvSquareMiddle(a.x);
-		c.y = NHV_STAND_Y;
-	} else {
-		c.x = nhvSquareMiddle(a.x);
-		c.z = nhvSquareMiddle(a.z);
-	}
+	// (the block in front of the face)
+	vec3 c = floor((cameraOffset + wpos) / 10.0 + n * 0.05 + 0.5);
 	float level = nhvSquareLevel(c, n, nl);
 	if (level <= 0.0)
 		return vec3(0.0);

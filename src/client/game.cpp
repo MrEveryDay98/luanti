@@ -166,7 +166,7 @@ class GameGlobalShaderUniformSetter : public IShaderUniformSetter
 	// the raytraced light (nhv_rt_client.h): on; the portals and lamps
 	// nearest to trace to, and how many
 	CachedPixelShaderSetting<float> m_nhv_rt_pixel{"nhvRaytrace"};
-	// square light: 0 off, 1 map square by map square (nhv_square_light)
+	// square light: 0 off, 1 block by block (nhv_square_light)
 	CachedPixelShaderSetting<float> m_nhv_square_pixel{"nhvSquare"};
 	// (the blocks' texture there: raytraced or square light)
 	CachedPixelShaderSetting<float> m_nhv_grid_pixel{"nhvGrid"};
