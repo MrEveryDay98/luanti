@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: LGPL-2.1-or-later
 
 #include "nhv_levelready.h"
+#include "nhv_steam.h" // (VoxHack)
 #include "nhv_camera.h"
 #include "nhv_raytrace.h"
 #include "nodedef.h"
@@ -695,6 +696,32 @@ int ModApiNetHack::l_nhv_camera_roll(lua_State *L)
 int ModApiNetHack::l_nhv_player_drift(lua_State *L)
 {
 	nhv_camera::set_drift(read_v3f(L, 1));
+	return 0;
+}
+
+// core.nhv_steam(): whether this is the Steam build, Steam running
+// (nhv_steam.h); core.nhv_steam_achieve(api_name): unlock that Steam
+// achievement - true if Steam took it; core.nhv_steam_presence(key, value):
+// rich presence (value nil or "": that key cleared; no key: all of it)
+int ModApiNetHack::l_nhv_steam(lua_State *L)
+{
+	lua_pushboolean(L, nhv_steam::active());
+	return 1;
+}
+
+int ModApiNetHack::l_nhv_steam_achieve(lua_State *L)
+{
+	lua_pushboolean(L, nhv_steam::achieve(luaL_checkstring(L, 1)));
+	return 1;
+}
+
+int ModApiNetHack::l_nhv_steam_presence(lua_State *L)
+{
+	if (lua_isnoneornil(L, 1)) {
+		nhv_steam::clear_presence();
+		return 0;
+	}
+	nhv_steam::presence(luaL_checkstring(L, 1), luaL_optstring(L, 2, ""));
 	return 0;
 }
 
@@ -1614,6 +1641,9 @@ void ModApiNetHack::Initialize(lua_State *L, int top)
 	API_FCT(nhv_player_drift);
 	API_FCT(nhv_drift_facing);
 	API_FCT(nhv_hero_blind);
+	API_FCT(nhv_steam);
+	API_FCT(nhv_steam_achieve);
+	API_FCT(nhv_steam_presence);
 	API_FCT(nhv_bubble_floor);
 	API_FCT(nhv_camera_orbit);
 	API_FCT(nhv_camera_path);

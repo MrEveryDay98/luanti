@@ -18,6 +18,7 @@
 #include "config.h"
 #include "daynightratio.h"
 #include "nhv_camera.h" // (VoxHack)
+#include "nhv_steam.h" // (VoxHack)
 #include "nhv_demo.h" // (VoxHack)
 #include "content_cao.h"
 #include "content/subgames.h"
@@ -690,6 +691,8 @@ void Game::run()
 			|| (server && server->isShutdownRequested()))) {
 
 		framemarker.end();
+
+		nhv_steam::run_callbacks(); // (VoxHack: Steam's, when it's the Steam build)
 
 		// Calculate dtime =
 		//    m_rendering_engine->run() from this iteration

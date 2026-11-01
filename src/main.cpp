@@ -3,6 +3,7 @@
 // Copyright (C) 2010-2013 celeron55, Perttu Ahola <celeron55@gmail.com>
 
 #include <map>
+#include "nhv_steam.h" // (VoxHack)
 #include "irrlichttypes_bloated.h"
 #include "chat_interface.h"
 #include "debug.h"
@@ -282,7 +283,11 @@ int main(int argc, char *argv[])
 		return run_dedicated_server(game_params, cmd_args) ? 0 : 1;
 
 #if CHECK_CLIENT_BUILD()
+	// (VoxHack: Steam, in the Steam build - before the window opens, so its
+	// overlay can draw over it: nhv_steam.h)
+	nhv_steam::init();
 	retval = ClientLauncher().run(game_params, cmd_args) ? 0 : 1;
+	nhv_steam::shutdown();
 #else
 	retval = 0;
 #endif
