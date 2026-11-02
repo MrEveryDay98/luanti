@@ -287,6 +287,10 @@ private:
 	// NetHack Voxel: the same item, drawn differently (hallucination...):
 	// fades out and back in instead of being put away and taken out
 	f32 m_nhv_fade = 0.0f; // time left of the fade (0: none)
+	// (the glow over the hands' items: how strong now, eased; where in its
+	// pulse, 0..1; its colour - nhv_camera::HandFx)
+	f32 m_nhv_glow = 0.0f, m_nhv_glow_phase = 0.0f;
+	u8 m_nhv_glow_r = 0, m_nhv_glow_g = 0, m_nhv_glow_b = 0;
 	bool m_nhv_fade_swapped = false;
 	// NetHack Voxel: the item in your hand follows the flat sprites setting
 	bool m_nhv_flat = false;

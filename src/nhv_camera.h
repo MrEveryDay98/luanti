@@ -45,6 +45,17 @@ bool get_drift_facing();
 void set_blind(bool on);
 bool get_blind();
 
+// server (core.nhv_hand_fx): a glow over the items in your hands, pulsing
+// (confuse monster's glowing hands, Sting warning of orcs): its colour, how
+// strong (0..1) and how fast it pulses (a second; 0: steady). client:
+// camera.cpp
+struct HandFx {
+	u8 r = 0, g = 0, b = 0;
+	float amount = 0.0f, hz = 0.0f;
+};
+void set_hand_fx(const HandFx &fx);
+HandFx get_hand_fx();
+
 // server (core.nhv_bubble_floor): the Plane of Water's bubbles, each an
 // ellipse on the floor - x, z (its middle), rx, rz (its half widths), vx,
 // vz (how fast it's going) - all in nodes; floor_y: the floor's height;

@@ -88,6 +88,20 @@ bool get_drift_facing()
 	return drift_facing;
 }
 
+static HandFx hand_fx;
+
+void set_hand_fx(const HandFx &fx)
+{
+	std::lock_guard<std::mutex> guard(lock);
+	hand_fx = fx;
+}
+
+HandFx get_hand_fx()
+{
+	std::lock_guard<std::mutex> guard(lock);
+	return hand_fx;
+}
+
 void set_blind(bool on)
 {
 	std::lock_guard<std::mutex> guard(lock);

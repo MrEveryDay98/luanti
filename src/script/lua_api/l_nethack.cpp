@@ -552,6 +552,10 @@ int ModApiNetHack::l_nh_get_hero(lua_State *L)
 	set_str(L, "god", h.god);
 	set_str(L, "dungeon_name", h.dungeon_name);
 	set_str(L, "level_desc", h.level_desc);
+	set_int(L, "umconf", h.umconf);
+	set_int(L, "warn_cnt", h.warn_cnt);
+	set_int(L, "warn_dist", h.warn_dist);
+	set_int(L, "warn_color", h.warn_color);
 	return 1;
 }
 
@@ -722,6 +726,22 @@ int ModApiNetHack::l_nhv_steam_presence(lua_State *L)
 		return 0;
 	}
 	nhv_steam::presence(luaL_checkstring(L, 1), luaL_optstring(L, 2, ""));
+	return 0;
+}
+
+// core.nhv_hand_fx({r=, g=, b=, amount=, hz=}): a glow over the items in
+// your hands (see nhv_camera.h's HandFx); nil or {}: none
+int ModApiNetHack::l_nhv_hand_fx(lua_State *L)
+{
+	nhv_camera::HandFx fx;
+	if (lua_istable(L, 1)) {
+		fx.r = (u8)getintfield_default(L, 1, "r", 0);
+		fx.g = (u8)getintfield_default(L, 1, "g", 0);
+		fx.b = (u8)getintfield_default(L, 1, "b", 0);
+		fx.amount = getfloatfield_default(L, 1, "amount", 0.0f);
+		fx.hz = getfloatfield_default(L, 1, "hz", 0.0f);
+	}
+	nhv_camera::set_hand_fx(fx);
 	return 0;
 }
 
@@ -1641,6 +1661,7 @@ void ModApiNetHack::Initialize(lua_State *L, int top)
 	API_FCT(nhv_player_drift);
 	API_FCT(nhv_drift_facing);
 	API_FCT(nhv_hero_blind);
+	API_FCT(nhv_hand_fx);
 	API_FCT(nhv_steam);
 	API_FCT(nhv_steam_achieve);
 	API_FCT(nhv_steam_presence);

@@ -35,6 +35,7 @@ private:
 	static int l_nhv_player_drift(lua_State *L);
 	static int l_nhv_drift_facing(lua_State *L);
 	static int l_nhv_hero_blind(lua_State *L);
+	static int l_nhv_hand_fx(lua_State *L);
 	static int l_nhv_steam(lua_State *L);
 	static int l_nhv_steam_achieve(lua_State *L);
 	static int l_nhv_steam_presence(lua_State *L);
