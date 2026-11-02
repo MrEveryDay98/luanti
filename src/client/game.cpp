@@ -2291,9 +2291,8 @@ void Game::toggleFullViewRange()
 
 void Game::checkZoomEnabled()
 {
-	LocalPlayer *player = client->getEnv().getLocalPlayer();
-	if (player->getZoomFOV() < 0.001f || player->getFov().fov > 0.0f)
-		m_game_ui->showTranslatedStatusText("Zoom currently disabled by game or mod");
+	// (VoxHack: the zoom key opens the big map - nhv's hud.lua - so nothing
+	// is said of zoom being off)
 }
 
 void Game::updateCameraDirection(CameraOrientation *cam, float dtime)
