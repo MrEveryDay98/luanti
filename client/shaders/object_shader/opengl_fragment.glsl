@@ -597,9 +597,17 @@ void main(void)
 	col.rgb = mix(col.rgb, base.rgb, nhvFullbright);
 	// (glowing: drawn towards the glow's colour, its own light and dark kept,
 	// as bright as the glow whatever the light round it)
+	// (retro mode: a dithered overlay of it - each pixel all glow or none,
+	// more of them the stronger it is)
 	if (nhvHandGlow.a > 0.0) {
 		float lum = dot(base.rgb, vec3(0.299, 0.587, 0.114));
-		col.rgb = mix(col.rgb, nhvHandGlow.rgb * (0.45 + 0.75 * lum), nhvHandGlow.a);
+		vec3 glow = nhvHandGlow.rgb * (0.45 + 0.75 * lum);
+		if (nhvRetro.x > 0.0) {
+			if (nhvBayer4(floor(gl_FragCoord.xy)) + 0.5 / 16.0 < nhvHandGlow.a)
+				col.rgb = glow;
+		} else {
+			col.rgb = mix(col.rgb, glow, nhvHandGlow.a);
+		}
 	}
 	col = mix(fogColor * pow(fogColor / fogColorMax, vec4(2.0 * clarity)), col, clarity);
 	col = vec4(col.rgb, base.a);
