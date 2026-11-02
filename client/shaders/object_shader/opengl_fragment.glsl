@@ -44,6 +44,9 @@ VARYING_ vec3 worldPosition;
 VARYING_ lowp vec4 varColor;
 // NetHack Voxel: 1 = full brightness (no light or shadow)
 uniform float nhvFullbright;
+// VoxHack: the items in your hands glowing (Sting's light blue, hands
+// glowing red...): its colour, how much now (0: none) - camera.cpp
+uniform vec4 nhvHandGlow;
 // VoxHack retro mode: on, dithering, light steps, palette (game.cpp) -
 // the light in a few steps, not smooth
 uniform vec4 nhvRetro;
@@ -592,6 +595,12 @@ void main(void)
 	// For this to not make the fog color artificially dark we need to normalize using the
 	// fog color's brightest value. We then blend our base color with this to make the fog.
 	col.rgb = mix(col.rgb, base.rgb, nhvFullbright);
+	// (glowing: drawn towards the glow's colour, its own light and dark kept,
+	// as bright as the glow whatever the light round it)
+	if (nhvHandGlow.a > 0.0) {
+		float lum = dot(base.rgb, vec3(0.299, 0.587, 0.114));
+		col.rgb = mix(col.rgb, nhvHandGlow.rgb * (0.45 + 0.75 * lum), nhvHandGlow.a);
+	}
 	col = mix(fogColor * pow(fogColor / fogColorMax, vec4(2.0 * clarity)), col, clarity);
 	col = vec4(col.rgb, base.a);
 

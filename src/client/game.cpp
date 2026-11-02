@@ -143,6 +143,9 @@ class GameGlobalShaderUniformSetter : public IShaderUniformSetter
 	CachedPixelShaderSetting<float, 3> m_nhv_fx_pixel{"nhvFx"};
 	// NetHack Voxel full brightness (nodes and objects shaders): 0 or 1
 	CachedPixelShaderSetting<float> m_nhv_fullbright_pixel{"nhvFullbright"};
+	// VoxHack: the items in your hands glowing (objects shader): colour,
+	// how much - only while they're drawn (nhv_camera::hand_glow)
+	CachedPixelShaderSetting<float, 4> m_nhv_hand_glow_pixel{"nhvHandGlow"};
 	// VoxHack retro mode (nodes and objects shaders: banded light; second
 	// stage: its colours): on (0/1), dithering (0..1.6), light steps (0:
 	// smooth), palette (0 full, 1 VGA's 256, 2 EGA's 16)
@@ -296,6 +299,11 @@ public:
 			// (full brightness, or wizard mode's partial: unlit colours mixed in)
 			float fullbright = (f & HUD_FLAG_NHV_FULLBRIGHT) ? 1.0f : m_nhv_brightness;
 			m_nhv_fullbright_pixel.set(&fullbright, services);
+		}
+		{
+			static const float none[4] = {0.0f, 0.0f, 0.0f, 0.0f};
+			m_nhv_hand_glow_pixel.set(nhv_camera::hand_glow_drawing ? nhv_camera::hand_glow : none,
+				services);
 		}
 
 		float animation_timer_delta_f = (float)m_client->getEnv().getFrameTimeDelta() / 100000.f;

@@ -55,6 +55,11 @@ struct HandFx {
 };
 void set_hand_fx(const HandFx &fx);
 HandFx get_hand_fx();
+// client: the glow as it is this frame (colour 0..1, how much 0..1), and
+// whether the hands' items are being drawn now - only they glow (the
+// objects shader's nhvHandGlow: client/game.cpp). Main thread only.
+extern float hand_glow[4];
+extern bool hand_glow_drawing;
 
 // server (core.nhv_bubble_floor): the Plane of Water's bubbles, each an
 // ellipse on the floor - x, z (its middle), rx, rz (its half widths), vx,

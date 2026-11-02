@@ -772,10 +772,11 @@ void Camera::update(LocalPlayer* player, f32 frametime, f32 tool_reload_ratio)
 		wield_light.setBlue(wield_light.getBlue() * k);
 	}
 	// NetHack Voxel: a glow over the items in your hands (the game's
-	// nhv_camera::get_hand_fx), pulsing - the light on them drawn towards
-	// the glow's colour. Smoothly: the pulse goes on from where it is when
-	// it quickens or slows (it doesn't jump), and the glow fades in and out
-	// rather than coming and going at once.
+	// nhv_camera::get_hand_fx), pulsing - their colours drawn towards the
+	// glow's, as bright as it whatever the light (the objects shader's
+	// nhvHandGlow, while they're drawn: drawWieldedTool). Smoothly: the
+	// pulse goes on from where it is when it quickens or slows (it doesn't
+	// jump), and the glow fades in and out rather than coming and going.
 	{
 		nhv_camera::HandFx fx = nhv_camera::get_hand_fx();
 		if (fx.amount > 0.0f) {
@@ -789,10 +790,12 @@ void Camera::update(LocalPlayer* player, f32 frametime, f32 tool_reload_ratio)
 			// (low to high and back: a soft swell, not a blink)
 			f32 p = fx.hz > 0.0f || fx.amount <= 0.0f
 				? 0.5f - 0.5f * std::cos(m_nhv_glow_phase * 2.0f * M_PI) : 1.0f;
-			f32 k = std::min(1.0f, m_nhv_glow * (0.2f + 0.8f * p));
-			wield_light.setRed(wield_light.getRed() + (m_nhv_glow_r - wield_light.getRed()) * k);
-			wield_light.setGreen(wield_light.getGreen() + (m_nhv_glow_g - wield_light.getGreen()) * k);
-			wield_light.setBlue(wield_light.getBlue() + (m_nhv_glow_b - wield_light.getBlue()) * k);
+			nhv_camera::hand_glow[0] = m_nhv_glow_r / 255.0f;
+			nhv_camera::hand_glow[1] = m_nhv_glow_g / 255.0f;
+			nhv_camera::hand_glow[2] = m_nhv_glow_b / 255.0f;
+			nhv_camera::hand_glow[3] = std::min(1.0f, m_nhv_glow * (0.2f + 0.8f * p));
+		} else {
+			nhv_camera::hand_glow[3] = 0.0f;
 		}
 	}
 	m_wieldnode->setLightColorAndAnimation(wield_light,
@@ -905,7 +908,9 @@ void Camera::drawWieldedTool(core::matrix4* translation)
 		cam->updateAbsolutePosition();
 		cam->setTarget(focusPoint);
 	}
+	nhv_camera::hand_glow_drawing = true; // (NetHack Voxel: only they glow)
 	m_wieldmgr->drawAll();
+	nhv_camera::hand_glow_drawing = false;
 }
 
 void Camera::toggleCameraMode()

@@ -89,6 +89,8 @@ bool get_drift_facing()
 }
 
 static HandFx hand_fx;
+float hand_glow[4] = {0.0f, 0.0f, 0.0f, 0.0f};
+bool hand_glow_drawing = false;
 
 void set_hand_fx(const HandFx &fx)
 {
