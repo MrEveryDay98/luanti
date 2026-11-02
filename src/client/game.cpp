@@ -2004,15 +2004,16 @@ void Game::handleAndroidChatInput()
 
 void Game::toggleFreeMove()
 {
+	// (VoxHack: flying is wizard mode's, which gives the privilege - without
+	// it the key does nothing, and says nothing; not even the setting, which
+	// would stay on for the next time)
+	if (!client->checkPrivilege("fly"))
+		return;
 	bool free_move = !g_settings->getBool("free_move");
 	g_settings->set("free_move", bool_to_cstr(free_move));
 
 	if (free_move) {
-		if (client->checkPrivilege("fly")) {
-			m_game_ui->showTranslatedStatusText("Fly mode enabled");
-		} else {
-			m_game_ui->showTranslatedStatusText("Fly mode enabled (note: no 'fly' privilege)");
-		}
+		m_game_ui->showTranslatedStatusText("Fly mode enabled");
 	} else {
 		m_game_ui->showTranslatedStatusText("Fly mode disabled");
 	}
@@ -2036,6 +2037,8 @@ void Game::toggleFreeMoveAlt()
 
 void Game::togglePitchMove()
 {
+	if (!client->checkPrivilege("fly")) // (VoxHack: as flying)
+		return;
 	bool pitch_move = !g_settings->getBool("pitch_move");
 	g_settings->set("pitch_move", bool_to_cstr(pitch_move));
 
@@ -2049,16 +2052,14 @@ void Game::togglePitchMove()
 
 void Game::toggleFast()
 {
-	bool fast_move = !g_settings->getBool("fast_move");
 	bool has_fast_privs = client->checkPrivilege("fast");
+	if (!has_fast_privs) // (VoxHack: as flying)
+		return;
+	bool fast_move = !g_settings->getBool("fast_move");
 	g_settings->set("fast_move", bool_to_cstr(fast_move));
 
 	if (fast_move) {
-		if (has_fast_privs) {
-			m_game_ui->showTranslatedStatusText("Fast mode enabled");
-		} else {
-			m_game_ui->showTranslatedStatusText("Fast mode enabled (note: no 'fast' privilege)");
-		}
+		m_game_ui->showTranslatedStatusText("Fast mode enabled");
 	} else {
 		m_game_ui->showTranslatedStatusText("Fast mode disabled");
 	}
@@ -2069,15 +2070,13 @@ void Game::toggleFast()
 
 void Game::toggleNoClip()
 {
+	if (!client->checkPrivilege("noclip")) // (VoxHack: as flying)
+		return;
 	bool noclip = !g_settings->getBool("noclip");
 	g_settings->set("noclip", bool_to_cstr(noclip));
 
 	if (noclip) {
-		if (client->checkPrivilege("noclip")) {
-			m_game_ui->showTranslatedStatusText("Noclip mode enabled");
-		} else {
-			m_game_ui->showTranslatedStatusText("Noclip mode enabled (note: no 'noclip' privilege)");
-		}
+		m_game_ui->showTranslatedStatusText("Noclip mode enabled");
 	} else {
 		m_game_ui->showTranslatedStatusText("Noclip mode disabled");
 	}
@@ -2097,10 +2096,8 @@ void Game::toggleCinematic()
 void Game::toggleBlockBounds()
 {
 	LocalPlayer *player = client->getEnv().getLocalPlayer();
-	if (!(client->checkPrivilege("debug") || (player->hud_flags & HUD_FLAG_BASIC_DEBUG))) {
-		m_game_ui->showTranslatedStatusText("Can't show block bounds (disabled by game or mod)");
-		return;
-	}
+	if (!(client->checkPrivilege("debug") || (player->hud_flags & HUD_FLAG_BASIC_DEBUG)))
+		return; // (VoxHack: nothing said)
 	enum Hud::BlockBoundsMode newmode = hud->toggleBlockBounds();
 	switch (newmode) {
 		case Hud::BLOCK_BOUNDS_OFF:
@@ -2152,10 +2149,9 @@ void Game::toggleMinimap(bool shift_pressed)
 			mapper->nextMode();
 	// <--
 	// End of 'not so satifying code'
+	// (VoxHack: the game has its own map - nothing said of Luanti's)
 	if (hud && hud->hasElementOfType(HUD_ELEM_MINIMAP))
 		m_game_ui->showStatusText(utf8_to_wide(mapper->getModeDef().label));
-	else
-		m_game_ui->showTranslatedStatusText("Minimap currently disabled by game or mod");
 }
 
 void Game::toggleFog()
